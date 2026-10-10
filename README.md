@@ -1,6 +1,21 @@
 # PACT — Programmable Agreements, Contracts & Transfers
 
-Hacklanta MVP: **digital licensing only**. A seller defines a license offer, a buyer pays in Base Sepolia test ETH, and the smart contract records a nontransferable time-limited entitlement. A participating demo app verifies entitlement before allowing access.
+Hacklanta MVP: **digital licensing only**, now targeting **Solana Devnet**. A seller defines an offer, a buyer pays test SOL, and the program atomically settles payment and records a buyer-bound, time-limited entitlement. PACT Studio unlocks only after a fresh chain-validated read. The previous Base Sepolia implementation remains preserved at `/base` and in `contracts/`.
+
+## Solana local candidate
+
+The native Rust program lives in `solana/`; its versioned manual binary interface is `solana/wire-spec.json`. Build and execute the compiled SBF locally without signing credentials:
+
+```powershell
+cd C:\Hackathon\PACT\solana
+powershell -ExecutionPolicy Bypass -File scripts/setup.ps1
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1
+powershell -ExecutionPolicy Bypass -File scripts/test.ps1
+```
+
+The frontend uses Phantom/Solana Wallet Adapter with client-only providers. Connect, disconnect, account changes and Devnet RPC validation retain the existing visual design. Production configuration leaves the program address empty until an explicitly authorized deployment. Local program tests execute actual compiled bytecode; browser tests use synthetic wallet/RPC fixtures. Neither is evidence of live Devnet purchases or real Phantom permission dialogs.
+
+See [independent QA](docs/SOLANA_QA.md), [web setup and manual Chrome checks](web/README.md), and the [operator-only deployment package](docs/SOLANA_DEPLOYMENT_PACKAGE.md). Deployer/program addresses, funding and live wallet evidence remain pending. No agent deploys, accesses credentials, requests wallet approval or broadcasts.
 
 ## Start here (Windows / VS Code)
 1. Extract this ZIP to `C:\Hackathon\PACT` (a **separate project**, not over the existing Hacklanta agent project).
@@ -9,7 +24,7 @@ Hacklanta MVP: **digital licensing only**. A seller defines a license offer, a b
 4. Let the agent inspect your environment, then scaffold and implement **Phase 1**. This ZIP contains specifications, agent instructions, example data and a minimal runnable contract/test foundation; it is **not a deployed finished app**.
 5. No wallet keys or seed phrases should be shared with an AI agent or committed to Git.
 
-## Intended stack
+## Preserved Base stack
 - Solidity + Foundry + OpenZeppelin (contract; native test ETH only)
 - Base Sepolia (testnet)
 - Next.js + TypeScript + Tailwind/shadcn/ui (web app)
@@ -39,7 +54,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:3000. The app provides seller offer creation and withdrawals, buyer terms review and purchase, public wallet verification, and a chain-checked sample feature. Until an approved deployment address is configured in `web/.env.local`, it displays setup pending and disables chain actions. See `web/README.md` for configuration and the demo flow.
+Open http://localhost:3000 for Solana, or `/base` for the preserved Base fallback. Until an approved deployment address is configured in `web/.env.local`, the app displays setup pending and disables chain actions. Solana settles directly to the seller; Base retains its withdrawal flow. See `web/README.md` for configuration and demo details.
 
 ## Phase 2 local validation
 
@@ -50,10 +65,10 @@ Independent browser tests use synthetic local RPC/wallet fixtures, not real sign
 ## Non-goals
 No real payments, deeds, car titles, on-chain personal data, arbitration, universal legal-contract generation, or arbitrary AI-generated Solidity. No claim that an on-chain license proves copyright ownership.
 
-## Transaction semantics
+## Preserved Base transaction semantics
 **Atomic buyer purchase:** buyer sends exact test ETH; contract creates an entitlement and credits seller's withdrawable balance in the same transaction. Seller withdraws in a separate safe call. Thus payment is economically allocated atomically, but **not instantly sent to seller's wallet**. The UI must be precise about this distinction.
 
-## MVP acceptance
+## Preserved Base MVP acceptance
 - A seller creates an offer with immutable price/duration/terms hash.
 - A buyer purchases with exact test ETH; duplicate active purchases revert.
 - `isLicenseValid(offerId, buyer)` is true until expiry and false afterward.

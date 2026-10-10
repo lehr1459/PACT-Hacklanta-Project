@@ -1,0 +1,31 @@
+{
+  "format": "PACT native Rust manual wire specification v1 (not generated Anchor IDL)",
+  "cluster": "devnet",
+  "deploymentProgramId": null,
+  "localFixtureProgramId": "US517G5965aydkZ46HS38QLi7UQiSojurfbQfKCELFx",
+  "runtimeProgramId": "provided by Solana runtime; not hardcoded in binary",
+  "termsHash": "opaque nonzero 32 bytes; client uses keccak256 of approved canonical metadata",
+  "maximumDurationSeconds": 31536000,
+  "integers": "little-endian; prices/nonces/durations u64; expiry signed i64",
+  "instructions": {
+    "createOffer": {
+      "discriminatorHex": "ede9c0a8f807f9f1", "length": 64,
+      "args": [{"name":"nonce","offset":8,"type":"u64"},{"name":"priceLamports","offset":16,"type":"u64"},{"name":"durationSeconds","offset":24,"type":"u64"},{"name":"termsHash","offset":32,"type":"bytes32"}],
+      "accounts": [{"name":"seller","writable":true,"signer":true},{"name":"offer","writable":true,"signer":false},{"name":"systemProgram","writable":false,"signer":false}]
+    },
+    "buyLicense": {
+      "discriminatorHex":"ff518198a9c9e869","length":8,"args":[],
+      "accounts":[{"name":"buyer","writable":true,"signer":true},{"name":"offer","writable":false,"signer":false},{"name":"seller","writable":true,"signer":false},{"name":"license","writable":true,"signer":false},{"name":"systemProgram","writable":false,"signer":false}]
+    },
+    "deactivateOffer": {
+      "discriminatorHex":"e95f0b2f84316a43","length":8,"args":[],
+      "accounts":[{"name":"seller","writable":false,"signer":true},{"name":"offer","writable":true,"signer":false}]
+    }
+  },
+  "accounts": {
+    "offer": {"size":98,"discriminatorHex":"d7583c47aaa249e5","seeds":["utf8:offer","seller:pubkey32","nonce:u64LE"],"fields":[{"name":"seller","offset":8,"type":"pubkey32"},{"name":"nonce","offset":40,"type":"u64"},{"name":"priceLamports","offset":48,"type":"u64"},{"name":"durationSeconds","offset":56,"type":"u64"},{"name":"termsHash","offset":64,"type":"bytes32"},{"name":"active","offset":96,"type":"bool:u8"},{"name":"bump","offset":97,"type":"u8"}]},
+    "license":{"size":81,"discriminatorHex":"f898c364b96cb0e7","seeds":["utf8:license","offer:pubkey32","buyer:pubkey32"],"fields":[{"name":"offer","offset":8,"type":"pubkey32"},{"name":"buyer","offset":40,"type":"pubkey32"},{"name":"expiresAt","offset":72,"type":"i64"},{"name":"bump","offset":80,"type":"u8"}]}
+  },
+  "errors":{"6000":"InvalidTerms","6001":"InvalidPda","6002":"WrongOwner","6003":"WrongSeller","6004":"Inactive","6005":"AlreadyLicensed","6006":"AlreadyInitialized","6007":"InvalidAccount","6008":"Arithmetic","6009":"AlreadyInactive"},
+  "invariants":["System Program is fixed/executable; payer wallets must be system-owned with empty data","Offer and existing license owners must equal runtime program ID","Canonical PDAs and saved bumps are validated","Purchase transfers exactly stored price to recorded seller via System Program CPI","Account rent is extra to price; fees are separate; settlement and entitlement are atomic","Expiry is valid strictly while cluster Clock unix timestamp < expiry","Deactivation blocks future sales, preserving existing entitlements","No withdraw escrow, transfer, NFT, renewal while active, revocation or legal ownership claim"]
+}

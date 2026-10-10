@@ -1,5 +1,20 @@
 # Status
 
+## Solana Devnet migration — local acceptance 2026-10-10
+
+- Operator authorized immediate local migration; no deployment/signing/broadcast/wallet approval or secret access.
+- Pre-migration checkpoint `182fbb9b53f0e9fc6f2eb073ff7f3ebab94db1a0`, tag `pre-solana-migration`; Phase 1 and Phase 2 tags preserved.
+- Native Windows build established using hash-pinned official Anza platform-tools v1.57 and direct bundled Cargo; no WSL restart, remote compiler or signing key generation. Minimal native Rust/Pinocchio implementation replaces the need for an Anchor CLI build.
+- Actual compiled SBF execution: 23 passing LiteSVM tests, including 14 independent QA tests. Signature verification disabled with zero signatures and synthetic addresses; no live-chain or cryptographic wallet evidence.
+- Solidity remains byte-identical to pre-migration; original Base UI preserved at `/base`. Solana root UI retains visual identity; Lead reviewed desktop/mobile screenshots.
+- Phantom connection/disconnection, accessible public address, missing extension, rejection/account change handling and SSR-safe providers implemented. Verified RPC Devnet genesis controls network acceptance; extension settings are not reliably inspectable.
+- Independent local acceptance PASS: Solana configured Playwright 32/32 plus setup 2/2; preserved Base Foundry 23/23, configured Playwright 48/48 plus separate setup 2/2. Final restored no-address production build and TypeScript exited 0; all 4 pages generated, QA listeners stopped. Browser providers/RPCs are synthetic; full evidence in `docs/SOLANA_QA.md`.
+- Settlement decision: direct program-controlled payment to seller in the atomic purchase transaction, no escrow/withdrawal feature on Solana.
+- Candidate tag: `solana-local-ready`, created after the independent gate. Package: `docs/SOLANA_DEPLOYMENT_PACKAGE.md`.
+- Operator supplied public wallet `HXmEkejco1WDhYx3j94388JUSkqL6cCyf3BxxUdQZuz2`; read-only confirmed Devnet balance is 0 lamports at slot 509472721. Proposed deployer role/control is operator-confirmed only; program address remains pending.
+- Remaining: real Chrome Phantom permissions/locked-wallet/account switching, program address, funding, operator signer/CLI preparation, explicit deployment authorization, and real Devnet acceptance. No deployment/signing/broadcast/website release performed.
+- Dependency audit remains non-green: 24 transitive findings (13 high, 11 moderate, zero critical), documented without production security clearance.
+
 ## Phase 2 local implementation — 2026-10-10
 
 - Operator approved local implementation, tests, and planned Playwright dependencies.

@@ -1,5 +1,8 @@
 # Decisions
 
+- 2026-10-10: Operator pivots current MVP to Solana Devnet. Base Sepolia implementation/tags remain isolated fallback; no live deployment/signing/broadcast authorized.
+- 2026-10-10: Minimal Solana program uses immutable seller offers and buyer-bound entitlement PDAs, no tokens/NFTs/transfers. Purchase atomically transfers the program-defined lamport price directly to the offer seller and records expiry. Direct settlement replaces Base's escrow withdrawals in the Solana experience.
+
 - 2026-10-10: Operator approved Phase 2 local implementation only. Stop before broadcast/deployment and signing requests.
 - 2026-10-10: Entitlement trust is bounded: same-block reads, 4-second polling, 5-second request timeout, 8-second freshness, 12-second block-progress limit; hidden/offline/error/identity changes close access. Metadata limit is shared 64 KiB UTF-8.
 - 2026-10-10: Planned encrypted keystore is operator-controlled outside the repo; local browser tests use explicitly synthetic RPC/wallet fixtures, with actual testnet wallet evidence remaining a later gate.

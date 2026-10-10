@@ -1,0 +1,5 @@
+.tools/
+target/
+__pycache__/
+*.pyc
+*-keypair.json

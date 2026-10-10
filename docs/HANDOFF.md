@@ -1,5 +1,22 @@
 # Agent handoff
 
+## Active Solana migration ownership
+
+- Lead: account/interface decisions, shared docs, checkpoint, operator-only Devnet package.
+- Researcher: read-only official tooling/dependency check, then explicitly transitions to Frontend ownership after findings.
+- Backend: new `solana/**` excluding independent QA tests, `docs/SOLANA_BACKEND.md`; preserve all `contracts/**`.
+- Frontend: Solana UI/adapter modules and isolated Base route preserving existing source; coordinate package changes with QA.
+- QA: new `web/tests/solana/**`, independent `solana/tests/qa/**`, `docs/SOLANA_QA.md`; existing Base suites remain intact.
+- No Senior Dev unless critical unresolved issue. No deployment/signing/key generation/credential access by any agent.
+
+### Solana local handoff
+
+- Native SBF artifact, hash manifest, manual wire specification and local setup/build/test scripts are in `solana/`. Runtime program address is dynamic; production configuration stays empty until an approved deployment.
+- Actual program gate: 23 local LiteSVM tests, including 14 independent QA; preserved Solidity unchanged. Phantom/Solflare frontend is client-only with Devnet genesis checks and coherent, bounded entitlement snapshots. Existing Base UI is isolated at `/base`.
+- QA owns final browser/build evidence in `docs/SOLANA_QA.md`. Lead visually reviewed desktop/mobile screenshots and independently checked artifact SHA256.
+- Frozen candidate: `solana-local-ready`. Operator package: `docs/SOLANA_DEPLOYMENT_PACKAGE.md`. All wallet permission/signing/deployment/broadcast and live Devnet proof remain pending authorization/operator execution.
+- npm audit has 24 transitive advisories; no production audit claim. This limitation and real Chrome checks are documented in the web README and QA evidence.
+
 ## Phase 2 ownership
 
 - Lead: checkpoint, integration decisions, shared status/handoff, deployment package.

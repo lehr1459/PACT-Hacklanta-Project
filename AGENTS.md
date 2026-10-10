@@ -1,6 +1,8 @@
 # PACT agent operating rules
 
 ## Mission
+Current operator priority (2026-10-10): migrate the MVP to **Solana Devnet** while preserving Base Sepolia as an isolated validated fallback. The operator explicitly authorizes local Rust/Solana tool setup, implementation and automated tests. No live deployment, signing, wallet approvals, broadcasts, or credential access is authorized. This supersedes Base-only stack instructions below for the migration; all other guardrails remain.
+
 Ship a credible digital-license purchase/verification MVP for Hacklanta. Focus on working tests, one complete transaction and polished demo. This is a **new separate PACT project**; do not modify `C:\Hackathon\hacklanta-agent-project` or `C:\Hackathon\project`.
 
 ## Authority / orchestration
@@ -8,7 +10,7 @@ Lead Architect owns the plan, interfaces, integration and final decisions. Resea
 
 ## Non-negotiable security
 - Never request, read, echo, commit, or generate real wallet seed phrases/private keys.
-- Only Base Sepolia and local test chains; test ETH has no monetary value.
+- Only Solana Devnet, preserved Base Sepolia, and local test environments; test currencies have no monetary value.
 - Do not deploy without explicit user approval.
 - No real-money payment flow or production security claims.
 - Do not write arbitrary Solidity from model-generated contract text.

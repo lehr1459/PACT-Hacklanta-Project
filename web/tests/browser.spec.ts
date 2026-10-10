@@ -23,7 +23,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
   test.afterEach(async({page})=>{expect(externalPosts.get(page),'No RPC/signing requests may leave the localhost fixtures').toEqual([]);});
   test('desktop/mobile tools have keyboard navigation and no horizontal overflow', async ({page},testInfo) => {
     await installFixtures(page);
-    await page.goto('/');
+    await page.goto('/base');
     await expect(page.getByRole('heading',{name:/Clear terms/})).toBeVisible();
     const seller=page.getByRole('button',{name:/Seller studio/});
     await seller.focus(); await page.keyboard.press('Enter');
@@ -34,7 +34,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
     await page.screenshot({path:testInfo.outputPath('mocked-local-tools.png'),fullPage:true});
   });
   test('wrong wallet network blocks access; switch opens only on fresh chain data; disconnect closes', async ({page}) => {
-    await installFixtures(page,{chain:8453}); await page.goto('/'); await connect(page);
+    await installFixtures(page,{chain:8453}); await page.goto('/base'); await connect(page);
     await expect(page.getByRole('button',{name:/Download sample/})).toHaveCount(0);
     await expect(page.getByRole('button',{name:/Switch to Base Sepolia/})).toBeVisible();
     await page.getByRole('button',{name:/Switch to Base Sepolia/}).click();
@@ -44,7 +44,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
   });
   test('matching metadata and approval required, reset after edits, exact test ETH submitted', async ({page}) => {
     const state=await installFixtures(page); state.valid=false; state.expiry=0n;
-    await page.goto('/'); await connect(page);
+    await page.goto('/base'); await connect(page);
     const purchase=page.getByRole('button',{name:/Purchase license/});
     await expect(purchase).toBeDisabled();
     await page.getByLabel('Seller metadata JSON').fill(metadata+' ');
@@ -62,14 +62,14 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
     expect((sent!.params[0] as {value:string}).value).toBe('0x38d7ea4c68000');
   });
   test('wallet rejection is an error, never a successful transaction', async ({page}) => {
-    await installFixtures(page,{wallet:'reject'}); await page.goto('/'); await connect(page);
+    await installFixtures(page,{wallet:'reject'}); await page.goto('/base'); await connect(page);
     await page.getByRole('button',{name:/Seller studio/}).click();
     await page.getByRole('button',{name:/Withdraw proceeds/}).click();
     await expect(page.locator('main').getByRole('alert')).toContainText(/rejected|denied/i);
     await expect(page.getByRole('status')).not.toContainText(/Confirmed/);
   });
   test('approved seller creation decodes confirmed OfferCreated ID and selects it',async({page})=>{
-    await installFixtures(page); await page.goto('/'); await connect(page);
+    await installFixtures(page); await page.goto('/base'); await connect(page);
     await page.getByRole('button',{name:/Seller studio/}).click();
     await page.getByRole('checkbox',{name:/reviewed and approve these terms/}).check();
     await page.getByRole('button',{name:/Create offer/}).click();
@@ -81,7 +81,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
     const parsed=JSON.parse(metadata);
     const prefix=JSON.stringify({...parsed,terms:''});
     state.terms=JSON.stringify({...parsed,terms:'x'.repeat(65536-new TextEncoder().encode(prefix).length)});
-    await page.goto('/'); await connect(page);
+    await page.goto('/base'); await connect(page);
     await page.getByLabel('Seller metadata JSON').fill(state.terms);
     const approval=page.getByRole('checkbox',{name:/matching license terms/});
     await expect(approval).toBeEnabled();
@@ -93,7 +93,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
     await expect(page.getByRole('button',{name:/Purchase license/})).toBeDisabled();
   });
   test('RPC simulation failure never requests wallet signing', async ({page}) => {
-    const state=await installFixtures(page); await page.goto('/'); await connect(page);
+    const state=await installFixtures(page); await page.goto('/base'); await connect(page);
     await page.getByRole('button',{name:/Seller studio/}).click();
     await expect(page.getByRole('button',{name:/Withdraw proceeds/})).toBeEnabled();
     state.simulationError=true;
@@ -104,14 +104,14 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
   });
   test('reverted receipt is never announced as confirmed', async ({page}) => {
     const state=await installFixtures(page); state.receipt='reverted';
-    await page.goto('/'); await connect(page); await page.getByRole('button',{name:/Seller studio/}).click();
+    await page.goto('/base'); await connect(page); await page.getByRole('button',{name:/Seller studio/}).click();
     await page.getByRole('button',{name:/Withdraw proceeds/}).click();
     await expect(page.locator('main').getByRole('alert')).toContainText(/reverted/i);
     await expect(page.getByRole('status')).not.toContainText(/Confirmed/);
   });
   test('pending transaction stays attributed to original account after wallet switches', async ({page}) => {
     const state=await installFixtures(page); state.receipt='pending';
-    await page.goto('/'); await connect(page); await page.getByRole('button',{name:/Seller studio/}).click();
+    await page.goto('/base'); await connect(page); await page.getByRole('button',{name:/Seller studio/}).click();
     await page.getByRole('button',{name:/Withdraw proceeds/}).click();
     await expect(page.getByRole('status')).toContainText(/submitted|Waiting/i);
     await page.evaluate(()=>((window as unknown as {__pactQA:{switchAccount():void}}).__pactQA.switchAccount()));
@@ -121,7 +121,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
     await expect(page.getByRole('status')).toContainText(/Confirmed|confirmed/);
   });
   test('wallet change during simulation prevents the signing request',async ({page})=>{
-    const state=await installFixtures(page); await page.goto('/'); await connect(page);
+    const state=await installFixtures(page); await page.goto('/base'); await connect(page);
     await page.getByRole('button',{name:/Seller studio/}).click();
     state.onSimulation=async()=>{
       await page.evaluate(()=>((window as unknown as {__pactQA:{switchAccount():void}}).__pactQA.switchAccount()));
@@ -134,7 +134,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
   test('120-second receipt timeout retains hash and says unknown without automatic retry',async ({page})=>{
     await page.clock.install();
     const state=await installFixtures(page); state.receipt='pending';
-    await page.goto('/'); await connect(page); await page.getByRole('button',{name:/Seller studio/}).click();
+    await page.goto('/base'); await connect(page); await page.getByRole('button',{name:/Seller studio/}).click();
     await page.getByRole('button',{name:/Withdraw proceeds/}).click();
     await expect(page.getByRole('status')).toContainText(/Submitted/i);
     await page.clock.fastForward(120_100);
@@ -144,7 +144,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
     expect(await page.evaluate(()=>((window as unknown as {__pactQA:{requests:{method:string}[]}}).__pactQA.requests.filter(r=>r.method==='eth_sendTransaction').length))).toBe(1);
   });
   test('hanging RPC times out and closes previously valid access; recovery needs fresh data', async ({page}) => {
-    const state=await installFixtures(page); await page.goto('/'); await connect(page);
+    const state=await installFixtures(page); await page.goto('/base'); await connect(page);
     await expect(page.getByRole('button',{name:/Download sample/})).toBeVisible();
     state.mode='hang';
     await sustainedClosed(page,10_000);
@@ -153,7 +153,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
     await expect(page.getByRole('button',{name:/Download sample/})).toBeVisible({timeout:12_000});
   });
   test('RPC error closes access and never leaves cached valid verification', async ({page}) => {
-    const state=await installFixtures(page); await page.goto('/'); await connect(page);
+    const state=await installFixtures(page); await page.goto('/base'); await connect(page);
     await expect(page.getByRole('button',{name:/Download sample/})).toBeVisible();
     await page.getByRole('button',{name:/Verify access/}).click();
     await page.getByLabel('Wallet address').fill(BUYER);
@@ -164,7 +164,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
     await expect(page.getByTestId('verification-result')).toHaveCount(0);
   });
   test('wallet A to B to A cannot reopen cached access during a hanging fresh check',async ({page})=>{
-    const state=await installFixtures(page); await page.goto('/'); await connect(page);
+    const state=await installFixtures(page); await page.goto('/base'); await connect(page);
     await expect(page.getByRole('button',{name:/Download sample/})).toBeVisible();
     state.mode='hang';
     await page.evaluate(()=>((window as unknown as {__pactQA:{switchAccount():void}}).__pactQA.switchAccount()));
@@ -174,7 +174,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
     await expect(page.getByRole('button',{name:/Download sample/})).toHaveCount(0);
   });
   test('offline closes immediately; reconnect requires a successful current snapshot', async ({page,context}) => {
-    const state=await installFixtures(page); await page.goto('/'); await connect(page);
+    const state=await installFixtures(page); await page.goto('/base'); await connect(page);
     await expect(page.getByRole('button',{name:/Download sample/})).toBeVisible();
     await context.setOffline(true);
     await expect(page.getByRole('button',{name:/Download sample/})).toHaveCount(0);
@@ -184,7 +184,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
     await connect(page); await expect(page.getByRole('button',{name:/Download sample/})).toBeVisible();
   });
   test('background/resume clears cached entitlement and requires a fresh read', async ({page}) => {
-    const state=await installFixtures(page); await page.goto('/'); await connect(page);
+    const state=await installFixtures(page); await page.goto('/base'); await connect(page);
     await expect(page.getByRole('button',{name:/Download sample/})).toBeVisible();
     // Chromium headless does not create OS background tabs; dispatch a controlled visibility transition.
     await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{value:'hidden',configurable:true});document.dispatchEvent(new Event('visibilitychange'));});
@@ -197,7 +197,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
   });
   test('unchanged block closes access within twelve seconds even though reads succeed', async ({page}) => {
     const state=await installFixtures(page); state.frozen=true;
-    await page.goto('/'); await connect(page);
+    await page.goto('/base'); await connect(page);
     await expect(page.getByRole('button',{name:/Download sample/})).toBeVisible();
     const observedStart=Date.now();
     await sustainedClosed(page,14_000);
@@ -206,7 +206,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
   test('chain expiry closes with wildly skewed wall clock and contract reads are block pinned', async ({page}) => {
     const state=await installFixtures(page); state.expiry=state.blockTime+3n; state.frozen=true;
     await page.addInitScript(()=>{Date.now=()=>0;});
-    await page.goto('/'); await connect(page);
+    await page.goto('/base'); await connect(page);
     await expect(page.getByRole('button',{name:/Download sample/})).toBeVisible();
     await sustainedClosed(page,6000);
     const licenseCalls=state.calls.filter(call=>call.method==='eth_call' && ['isLicenseValid','licenseExpiry'].includes(decodeFunctionData({abi,data:(call.params[0] as {data:`0x${string}`}).data}).functionName));
@@ -214,7 +214,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
     expect(licenseCalls.every(call=>call.params[1]==='0x64')).toBe(true);
   });
   test('public verification identifies queried wallet and clears old result when fields change', async ({page}) => {
-    await installFixtures(page); await page.goto('/');
+    await installFixtures(page); await page.goto('/base');
     await page.getByRole('button',{name:/Verify access/}).click();
     await page.getByLabel('Wallet address').fill(BUYER);
     await page.getByRole('button',{name:/Verify on chain/}).click();
@@ -228,7 +228,7 @@ test.describe('Mocked local browser acceptance - no signing or broadcast', () =>
 test.describe('Missing deployment setup browser state', () => {
   test.skip(() => process.env.PACT_QA_MODE !== 'setup', 'Run PACT_QA_MODE=setup for missing-address build');
   test('missing contract shows setup pending and closes seller/buyer/verifier controls',async ({page},testInfo)=>{
-    await installFixtures(page); await page.goto('/');
+    await installFixtures(page); await page.goto('/base');
     await expect(page.getByText(/contract setup pending/)).toBeVisible();
     await expect(page.getByRole('button',{name:/Download sample/})).toHaveCount(0);
     await page.getByRole('button',{name:/Seller studio/}).click();
