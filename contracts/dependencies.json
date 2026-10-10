@@ -1,0 +1,5 @@
+{
+  "foundry": {"version": "v1.8.5", "windowsZipSha256": "21f86b563d87404a68481f513bf3e419780ee536307b89c658215ae6f8f5aa45"},
+  "forge-std": {"repository": "https://github.com/foundry-rs/forge-std.git", "tag": "v1.9.7", "commit": "77041d2ce690e692d6e03cc812b57d1ddaa4d505"},
+  "openzeppelin-contracts": {"repository": "https://github.com/OpenZeppelin/openzeppelin-contracts.git", "tag": "v5.4.0", "commit": "c64a1edb67b6e3f4a15cca8909c9482ad33a02b0"}
+}
