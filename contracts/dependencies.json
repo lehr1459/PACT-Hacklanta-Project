@@ -1,5 +1,15 @@
 {
-  "foundry": {"version": "v1.8.5", "windowsZipSha256": "21f86b563d87404a68481f513bf3e419780ee536307b89c658215ae6f8f5aa45"},
+  "foundry": {
+    "version": "v1.8.5",
+    "windowsZipSha256": "21f86b563d87404a68481f513bf3e419780ee536307b89c658215ae6f8f5aa45",
+    "windowsExeSha256": {
+      "anvil.exe": "1693305e3a5afa7ab85e966389e21259bc7193909411465e5ce31b90a1e3d9f6",
+      "cast.exe": "dcfa4fe222fa4af1c6d86c3d5fdb60ec5d637f41703ea005d592eebf065a7a53",
+      "chisel.exe": "2b16f7cab206a33de2f958034003bf6247fe5f44551b5528a17aeb6ff97b26b7",
+      "forge.exe": "ed4d48e98be4045fe49cc23fbef6b56c7cb41bdb437579884ee0f928716ac8e7",
+      "solar.exe": "d2ed33291f49756c51088cfdd89ad1713c49926b486c3a730774b0f1743d6c33"
+    }
+  },
   "forge-std": {"repository": "https://github.com/foundry-rs/forge-std.git", "tag": "v1.9.7", "commit": "77041d2ce690e692d6e03cc812b57d1ddaa4d505"},
   "openzeppelin-contracts": {"repository": "https://github.com/OpenZeppelin/openzeppelin-contracts.git", "tag": "v5.4.0", "commit": "c64a1edb67b6e3f4a15cca8909c9482ad33a02b0"}
 }

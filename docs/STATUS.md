@@ -1,5 +1,19 @@
 # Status
 
+## Phase 2 local implementation — 2026-10-10
+
+- Operator approved local implementation, tests, and planned Playwright dependencies.
+- Phase 1 checkpoint: `b7c78aec1fff1f334153f6cfb2151f3293656026`; verified tag `phase1-local-baseline`; clean working tree before delegation.
+- Backend and Frontend implementing in parallel; QA owns independent browser testing and evidence.
+- No broadcasts, contract/website deployments, signing-secret access, or wallet approval requests authorized.
+- Stop gate: complete local acceptance and present a concrete Base Sepolia deployment package.
+- Local acceptance PASS: 23 Foundry tests; 48 fixture/helper Playwright executions plus 2 separate missing-address browser executions; TypeScript, production build, and restored default HTTP checks passed independently in QA.
+- No unresolved critical finding in the bounded local review. The mobile 64 KiB metadata overflow was fixed and regression-tested.
+- Browser fixture builds use synthetic addresses/RPC only; default production build was restored to setup pending. QA port 3001 server stopped. No public deployment/address or real wallet E2E evidence exists.
+- Operator explicitly left deployer address, wallet balance, nonce, funding, and signer-specific preflight PENDING; encrypted wallet/faucet instructions are in `docs/DEPLOYMENT_PACKAGE.md`.
+- Local release checkpoint will be tagged `phase2-local-ready`; verify with `git rev-parse phase2-local-ready`.
+- Phase 2 testnet acceptance remains incomplete pending explicit deployment authorization, funded operator wallet, deployed source verification, and real seller/buyer expiry/withdrawal evidence.
+
 - [x] PACT scope selected: digital licensing only
 - [x] Agent profiles and project guardrails packaged
 - [x] Minimal contract and test starter files packaged (NOT executed here)

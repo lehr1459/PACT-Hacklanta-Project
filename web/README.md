@@ -24,6 +24,14 @@ Open http://localhost:3000. Without an address the page renders a truthful setup
 4. Connect the buyer wallet, purchase the exact price, and wait for a successful receipt. The studio sample unlocks only after the connected wallet’s entitlement is read from chain.
 5. Verify any address in Verify access. Seller can withdraw credited proceeds separately or deactivate future sales. Existing licenses survive deactivation.
 
-Reads poll offer state every 10 seconds and license validity every 4 seconds. Failed validity refreshes close the sample gate. Wallet writes are simulated and receipt status checked; rejected, incorrect-network, RPC, and revert errors display without claiming success. Invalid/missing contract code is rejected.
+Reads poll offer state every 10 seconds and license snapshots every 4 seconds. Each license snapshot reads a block header and pins validity, expiry, offer existence, and code checks to that same block. It records offer, wallet, contract, chain, block number, and timestamp. License requests have a 5-second timeout and no retries; access closes on errors, after 8 seconds without a fresh snapshot, or after 12 seconds without chain progress. Hidden/offline pages close access. Resume, wallet, network, and offer changes require a new snapshot. Expiry uses bigint chain time plus monotonic elapsed time, not the computer wall clock. Public verification uses the same rules and clears when query inputs change.
+
+Seller and buyer metadata share a 64 KiB UTF-8 byte limit. Hashing uses the exact preview/download bytes. Oversized JSON is rejected before creation and verification. Extremely large valid expirations are displayed as exact Unix seconds rather than invalid calendar dates.
+
+Wallet writes are simulated; wallet account and chain are rechecked immediately before signing. Status and explorer links retain the initiating sender. A late receipt does not select a created offer for a different wallet. Successful receipt status is required; a 120-second receipt timeout is shown as **confirmation unknown**, with the hash and no automatic retry. Rejected, incorrect-network, RPC, and confirmed revert errors display without claiming success. Invalid/missing contract code is rejected.
 
 This is a client-side gated demonstration, not production content protection. Copied content cannot be remotely revoked; UI code can be inspected. Entitlements do not establish copyright ownership or legal enforceability. Only test ETH is supported. Base Sepolia E2E cannot be completed until an approved contract address and user-controlled wallet are available.
+
+## Automated validation
+
+QA owns `tests/**` and the Playwright configuration. Browser fixtures intercept RPC and inject a mocked EIP-1193 provider for test wallets. Fixture evidence is labeled separately from operator-approved real-wallet evidence. Production code contains no test-success overrides. Pure snapshot/metadata helpers accept an injected source and monotonic clock for independent tests. Run the QA-owned package test scripts; the browser runner builds its explicitly configured fixture target on port 3001, so avoid concurrent builds against `.next`.

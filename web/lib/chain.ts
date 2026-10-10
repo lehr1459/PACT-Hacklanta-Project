@@ -4,7 +4,7 @@ import generatedAbi from '../../contracts/abi/PactLicensing.json';
 export const pactAbi = generatedAbi as Abi;
 const configuredAddress = process.env.NEXT_PUBLIC_PACT_CONTRACT_ADDRESS;
 export const pactAddress: Address | undefined = configuredAddress && isAddress(configuredAddress) && !/^0x0{40}$/i.test(configuredAddress) ? configuredAddress : undefined;
-export const publicClient = createPublicClient({chain: baseSepolia, transport: http(process.env.NEXT_PUBLIC_RPC_URL || 'https://sepolia.base.org')});
+export const publicClient = createPublicClient({chain: baseSepolia, transport: http(process.env.NEXT_PUBLIC_RPC_URL || 'https://sepolia.base.org', {timeout: 5000, retryCount: 0})});
 export type Offer = {id: bigint; seller: Address; price: bigint; duration: bigint; termsHash: `0x${string}`; active: boolean};
 export async function assertContract() {
   if (!pactAddress) throw new Error('Configure a deployed PACT address before using the chain.');

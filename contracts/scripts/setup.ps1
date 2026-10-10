@@ -9,6 +9,13 @@ if (!(Test-Path (Join-Path $toolDir 'forge.exe'))) {
     if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() -ne $pins.foundry.windowsZipSha256) { throw 'Foundry checksum mismatch' }
     Expand-Archive $archive $toolDir -Force
 }
+foreach ($pin in $pins.foundry.windowsExeSha256.PSObject.Properties) {
+    $executable = Join-Path $toolDir $pin.Name
+    if (!(Test-Path $executable) -or (Get-FileHash $executable -Algorithm SHA256).Hash.ToLower() -ne $pin.Value) {
+        throw "Foundry executable checksum mismatch: $($pin.Name)"
+    }
+    Write-Output "$($pin.Name) checksum verified"
+}
 New-Item -ItemType Directory -Force (Join-Path $contractRoot 'lib') | Out-Null
 foreach ($name in @('forge-std', 'openzeppelin-contracts')) {
     $pin = $pins.$name
@@ -19,6 +26,8 @@ foreach ($name in @('forge-std', 'openzeppelin-contracts')) {
     }
     $commit = & git -C $destination rev-parse HEAD
     if ($LASTEXITCODE -ne 0 -or $commit -ne $pin.commit) { throw "$name commit mismatch" }
+    $dirty = & git -C $destination status --porcelain --untracked-files=all --ignored
+    if ($LASTEXITCODE -ne 0 -or $dirty) { throw "$name working tree is not clean; restore the pinned checkout before continuing" }
     Write-Output "$name verified at $commit"
 }
 & (Join-Path $toolDir 'forge.exe') --version

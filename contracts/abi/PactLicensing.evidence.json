@@ -1,0 +1,41 @@
+{
+    "contract":  "src/PactLicensing.sol:PactLicensing",
+    "compiler":  "0.8.24+commit.e11b9ed9",
+    "settings":  {
+                     "remappings":  [
+                                        "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+                                        "forge-std/=lib/forge-std/src/",
+                                        "openzeppelin-contracts/=lib/openzeppelin-contracts/"
+                                    ],
+                     "optimizer":  {
+                                       "enabled":  true,
+                                       "runs":  200
+                                   },
+                     "metadata":  {
+                                      "bytecodeHash":  "ipfs"
+                                  },
+                     "compilationTarget":  {
+                                               "src/PactLicensing.sol":  "PactLicensing"
+                                           },
+                     "evmVersion":  "cancun",
+                     "libraries":  {
+
+                                   }
+                 },
+    "creationBytecode":  {
+                             "lengthBytes":  2495,
+                             "sha256":  "a878bc513d58c016c816ddf1df9eeb4cb59fe2b50cd6daf40adb1fa33cd08e62",
+                             "keccak256":  "0x7b7a3e8112c22fbd1cdb83a07135cc3a7fa71660e33cdbef96a01646abd370c5"
+                         },
+    "runtimeBytecode":  {
+                            "lengthBytes":  2462,
+                            "sha256":  "f0874f8e2f1b31f7a95bc72774d652855d5a93a88fea5d3befe28c11d29a459a",
+                            "keccak256":  "0xb16f005072746f54fb5c0eb746ad7c81bbb91f6546f85899fb56f2e408c6fd69"
+                        },
+    "sourceSha256":  "8f7ae9a22336ecbb090b566b0f21eabead150c432c053cd582ec52014cbc9236",
+    "abiSha256":  "6dd503acb5b562e443fe6225ca3cff137797ab2a8db6d381c261fd8d1e64aca9",
+    "abiEntries":  14,
+    "abiMatchesArtifact":  true,
+    "address":  null,
+    "deploymentTransaction":  null
+}

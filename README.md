@@ -41,6 +41,12 @@ npm run dev
 
 Open http://localhost:3000. The app provides seller offer creation and withdrawals, buyer terms review and purchase, public wallet verification, and a chain-checked sample feature. Until an approved deployment address is configured in `web/.env.local`, it displays setup pending and disables chain actions. See `web/README.md` for configuration and the demo flow.
 
+## Phase 2 local validation
+
+Phase 1 is preserved by Git tag `phase1-local-baseline`. Phase 2 bounds entitlement freshness, reads licenses at one block, uses chain-based expiry, and preserves transaction sender attribution. The fixed contract behavior is unchanged.
+
+Independent browser tests use synthetic local RPC/wallet fixtures, not real signatures or mined transactions. They build a fixture target on port 3001; do not run concurrent builds. See `docs/QA.md` for the final commands/results. `docs/DEPLOYMENT_PACKAGE.md` contains the artifact hashes, proposed operator-only deployment commands, and encrypted wallet/funding guide. No broadcast or deployment is authorized; signer-specific prerequisites remain pending.
+
 ## Non-goals
 No real payments, deeds, car titles, on-chain personal data, arbitration, universal legal-contract generation, or arbitrary AI-generated Solidity. No claim that an on-chain license proves copyright ownership.
 

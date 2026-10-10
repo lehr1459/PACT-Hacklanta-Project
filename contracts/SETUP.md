@@ -6,12 +6,15 @@ Run from `contracts/` in Windows PowerShell. No PATH changes or wallet secrets r
 powershell -ExecutionPolicy Bypass -File scripts/setup.ps1
 ./.tools/foundry-v1.8.5/forge.exe test -vv
 powershell -ExecutionPolicy Bypass -File scripts/export-abi.ps1
+powershell -ExecutionPolicy Bypass -File scripts/artifact-evidence.ps1
 ./.tools/foundry-v1.8.5/forge.exe script script/Deploy.s.sol:Deploy
 ```
 
 The final command only simulates in a local EVM (31337), without broadcasting. No deployment performed in Phase 1. Any broadcast requires explicit user approval; QA review must precede testnet deployment. Script allows only 31337 and Base Sepolia 84532; it never reads a private key. Keep signing outside AI workflows.
 
 `dependencies.json` pins Foundry v1.8.5, forge-std v1.9.7 and OpenZeppelin v5.4.0. Setup verifies official Windows ZIP SHA256 before extraction and dependency commits. This is checksum verification, not an independent signature audit. Compiler is pinned to Solidity 0.8.24; Forge downloads it on first build. Tools, libraries, cache, build output and broadcast artifacts are ignored.
+
+Phase 2 additionally verifies every existing Foundry executable against hashes derived from that verified ZIP and rejects dirty dependency working trees (including untracked/ignored files). Restore the pinned clean dependency checkout to resolve a rejection; setup never resets or deletes local modifications. EVM Cancun is explicit in `foundry.toml`. `abi/PactLicensing.evidence.json` records actual compiler settings and SHA256/Keccak256 of decoded creation/runtime bytes, confirms ABI consistency, and leaves deployment fields null. It must be regenerated after building any contract change.
 
 Official sources: [Foundry installation](https://getfoundry.sh/introduction/installation), [Foundry release](https://github.com/foundry-rs/foundry/releases/tag/v1.8.5), [forge-std](https://github.com/foundry-rs/forge-std/tree/v1.9.7), [OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts/tree/v5.4.0).
 

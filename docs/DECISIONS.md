@@ -1,5 +1,9 @@
 # Decisions
 
+- 2026-10-10: Operator approved Phase 2 local implementation only. Stop before broadcast/deployment and signing requests.
+- 2026-10-10: Entitlement trust is bounded: same-block reads, 4-second polling, 5-second request timeout, 8-second freshness, 12-second block-progress limit; hidden/offline/error/identity changes close access. Metadata limit is shared 64 KiB UTF-8.
+- 2026-10-10: Planned encrypted keystore is operator-controlled outside the repo; local browser tests use explicitly synthetic RPC/wallet fixtures, with actual testnet wallet evidence remaining a later gate.
+
 - 2026-10-10: New PACT workspace separate from Hacklanta agent project.
 - 2026-10-10: Digital licensing only; fixed license contract; native Base Sepolia test ETH.
 - 2026-10-10: Seller proceeds use withdrawal pattern; no immediate external seller call in purchase.

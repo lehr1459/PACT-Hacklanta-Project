@@ -1,5 +1,22 @@
 # Agent handoff
 
+## Phase 2 ownership
+
+- Lead: checkpoint, integration decisions, shared status/handoff, deployment package.
+- Backend: `contracts/**` except independent QA fixtures; `docs/BACKEND_PHASE2.md`.
+- Frontend: `web/app/**`, `web/lib/**`, frontend README/config; existing Researcher worker explicitly reassigned to Frontend after completed read-only research.
+- QA: `web/tests/**`, Playwright config, coordinated package test dependencies/scripts, `docs/QA.md`; independently validates final Backend and Frontend results.
+- Senior Dev not assigned. No on-chain broadcast or deployment authorized.
+
+### Phase 2 local result and stop gate
+
+- Backend: 23 passing tests, unchanged contract source, verified tools/dependencies, explicit Cancun, ABI and runtime hashes independently reproduced.
+- Frontend: same-block bounded snapshots, monotonic bigint expiry, shared 64 KiB metadata, sender-safe transaction state and unknown confirmations; visual identity retained with tested metadata wrapping fix.
+- QA: 48 fixture/helper executions and 2 missing-address browser executions passed; independent TypeScript/build/default HTTP passed. Playwright results are synthetic local evidence only. See current verdict in `docs/QA.md`.
+- Lead visually reviewed representative desktop/mobile screenshots. Default build restored with setup pending; QA server stopped.
+- Frozen local candidate tag: `phase2-local-ready` (resolve after checkpoint). Deployment package: `docs/DEPLOYMENT_PACKAGE.md`.
+- Stop before deployment/broadcast/signing. Operator next follows private wallet preparation/funding steps; public address/balance/nonce and signer-specific preflight stay pending until supplied. Separate explicit deployment approval is required.
+
 Lead Architect assigns tasks and records owners. Each agent posts: scope, files, interface contracts, commands/tests, risks, and next action. QA must validate contract before deployment. Frontend should use the ABI exported from compiled contract, not handwrite an incompatible ABI.
 
 ## Active assignments — 2026-10-10
