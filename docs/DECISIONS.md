@@ -1,5 +1,13 @@
 # Decisions
 
+## Enterprise UI redesign — authorized local work
+
+- Midnight navy header/product surfaces, light workflow panels, slate/blue tokens, existing fonts and plain CSS. No runtime UI dependencies or new product features.
+- Preserve runtime handlers, hooks, validation, transaction construction, entitlement rules, generated SDK content, wallet behavior, public interfaces and destinations. Frontend owns presentation; Backend reviews preservation; QA owns isolated acceptance/visual evidence.
+- Branch `ui/enterprise-redesign` has rollback source checkpoint `4123cc12f64f48def857f0d60c8d54d671daabd5`, preserving original commit `9a4783e75e222682551660ab21aab89e90540546` and all four release tags. Only reviewed public source is staged.
+- Keep local demos 3003–3006 and public deployments untouched. All builds run in isolated copies; QA owns 3007 until generated-consumer testing releases it for the final UI preview.
+- No publication, push, real wallet approval, signing, simulation/broadcast, or program change. Deployment needs separate approval after local QA.
+
 - Hacklanta final release preparation uses the proven marketplace purchase link and existing Saturday read-only SDK gate. New Vercel PACT / new Sites Saturday targets require explicit operator approval; original Saturday public project and local sources remain protected. No program deployment or new SDK/UI feature is part of this release.
 - Clean deployment copies contain public allowlisted web/SDK/ABI/wire sources, no signer/environment files. Vercel builds SDK first with sibling source access. Saturday's original project ID is stripped; only a platform-returned new ID may be supplied after approval. Candidate URLs are not deployment evidence.
 - QA found an original late-connect cancellation race; a minimal connection epoch fence is applied only to the isolated Saturday candidate. Strict HTTPS-origin input validation prevents inline-script injection through deployment configuration without changing the original app's build/source.

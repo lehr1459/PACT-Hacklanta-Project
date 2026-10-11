@@ -1,5 +1,15 @@
 # Agent handoff
 
+## Enterprise UI redesign ownership
+
+- Lead: checkpoint/branch, protected manifest, isolated lint, final preview/report and commit. Baseline `4123cc12f64f48def857f0d60c8d54d671daabd5` on `ui/enterprise-redesign`.
+- Frontend: existing CSS and JSX presentation for marketplace, wallet, wizard and Base. No logic/provider/SDK/configuration edits.
+- Backend: independent runtime/control-binding/source comparison, owns `qa/ui-redesign/preservation.mjs`. QA owns remaining new QA harness files and `docs/UI_REDESIGN_QA.md`.
+- QA: immutable baseline extraction, serialized isolated full acceptance, five-width before/after screenshots, keyboard/contrast/reduced-motion/zoom and actual Devnet read-only checks. Preserve initial failures and assertions.
+- Keep previews 3003–3006 and public sites intact. QA owns 3007 until generated consumers finish; Lead starts final actual-config preview there only after release. No deploy/push/wallet/chain mutations.
+- QA released all build/server ownership after full baseline/final 387 + 46 PASS and 71 paired screenshots each. Final color/focus corrections are frozen; only two product CSS files changed. Preserved runtime/SDK/program/configuration hashes pass; isolated lint diagnostics are identical. Final independent Reviewer reconciled all reports and passed the local gate before the Lead's reviewed branch checkpoint.
+- Lead preview now owns 3007/PID 26472/session 25424; original 3003–3006 retain 11388/9552/33544/29552. Runbook and evidence: `docs/UI_REDESIGN.md`, `docs/UI_REDESIGN_QA.md`. Preserve serving outputs; any future local build uses the isolated helper. Separate operator approval is required for deployment or live wallet/transaction testing.
+
 ## Current Hacklanta release ownership
 
 - Lead owns `deployment/**`, `web/vercel.json`, clean `.deployment-candidates/**`, release runbook and coordination. No product UI/SDK/program implementation is changed. Saturday original source/serving dist/public deployment must remain unchanged; all release hardening is isolated to the candidate.

@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const stage=process.argv[2]??'final',root=path.resolve('web/test-results/ui-redesign',stage),commands=path.join(root,'commands');
+const expected={'sdk-57':57,'solana-mock':154,'solana-setup':2,'solana-live':2,'base-mock':48,'base-setup':2,'wizard-mock':8,'wizard-live':2,'checkout-mock':28,'checkout-live':4,'prism-mock':22,'prism-live':2,'generated-44':44,'saturday-candidate-12':12};
+const suites=Object.entries(expected).map(([name,want])=>{const content=fs.readFileSync(path.join(commands,name+'.log'),'utf8');const found=content.match(/\b(\d+) passed\b/)??content.match(/\bpass (\d+)\b/);const passed=Number(found?.[1]);if(passed!==want)throw Error(`${name} actual count ${passed}, expected ${want}`);return{name,passed};});
+const commandResults=['web','other','chain','sdk'].flatMap(group=>JSON.parse(fs.readFileSync(path.join(commands,'results-'+group+'.json'),'utf8')));
+if(commandResults.some(result=>result.code!==0))throw Error('Nonzero completed command result');
+const visuals=['visual','states','transactions'].map(kind=>{const records=JSON.parse(fs.readFileSync(path.join(root,kind,'audit.json'),'utf8'));return{kind,count:records.length,pageErrors:records.reduce((sum,r)=>sum+(r.errors?.length??0),0),overflow:records.filter(r=>r.scrollWidth>(r.innerWidth??r.width)+1).length};});
+if(visuals.some(v=>v.pageErrors||v.overflow))throw Error('Visual runtime/overflow failure');
+const svm=Number(fs.readFileSync(path.join(commands,'solana-svm-23.log'),'utf8').match(/Ran (\d+) tests/)?.[1]);
+const foundry=Number(fs.readFileSync(path.join(commands,'foundry-23.log'),'utf8').match(/: (\d+) tests passed, 0 failed/)?.[1]);
+if(svm!==23||foundry!==23)throw Error('Actual chain result count did not match 23+23');
+const summary={stage,acceptanceChecks:suites.reduce((sum,s)=>sum+s.passed,0),chainChecks:svm+foundry,suites,commands:commandResults,visuals,screenshots:visuals.reduce((sum,v)=>sum+v.count,0)};
+fs.writeFileSync(path.join(root,'summary.json'),JSON.stringify(summary,null,2));
+console.log(JSON.stringify({stage,acceptanceChecks:summary.acceptanceChecks,chainChecks:summary.chainChecks,screenshots:summary.screenshots,visuals},null,2));

@@ -1,5 +1,14 @@
 # Status
 
+## Current enterprise UI redesign
+
+- Operator approved the presentation-only redesign and local checks. Navy header/light workspace selected. No deployment, push, live wallet approval or blockchain action authorized.
+- Branch `ui/enterprise-redesign`; rollback checkpoint `4123cc12f64f48def857f0d60c8d54d671daabd5`. Four tags preserved; baseline manifest records 181 public source hashes. Original commit `9a4783e75e222682551660ab21aab89e90540546` remains available.
+- Frontend owns CSS/presentation JSX; Backend independently checks logic/control bindings; QA runs immutable baseline/final isolated acceptance and visual checks. Lead owns coordination, isolated linting, final preview/report/checkpoint.
+- Local acceptance PASS: fresh baseline and frozen redesign each pass 387 acceptance checks + 46 local chain checks, build/TypeScript and 71 matching five-width captures. Independent contrast/focus/keyboard/reduced-motion and visual review pass; existing lint 13 errors/1 warning unchanged. No runtime dependencies added; only two product CSS files changed. Reports: `docs/UI_REDESIGN.md`, `docs/UI_REDESIGN_QA.md`.
+- Final preview http://localhost:3007/ (PID 26472, tool session 25424); all five workflow URLs return 200. Original 3003–3006 PIDs 11388/9552/33544/29552 remain unchanged. All 181 baseline comparisons, three serving artifacts, four tags and 2,241 original Saturday hashes pass; all TSX/SDK/program/configuration bytes unchanged.
+- Public PACT `dpl_7j8igjsYx9SjsrrKZsXBx79FJcQF` and new Saturday version 1 `appgdep_6acaf0b8479881918c3e437ca5f48c69` remain protected; public URLs return 200. No deployment/push/real wallet/chain operation performed. Real Phantom dialogs, live transactions, true browser zoom and complete accessibility certification remain manual/unclaimed. Deployment requires separate operator approval.
+
 ## Current Hacklanta public-demo preparation
 
 - Current priority is the proven marketplace → Phantom Devnet purchase → Saturday Lights SDK gate flow. No new SDK/UI/onboarding feature, embedded-checkout substitution, program change, publication, Git push or blockchain transaction is authorized.
