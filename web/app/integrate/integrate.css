@@ -95,7 +95,7 @@
 .integration-wizard .integration-offer-actions { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
 .integration-wizard .integration-offer-actions a { min-height: 44px; display: inline-flex; align-items: center; color: #345e9b; font-size: 11px; line-height: 1.6; }
 .integration-wizard .integration-offer-actions button { font-size: 11px; padding: 11px 14px; }
-.integration-wizard .integration-field-error { font-size: 11px; line-height: 1.7; color: #983c30; font-weight: 400; }
+.integration-wizard .integration-field-error { display: block; min-height: 3.4em; font-size: 11px; line-height: 1.7; color: #983c30; font-weight: 400; }
 .integration-wizard .integration-side-stack { display: grid; gap: 22px; min-width: 0; }
 .integration-wizard .integration-preview { background: #f4f7fc; border-color: #d7e2f2; }
 .integration-wizard .integration-preview .card-heading { flex-wrap: wrap; gap: 10px; }
@@ -164,6 +164,7 @@
 }
 .integration-wizard .integration-code-block textarea:hover { border-color: #5f7aa2; }
 .integration-wizard .integration-code-block .fine { margin: 13px 0 0; }
+.integration-wizard .integration-copy-feedback { min-height: 3.6em; }
 .integration-wizard .integration-next-steps { margin-top: 25px; }
 .integration-wizard .integration-next-steps ol { padding-left: 21px; margin-bottom: 0; display: grid; gap: 14px; font-size: 12px; line-height: 1.9; color: var(--muted); }
 .integration-wizard .integration-output-placeholder { display: flex; gap: 25px; align-items: center; justify-content: center; text-align: left; margin-top: 31px; border: 1px dashed #c8d5e8; background: #edf2f9; border-radius: 12px; padding: 32px 28px; }
@@ -225,4 +226,7 @@
   .integration-wizard .integration-output-placeholder > span { width: 40px; height: 40px; font-size: 27px; }
   .integration-wizard .integration-output-placeholder h3 { font-size: 17px; }
   .integration-wizard .integration-output-placeholder p { font-size: 11px; }
+}
+@media (max-width: 360px) {
+  .integration-wizard .integration-form-card .form > .button.dark { min-height: 65px; }
 }

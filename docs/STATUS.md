@@ -1,5 +1,18 @@
 # Status
 
+## Local input-feedback fix - 2026-10-11
+
+- Frontend fixed premature typing warnings and reserved feedback/link/copy space in Solana, Base and integration forms. Solana Flow 02 now reads `Purchase with SOL`; the wizard loading button retains its height at 320px. Five presentation files changed; no runtime dependencies or protected integration changes.
+- Final isolated TypeScript and production build PASS. Independent QA's three targeted browser scripts exit 0 at 320/390/1440px: stable address, metadata, seller-link, wizard validation/loading/copy and verification loading geometry; metadata consent guards retained; genuine alerts readable; zero page errors/overflow. Report: `web/test-results/ui-feedback-fix/QA.md`. These are synthetic read-only browser checks; configured Base RPC and real Phantom transactions were not exercised.
+- Reviewer source/evidence gate passes: all 68 controls and non-JSX logic match production `3953f3b`. Preview: http://localhost:3008/. Existing public deployment and demos on 3003-3007 remain unchanged; no push, deployment, wallet approval or blockchain transaction occurred.
+
+## Current enterprise UI production release
+
+- Explicit operator deployment approval completed: source `3953f3b8ca5bb4523ea9be4c37081c31051ddfb3`, personal Vercel `lehr98-9390/pact-hacklanta-demo`, production `dpl_6SXVEhtU4CHLp2UAq5Mj1NbbyUZh` READY at https://pact-hacklanta-demo.vercel.app/.
+- Lead executed one deployment from fresh committed-source packaging with only the reviewed three optional lock additions. Six clean SDK-first install/build/typecheck gates passed; hosted build/TypeScript and production routes passed. Original locks/runtime/configuration/Saturday/programs remain unchanged.
+- Independent hosted Frontend 25 and QA 30 five-width checks PASS; 20 production screenshots exactly match approved captures. Public routes/assets and Devnet-only reads pass. Backend approved preservation and final Reviewer APPROVED/PASS. Report: `docs/UI_PRODUCTION_RELEASE.md`.
+- Previous deployment `dpl_7j8igjsYx9SjsrrKZsXBx79FJcQF` remains READY; rollback source `4123cc12` and tags preserved. No wallet/chain transaction or Saturday publication occurred. Real Phantom connection/signing/purchase/unlock/expiry remains separately authorized manual verification. Earlier sections below describe historical preparation/local boundaries.
+
 ## Current enterprise UI redesign
 
 - Operator approved the presentation-only redesign and local checks. Navy header/light workspace selected. No deployment, push, live wallet approval or blockchain action authorized.

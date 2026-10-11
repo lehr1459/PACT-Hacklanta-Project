@@ -1,5 +1,16 @@
 # Agent handoff
 
+## Local input-feedback follow-up
+
+- Frontend owns five presentation files (Solana app, Base page, wizard, global CSS, integration CSS). Reviewer independently confirms all 68 control bindings and non-JSX logic match deployed `3953f3b`. Lead owns isolated packaging/build; QA owns targeted browser evidence under `web/test-results/ui-feedback-fix`.
+- Current local candidate is `.deployment-candidates/ui-feedback-fix-20261010-234843/pact`, served at http://localhost:3008/. Existing production, Saturday Lights, and previews 3003-3007 remain unchanged. No deployment or transaction is authorized by this local feedback fix.
+
+## Enterprise UI production release handoff
+
+- Operator expressly approved PACT-only candidate `3953f3b` production deployment in personal scope `lehr98-9390`. Lead alone packaged/built/deployed once; all other agents stayed read-only. Production `dpl_6SXVEhtU4CHLp2UAq5Mj1NbbyUZh` READY, canonical https://pact-hacklanta-demo.vercel.app/.
+- Fresh upload source in `.deployment-candidates/ui-production-20261010-232407/pact`: only three previously reviewed optional lock entries differ; original source locks, SDK/runtime/providers/programs/Saturday remain unchanged. SDK-first clean local/hosted build gates and independent five-width public checks passed. See `docs/UI_PRODUCTION_RELEASE.md` for provenance/evidence/manual limits.
+- Retain prior READY deployment `dpl_7j8igjsYx9SjsrrKZsXBx79FJcQF` and source `4123cc12` for rollback. No further deployment, wallet request, signature or blockchain purchase is implicit. Existing demos and Saturday publications are protected; only relevant release documentation was updated after publication.
+
 ## Enterprise UI redesign ownership
 
 - Lead: checkpoint/branch, protected manifest, isolated lint, final preview/report and commit. Baseline `4123cc12f64f48def857f0d60c8d54d671daabd5` on `ui/enterprise-redesign`.

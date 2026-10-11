@@ -181,6 +181,25 @@ input[aria-invalid=true] { border-color: #c07369; background: #fffaf9; }
 .check input { width: 18px; height: 18px; min-height: 18px; padding: 0; margin: 2px 0 0; accent-color: var(--blue); flex-shrink: 0; box-shadow: none; }
 .fine { font-size: 11px; color: var(--muted); line-height: 1.8; margin-top: 19px; }
 .form > .fine, .form > .muted { margin: -6px 0 0; }
+/* Routine field feedback reserves space; partial edits do not interrupt typing. */
+.input-feedback-field { display: grid; gap: 8px; min-width: 0; }
+.metadata-feedback-field { gap: 16px; }
+.metadata-feedback-field > .muted { margin: 0; }
+.field-feedback-slot { position: relative; min-height: 40px; min-width: 0; }
+.field-feedback-slot > .muted { margin: 0; font-size: 11px; line-height: 1.8; }
+.field-feedback-slot > .notice { margin: 0; }
+.field-feedback-slot > .field-validation {
+  padding: 0; border: 0; background: transparent; border-radius: 0;
+  font-size: 11px; line-height: 1.8;
+}
+.input-feedback-field:focus-within .field-validation { visibility: hidden; position: absolute; }
+.query-feedback-slot { min-height: 64px; }
+.metadata-feedback-field > .field-feedback-slot { min-height: 60px; }
+.metadata-feedback-field > .field-feedback-slot > .notice {
+  padding: 0; border: 0; background: transparent; border-radius: 0;
+  font-size: 11px; line-height: 1.8;
+}
+.offer-address-echo { min-height: 60px; margin: 19px 0 0; }
 .hash-preview {
   min-width: 0; padding: 15px 17px; border: 1px solid #e0e7f1; background: #f5f8fc;
   border-radius: 8px; font-size: 11px; overflow-wrap: anywhere;
