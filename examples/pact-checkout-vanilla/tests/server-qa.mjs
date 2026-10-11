@@ -1,0 +1,8 @@
+import http from 'node:http';
+import {spawn} from 'node:child_process';
+import assert from 'node:assert/strict';
+const occupied=http.createServer((req,res)=>res.end('QA-owned occupied port fixture'));
+await new Promise((resolve,reject)=>{occupied.once('error',reject);occupied.listen(3006,'127.0.0.1',resolve);});
+let child;try{
+ child=spawn(process.execPath,['examples/pact-checkout-vanilla/server.mjs'],{env:{...process.env,PORT:'3006'},stdio:['ignore','pipe','pipe']});let output='';const port=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Startup deadline '+output)),10000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/localhost:(\d+)/);if(match){clearTimeout(timer);resolve(Number(match[1]));}});child.stderr.on('data',chunk=>output+=chunk);child.on('exit',code=>{clearTimeout(timer);reject(Error('Server exited '+code+' '+output));});});assert.ok(port>3006&&port<=3016);const base=`http://127.0.0.1:${port}`;assert.equal(await(await fetch('http://127.0.0.1:3006')).text(),'QA-owned occupied port fixture');assert.equal((await fetch(base+'/')).status,200);assert.equal((await fetch(base+'/pact-checkout.mjs')).status,200);assert.equal((await fetch(base+'/private-file')).status,404);assert.equal((await fetch(base+'/',{method:'POST'})).status,404);assert.equal((await fetch(base+'/%2e%2e/package.json')).status,404);console.log('PASS owned occupied3006 retained; example fallback'+port+'; HTTP200 page/bundle; static allowlist rejects POST/traversal/unknown. Existing3005 untouched.');
+}finally{child?.kill();await new Promise(resolve=>occupied.close(resolve));}

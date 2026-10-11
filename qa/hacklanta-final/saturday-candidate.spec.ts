@@ -1,0 +1,9 @@
+import {test,expect} from '../../web/node_modules/@playwright/test/index.mjs';
+for(const event of ['disconnect','accountChanged']) for(const lateEvent of [false,true])test(`staged Saturday gate cannot reconnect from late connect after ${event}, late event=${lateEvent}`,async({page})=>{
+ const methods:string[]=[];await page.route('https://api.devnet.solana.com/**',route=>{methods.push(route.request().postDataJSON().method);throw Error('No RPC expected in connect cancellation proof');});
+ await page.goto('/');await page.evaluate(async()=>{const listeners=new Map();let resolveConnect;const publicKey={toBase58:()=>'8qbHbw2BbbTHBW1sbeqakYXVKRQM8Ne7pLK7m6CVfeR'};const provider={isPhantom:true,isConnected:false,publicKey,connect:()=>new Promise(resolve=>resolveConnect=resolve),on:(event,fn)=>listeners.set(event,fn),off:()=>{}};(window as any).phantom={solana:provider};const {createLicenseGate}=(window as any).SaturdayPact;const gate=createLicenseGate();Object.assign(window,{gate,resolveConnect:()=>resolveConnect({publicKey}),emit:event=>listeners.get(event)?.(event==='connect'?publicKey:null),connection:gate.connect().then(()=>true,()=>false)});});
+ await page.evaluate(event=>(window as any).emit(event),event);expect(await page.evaluate(()=>(window as any).gate.wallet())).toBeNull();if(lateEvent){await page.evaluate(()=>(window as any).emit('connect'));expect(await page.evaluate(()=>(window as any).gate.wallet())).toBeNull();}await page.evaluate(()=>(window as any).resolveConnect());await page.evaluate(()=>(window as any).connection);expect(await page.evaluate(()=>(window as any).gate.wallet())).toBeNull();expect(await page.evaluate(()=>(window as any).gate.allowed())).toBeFalsy();expect(methods).toEqual([]);
+});
+
+
+

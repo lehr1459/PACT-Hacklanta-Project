@@ -12,6 +12,15 @@ export const OFFER_DISCRIMINATOR = wire.accounts.offer.discriminatorHex;
 export const LICENSE_DISCRIMINATOR = wire.accounts.license.discriminatorHex;
 export function parsePublicKey(value: string): PublicKey | undefined {try {const key = new PublicKey(value); return key.toBase58() === value ? key : undefined;} catch {return;}}
 export function u64(value: bigint): Buffer {if (value < 0n || value > U64_MAX) throw new Error('Value is outside the u64 range.'); const bytes = Buffer.alloc(8); bytes.writeBigUInt64LE(value); return bytes;}
+// Encode the public transaction signature without adding a wallet/key dependency.
+export function signatureBase58(signature: Uint8Array): string {
+  if (signature.length !== 64 || signature.every(byte=>byte===0)) throw new Error('The wallet returned an invalid transaction signature.');
+  const alphabet='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  let value=0n;for(const byte of signature)value=(value<<8n)+BigInt(byte);
+  let encoded='';while(value>0n){encoded=alphabet[Number(value%58n)]+encoded;value/=58n;}
+  for(const byte of signature){if(byte!==0)break;encoded='1'+encoded;}
+  return encoded;
+}
 export function deriveOffer(program: PublicKey, seller: PublicKey, nonce: bigint) {return PublicKey.findProgramAddressSync([Buffer.from('offer'), seller.toBuffer(), u64(nonce)], program);}
 export function deriveLicense(program: PublicKey, offer: PublicKey, buyer: PublicKey) {return PublicKey.findProgramAddressSync([Buffer.from('license'), offer.toBuffer(), buyer.toBuffer()], program);}
 export type SolanaOffer = {address: PublicKey; seller: PublicKey; nonce: bigint; priceLamports: bigint; durationSeconds: bigint; termsHash: string; active: boolean; bump: number};

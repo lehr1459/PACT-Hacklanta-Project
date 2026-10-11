@@ -1,0 +1,3 @@
+import path from 'node:path';
+import {defineConfig,devices} from '../../web/node_modules/@playwright/test/index.mjs';
+export default defineConfig({testDir:'.',testMatch:'saturday-race.spec.ts',workers:1,timeout:15000,outputDir:'../../web/test-results/hacklanta-final/saturday-race',reporter:[['list']],use:{baseURL:'http://127.0.0.1:3008',trace:'retain-on-failure'},projects:[{name:'desktop',use:{...devices['Desktop Chrome']}},{name:'mobile',use:{...devices['Pixel 7']}}],webServer:{cwd:path.resolve(__dirname,'../..'),command:'node examples/pact-checkout-vanilla/tests/server.mjs',url:'http://127.0.0.1:3008',reuseExistingServer:false}});

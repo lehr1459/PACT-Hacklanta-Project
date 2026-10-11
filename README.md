@@ -2,6 +2,26 @@
 
 Hacklanta MVP: **digital licensing only**, now targeting **Solana Devnet**. A seller defines an offer, a buyer pays test SOL, and the program atomically settles payment and records a buyer-bound, time-limited entitlement. PACT Studio unlocks only after a fresh chain-validated read. The previous Base Sepolia implementation remains preserved at `/base` and in `contracts/`.
 
+## Developer integration
+
+Open [Integrate your app](http://localhost:3003/integrate) for the Next.js/React setup wizard. It validates a public Devnet offer through the SDK and generates a local-package install command, configuration, Phantom-connected license gate and AI coding prompt. Its previews are labelled synthetic; generating instructions does not register or protect an app automatically. See the [wizard runbook](docs/INTEGRATION_WIZARD.md) and [independent acceptance evidence](docs/INTEGRATION_WIZARD_QA.md).
+
+The root `@pact/sdk` entrypoint remains the compatible read-only TypeScript verification API. `examples/pact-demo-app` is a separate Phantom-connected premium-feature demo that consumes it without copying marketplace verification code. New opt-in `@pact/sdk/checkout` and `@pact/sdk/widget` entrypoints support an explicitly approved embedded Devnet purchase; a signature alone never unlocks access.
+
+The vanilla JavaScript checkout example is independent of the marketplace and requires no React or Next.js. Build the SDK, then run `node examples/pact-checkout-vanilla/server.mjs` from the repository root. It uses port 3006 with available-port fallback, preserving Saturday Lights on 3005. See the [embedded checkout runbook](docs/EMBEDDED_CHECKOUT.md) for configuration, browser bundles, security limits and the separately authorized real-wallet test.
+
+```powershell
+Set-Location 'C:\Hackathon\PACT'
+npm --prefix packages/pact-sdk ci
+npm --prefix packages/pact-sdk run build
+npm --prefix examples/pact-demo-app ci
+npm --prefix examples/pact-demo-app run dev
+```
+
+The example is at `http://localhost:3004/`; PACT stays at `http://localhost:3003/`. Start PACT in a separate terminal with `npm --prefix web run dev -- --hostname 127.0.0.1 --port 3003` if it is not already running. Existing public Devnet configuration remains unchanged.
+
+See the [SDK API and React/Next.js/Node examples](packages/pact-sdk/README.md), [independent application](examples/pact-demo-app/README.md), [integration/security/demo runbook](docs/SDK_DEMO.md) and [independent QA evidence](docs/SDK_QA.md). A connected public wallet identity and a client-side gate do not authenticate a protected backend request. Public Vercel deployment and real license transactions require separate authorization.
+
 ## Solana local candidate
 
 The native Rust program lives in `solana/`; its versioned manual binary interface is `solana/wire-spec.json`. Build and execute the compiled SBF locally without signing credentials:

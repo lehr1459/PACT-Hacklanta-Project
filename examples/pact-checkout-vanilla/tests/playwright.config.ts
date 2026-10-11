@@ -1,0 +1,4 @@
+﻿import path from 'node:path';
+import {defineConfig,devices} from '../../../web/node_modules/@playwright/test/index.mjs';
+const live=process.env.PACT_CHECKOUT_QA_MODE==='live';
+export default defineConfig({testDir:'.',workers:1,timeout:45000,expect:{timeout:10000},outputDir:live?'../../../web/test-results/checkout-live':'../../../web/test-results/checkout-mock',reporter:[['list'],['html',{open:'never',outputFolder:live?'../../../web/playwright-report/checkout-live':'../../../web/playwright-report/checkout-mock'}]],use:{baseURL:'http://127.0.0.1:3008',trace:'retain-on-failure',screenshot:'only-on-failure'},projects:[{name:'desktop-checkout',use:{...devices['Desktop Chrome']}},{name:'mobile-checkout',use:{...devices['Pixel 7']}}],webServer:{cwd:path.resolve(__dirname,'../../..'),command:'node examples/pact-checkout-vanilla/tests/server.mjs',url:'http://127.0.0.1:3008',reuseExistingServer:false,timeout:10000}});

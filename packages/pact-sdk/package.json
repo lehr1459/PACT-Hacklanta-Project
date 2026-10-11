@@ -1,0 +1,45 @@
+{
+  "name": "@pact/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./checkout": {
+      "types": "./dist/checkout.d.ts",
+      "import": "./dist/checkout.js",
+      "default": "./dist/checkout.js"
+    },
+    "./widget": {
+      "types": "./dist/widget.d.ts",
+      "import": "./dist/widget.js",
+      "default": "./dist/widget.js"
+    },
+    "./pact-checkout.mjs": "./dist/pact-checkout.mjs",
+    "./pact-checkout.js": "./dist/pact-checkout.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "npm run build",
+    "test": "npm run build && node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@noble/hashes": "1.8.0",
+    "@solana/web3.js": "1.99.0",
+    "buffer": "6.0.3"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,11 +1,11 @@
 import {test,expect} from '@playwright/test';
 import {PublicKey} from '@solana/web3.js';
 import {Buffer} from 'buffer';
-import {deriveOffer,deriveLicense,decodeOffer,decodeLicense,metadataHash,metadataWithinLimit,parseMetadata,metadataMatches,parseLamports,createOfferInstruction,buyLicenseInstruction,DEVNET_GENESIS,SYSVAR_OWNER} from '../../lib/solana/protocol';
-import {acquireSolanaSnapshot,snapshotHasAccess,type RpcSource} from '../../lib/solana/rpc';
+import {deriveOffer,deriveLicense,decodeOffer,decodeLicense,metadataHash,metadataWithinLimit,parseMetadata,metadataMatches,parseLamports,signatureBase58,createOfferInstruction,buyLicenseInstruction,DEVNET_GENESIS,SYSVAR_OWNER} from '../../lib/solana/protocol';
+import {acquireSolanaSnapshot,snapshotHasAccess,boundedSolanaFetch,READ_TIMEOUT_MS,type RpcSource} from '../../lib/solana/rpc';
 
 import {program,seller,buyer,metadata,offer,license,offerBytes,licenseBytes,accounts} from './fixtures';
-test.skip(()=>process.env.PACT_SOLANA_QA_MODE==='setup','Helpers run in fixture acceptance');
+test.skip(()=>process.env.PACT_SOLANA_QA_MODE==='setup'||process.env.PACT_SOLANA_QA_MODE==='live','Helpers run in fixture acceptance');
 test('wire layout and PDA binding agree with frozen native program',()=>{
   const parsed=decodeOffer(offerBytes(),program,offer);expect(parsed.priceLamports).toBe(1000000n);expect(decodeLicense(licenseBytes(),program,license,offer,buyer)).toBe(1060n);
   expect(createOfferInstruction(program,seller,1n,1000000n,60n,metadataHash(metadata)).data.length).toBe(64);
@@ -32,3 +32,7 @@ test('wrong genesis, owner, executable, corrupt accounts, future Clock and old c
   await expect(run({context:{slot:101},value:accounts()})).rejects.toThrow('Clock');
   await expect(run({context:{slot:100},value:accounts()},DEVNET_GENESIS,101)).rejects.toThrow();
 });
+
+test('prefunded canonical empty system license remains uninitialized; malformed variants fail closed',async()=>{const value=accounts();value[1]={data:['','base64'],owner:'11111111111111111111111111111111',executable:false,lamports:1};const get=()=>acquireSolanaSnapshot({program,offerAddress:offer.toBase58(),holder:buyer.toBase58(),session:0,clock:()=>0,source:async m=>m==='getGenesisHash'?DEVNET_GENESIS:{context:{slot:100},value}});const snapshot=await get();expect(snapshot.expiry).toBe(0n);expect(snapshot.valid).toBe(false);value[1].data=['AQ==','base64'];await expect(get()).rejects.toThrow();value[1].data=['','base64'];value[1].executable=true;await expect(get()).rejects.toThrow();value[1].executable=false;value[1].owner=seller.toBase58();await expect(get()).rejects.toThrow();});
+test('signature identifier validates nonzero64bytes and independently known base58 encoding',()=>{expect(signatureBase58(new Uint8Array(64).fill(1))).toBe('2AXDGYSE4f2sz7tvMMzyHvUfcoJmxudvdhBcmiUSo6ijwfYmfZYsKRxboQMPh3R4kUhXRVdtSXFXMheka4Rc4P2');expect(()=>signatureBase58(new Uint8Array(64))).toThrow();expect(()=>signatureBase58(new Uint8Array(63).fill(1))).toThrow();});
+test('SDK deadline includes a stalled response body after headers arrive',async()=>{const original=globalThis.fetch;let bodyStarted=false;globalThis.fetch=async(_input,init)=>({status:200,statusText:'OK',headers:new Headers(),text:()=>{bodyStarted=true;return new Promise<string>((_resolve,reject)=>{init?.signal?.addEventListener('abort',()=>reject(new Error('Controlled body aborted')));});}} as Response);const started=performance.now();try{await expect(boundedSolanaFetch('http://127.0.0.1:8548',{method:'POST'})).rejects.toThrow('Controlled body aborted');expect(bodyStarted).toBe(true);expect(READ_TIMEOUT_MS).toBe(5000);expect(performance.now()-started).toBeGreaterThanOrEqual(4900);expect(performance.now()-started).toBeLessThan(6500);}finally{globalThis.fetch=original;}});

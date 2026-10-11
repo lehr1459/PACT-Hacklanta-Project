@@ -1,4 +1,4 @@
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey, SystemProgram, type FetchFn } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 import { CLOCK_ADDRESS, decodeLicense, decodeOffer, deriveLicense, DEVNET_GENESIS, parsePublicKey, SYSVAR_OWNER, type SolanaOffer } from './protocol';
 export const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
@@ -6,6 +6,20 @@ export const programId = parsePublicKey(process.env.NEXT_PUBLIC_PACT_SOLANA_PROG
 export const READ_TIMEOUT_MS = 5000;
 export const FRESHNESS_MS = 8000;
 export const SLOT_PROGRESS_MS = 12000;
+// SDK blockhash, simulation and submission requests share the bounded HTTP policy.
+// Aborting a submission cannot undo it; callers must preserve the signed signature.
+export const boundedSolanaFetch: FetchFn = async (input, init) => {
+  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),READ_TIMEOUT_MS);
+  const upstream=init?.signal;const abort=()=>controller.abort();upstream?.addEventListener('abort',abort);
+  if(upstream?.aborted)controller.abort();
+  try{
+    const response=await (globalThis.fetch as FetchFn)(input,{...init,signal:controller.signal});
+    // Keep the deadline through the body read, not merely until headers arrive.
+    const body=await response.text();
+    return new Response(body,{status:response.status,statusText:response.statusText,headers:response.headers as HeadersInit}) as Awaited<ReturnType<FetchFn>>;
+  }
+  finally{clearTimeout(timer);upstream?.removeEventListener('abort',abort);}
+};
 export type RpcSource = (method: string, params?: unknown[]) => Promise<unknown>;
 let requestId = 0;
 export const rpc: RpcSource = async (method, params = []) => {
@@ -51,7 +65,14 @@ export async function acquireSolanaSnapshot({program,offerAddress,holder,session
     const clockBytes=accountBytes(clockAccount,SYSVAR_OWNER,'Clock');if(clockBytes.length!==40)throw new Error('Clock sysvar layout is invalid.');
     const clockSlot=clockBytes.readBigUInt64LE(0);const chainTimestamp=clockBytes.readBigInt64LE(32);const slot=BigInt(result.context.slot);
     if (chainTimestamp<0n || clockSlot!==slot) throw new Error('Clock sysvar is inconsistent with the account context slot.');
-    const expiry=licenseAccount ? decodeLicense(accountBytes(licenseAccount,program.toBase58(),'License'),program,license,offerKey,buyer) : 0n;
+    // Rust can initialize a canonical PDA that was pre-funded with SOL. An empty
+    // system-owned account is uninitialized, never evidence of an entitlement.
+    let expiry=0n;
+    if(licenseAccount){
+      if(licenseAccount.owner===SystemProgram.programId.toBase58()){
+        if(accountBytes(licenseAccount,SystemProgram.programId.toBase58(),'Uninitialized license').length!==0)throw new Error('Uninitialized license account must be empty.');
+      }else expiry=decodeLicense(accountBytes(licenseAccount,program.toBase58(),'License'),program,license,offerKey,buyer);
+    }
     return {program:program.toBase58(),offerAddress,holder,licenseAddress:license.toBase58(),session,slot,clockSlot,chainTimestamp,expiry,offer,valid:expiry>chainTimestamp,startedAtMs,receivedAtMs:clock()};
   })(),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('Devnet check timed out. Access is closed until a fresh snapshot succeeds.')),READ_TIMEOUT_MS);})]).finally(()=>clearTimeout(timer));
 }

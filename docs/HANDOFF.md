@@ -1,5 +1,76 @@
 # Agent handoff
 
+## Current Hacklanta release ownership
+
+- Lead owns `deployment/**`, `web/vercel.json`, clean `.deployment-candidates/**`, release runbook and coordination. No product UI/SDK/program implementation is changed. Saturday original source/serving dist/public deployment must remain unchanged; all release hardening is isolated to the candidate.
+- QA owns fresh builds/tests/security evidence and restoring actual-config PACT 3003 after shared `.next` builds. Do not stop or rebuild Prism 3004, Saturday 3005 or checkout 3006. Use copied/junctioned QA dependencies only in isolated build candidates; no concurrent shared web builds.
+- Researcher verified official hosting/Phantom guidance and pinned future Vercel CLI 63.1.2 through read-only npm metadata. Backend independently verified current public offer/expiry/artifact/funding quotes. Security/Reviewer reconciles final package/runbook and QA findings read-only.
+- Final candidate is `C:\Hackathon\PACT\.deployment-candidates\20261010-213948-8755f031`, public source allowlists + original ABI/wire spec, candidate-only HTTPS link and no registered Saturday ID. It is deliberately not publishable until new target approval/registration and verified PACT URL. Recreate with helper after target approval; never reuse original Saturday project ID.
+- Preserve marketplace purchase link; use one separately authorized existing-offer purchase for a timed 180-second demonstration. Metadata bytes must match the original on-chain hash. No project creation, credential retrieval, push, save, deploy, wallet request, signing, broadcast or purchase during preparation.
+- Final QA/build ownership released: 387 acceptance + Lead 46 contract checks PASS; independent source/evidence reconciliation PASS. Actual-config PACT production preview restored on 3003 (session 70826/PID 11388), protected original Prism 3004/PID 9552, Saturday 3005/PID 33544 and checkout 3006/PID 29552 unchanged. Temporary QA listeners stopped; do not rebuild serving `.next`.
+- Root final independent preservation checks: all 90 PACT / 2,241 Saturday protected SHA256 values match, four tags intact, contract/program Git diffs empty and whitespace check passes; six local preview pages HTTP 200. Local preparation READY, public release BLOCKED at the explicitly requested target-approval checkpoint. Runbook has exact post-approval commands/native Sites sequence, manual single-purchase checklist, local/historical Explorer fallback and 90-second script. No public release or new transaction performed.
+
+## Current embedded checkout ownership
+
+- Backend owns new SDK checkout/adapter/internal modules, manifest/lock/build and SDK README/unit tests. Frontend owns SDK widget module and `examples/pact-checkout-vanilla`. Interfaces fixed before parallel work in `docs/EMBEDDED_CHECKOUT_INTERFACES.md`.
+- QA owns independent checkout/browser/portability/compatibility tests and report; sole owner of web builds after Lead stops verified 3003 preview. Never rebuild serving production directories. Existing Prism 3004 and Saturday Lights 3005 must remain untouched.
+- Lead owns runbook/coordination/protected-file baselines and restored local previews; Security/Reviewer read-only source/evidence gate. No Senior Dev required unless a serious integration blocker arises.
+- Same marketplace purchase lock identity, honor unresolved legacy records without schema overwrite, explicit Devnet deployment configuration, exact metadata/terms consent, one reviewed signed-wire send and finalized/fresh entitlement. No real chain or wallet actions during implementation.
+- Final independent QA and Security reconciliation PASS; local embedded checkout READY. Genuine SDK 57, checkout 28 mocked/4 public reads, full preserved application regressions, compilation/TypeScript/browser/tarball gates pass. Earlier nonexecuting child-wrapper counts are explicitly withdrawn; final runner verifies one selected child TAP pass. Evidence: `docs/EMBEDDED_CHECKOUT_QA.md`; operator workflow/API/files: `docs/EMBEDDED_CHECKOUT.md`.
+- QA released all build/server ownership. Lead restored PACT 3003 PID 30520 (tool session 74204) and checkout 3006 PID 29552 (session 13495); startup/request output has no errors and ten HTTP/config/assets checks pass. Prism/Saturday original processes remain unchanged. All 90/2,241 protected hashes, artifact and tags match. Preserve these previews; stop the verified PACT process before any future `.next` production build.
+- Stop before any new real wallet request, simulation, signature, broadcast, transfer or deployment. The operator must separately authorize a specific buyer/offer purchase; exact metadata and test SOL are required. Manual Chrome sign-only/rejection/settlement/unlock/expiry and production authentication remain unverified for this new path. Four moderate dependency advisory entries remain, with no high/critical entries.
+
+## Current integration wizard ownership
+
+- Backend: new `web/lib/integration/generator.ts` and supporting generator files, plus the web-only `@pact/sdk` local dependency. Generated code consumes public SDK exports; no SDK/program modifications.
+- Frontend: new `/integrate` route, wizard component/scoped styles, minimal marketplace navigation and explicit seller-studio URL handoff. No existing transaction logic changes.
+- QA: `web/tests/integration/**`, generated consumer fixtures and independent acceptance report; sole owner of web production builds during acceptance. Lead stops/restores 3003 preview around builds; existing Prism 3004 remains untouched.
+- Researcher: read-only official/local Next/React/Phantom/install review completed. Security/Reviewer: independent generated-code/claim review and final evidence reconciliation after implementation.
+- Fixed deployed Devnet program/RPC, validated offer before generation, truthful unpublished local/tarball SDK install, labelled simulated preview, wallet-bound fresh verification and explicit client/server security limits. No wallet signatures, transaction simulations/broadcasts, transfers, deployments, credentials, database or authentication service.
+- QA final PASS: SDK 27, generated runtime 44 plus genuine emitted-code production compilation, wizard eight synthetic/two actual reads, legacy Solana 154/setup two/live two, final actual-config TypeScript/build. QA released all test servers; Lead restored PACT 3003 PID 11020 and verified root/wizard/Base HTTP 200, correct public configuration and empty stderr. Prism 3004 PID 9552 remains unchanged.
+- All 61 protected file hashes and four Git tags match. Full workflow/install/example/security limits are in `docs/INTEGRATION_WIZARD.md`; independent commands, screenshots and preserved harness/locator failure history are in `docs/INTEGRATION_WIZARD_QA.md`. Real Phantom and authenticated production resource enforcement remain outside this local gate.
+- Final Security/Reviewer source and evidence reconciliation PASS. Local wizard READY; no further test server or build ownership remains assigned. Preserve the running 3003/3004 previews and require separate authorization for any live transaction or publication.
+
+## Current developer SDK ownership
+
+- Backend: standalone `@pact/sdk` source, compiled public exports, types, package README; no existing marketplace/program edits.
+- Frontend: independent `examples/pact-demo-app`, Phantom connection-only identity, distinct UI, package import and public deployment preparation. SDK-first local install/build; separate build directory and ports from PACT.
+- QA: independent SDK/package portability and browser cases, actual Devnet reads, serial new-app acceptance and `docs/SDK_QA.md`. Fixture RPC must never escape; actual-network tests permit reads only. Root does not run builds concurrently with QA.
+- Lead: `docs/SDK_DEMO.md`, protected-source baselines, startup/handoff evidence and final acceptance audit. Reviewer: read-only ownership/expiry/freshness/authentication/RPC-trust review. No Senior Dev by default.
+- No real connection request, signature, simulation, broadcast, transfer, upgrade/deployment or credential access. Operator-controlled manual wallet/purchase evidence is explicitly pending. Preserve all existing uncommitted work and checkpoints.
+- Final acceptance PASS: 27 SDK tests, 22 synthetic browser checks, two actual Devnet read checks, package portability, TypeScript/builds and independent Security/Reviewer. Actual buyer expired/seller missing state is corroborated; initial missing-buyer test failures are retained. No product change was required for that state update.
+- Lead started independent production preview on `http://localhost:3004/`, HTTP 200/actual offer/locked SSR/empty stderr; existing PACT 3003 HTTP 200 and unchanged. Protected 18 source fingerprints, artifact and Git tags preserved. Exact startup/Vercel settings, integration API, 60-90 second script and security/manual gates are in `docs/SDK_DEMO.md` and `docs/SDK_QA.md`.
+
+## Current purchase handling ownership
+
+- Frontend: transaction/app helper changes and README; preserve UI, program, Base, dependencies and Devnet configuration. No real wallet/chain actions.
+- Backend: read-only expiry/RPC/signature contract audit and integration advice. Security/Reviewer: independent read-only implementation review and QA evidence reconciliation.
+- QA: independent helper/browser regressions, serial TypeScript/build, public read-only Devnet checks and `docs/SOLANA_QA.md`; sole owner of `.next` acceptance builds. Lead: coordination documents, report, verified preview shutdown/restoration.
+- Public-only durable unresolved-attempt records must retain signature/validity and prevent duplicate purchases; never persist signed wire or credentials. Preserve full-message equality and exact captured-wire submission; never automatically resign/resend.
+- Final QA and Security/Reviewer gate PASS: 154 configured regressions, two setup and two actual Devnet read-only checks, production build and TypeScript. Final original-purchase status/transaction remains null, license absent, balances unchanged at slot `509691060`. Initial failure history and exact logs are in `docs/SOLANA_QA.md`.
+- Lead restored actual preview on 3003 and verified root/Base HTTP 200, actual ID, no fixture and empty stderr; actual desktop/mobile screenshots reviewed. Source/artifact, Base and dependencies preserved. READY only for one separately authorized manual purchase of the existing offer; exact prerequisites/steps and limits are in `docs/SOLANA_PURCHASE_HANDLING_FIX.md`. No live signing, simulation or transaction occurred.
+
+## Current Phantom mismatch ownership
+
+- Backend completed read-only serialization/adapter forensics and synthetic priority-fee reproduction; actual compiled SBF budgeted execution succeeded locally without signature verification or live transactions.
+- Frontend owns scoped transaction helper/app signing changes. QA owns adapter-accurate synthetic regressions, strict malicious-modification checks, serial production build/TypeScript, and public read-only chain forensics.
+- Reviewer independently validates exact message/wire integrity, Devnet and wallet/offer checks. Lead coordinates evidence/report and restores local preview after QA builds.
+- No wallet approval, signing, broadcast, transfer, deployment or upgrade is authorized. Existing program/UI/Base behavior is preserved; one operator retry remains a separate gate.
+- Final QA and Reviewer gate PASS: 96 configured + two setup + two actual read-only Devnet executions; build and typecheck exit 0. Preview restored and verified on 3003. Final chain sample slot `509680157` has no offers/licenses and only deployment history. Full evidence/limitations and exact separately authorized retry steps are in `docs/PHANTOM_TRANSACTION_FIX.md` and `docs/SOLANA_QA.md`.
+
+## Current live frontend integration ownership
+
+- Lead: coordination, `docs/SOLANA_LIVE_DEMO.md`, current status/handoff/decisions, final evidence reconciliation and configured local preview.
+- Backend: completed read-only wire/runtime compatibility audit against the finalized Devnet deployment.
+- Frontend: public local configuration and scoped wallet/transaction/account-read integration fixes; visual design and Base fallback unchanged.
+- QA: owns regression tests, serial TypeScript/production/browser checks, actual Devnet read-only browser smoke, and independent evidence.
+- Reviewer: read-only integration/security review and final reconciliation. No Senior Dev required.
+- Program `EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy` is already deployed. This task permits no signing request, live offer/purchase, transfer, upgrade or redeployment. A separate operator authorization is required for the runbook's live transaction steps.
+- Final frontend gate PASS: configured synthetic 46/46, setup 2/2, actual read-only Devnet browser 2/2, production build and TypeScript exit 0. Hydration bug fixed and verified with page-error assertions; root and Base smoke clean. QA fixtures remain isolated, final actual build restored, and local configured preview is serving `http://localhost:3003/`.
+- Remaining operator gate: distinct funded Chrome seller/buyer wallets, manual Phantom checks, separate authorization for the exact create-offer/purchase demo, and independently reviewed live settlement/entitlement/unlock/expiry evidence. Do not issue any transaction while waiting.
+
+Historical ownership/stop-gate records below remain as phase evidence; current scope above supersedes their pre-deployment status.
+
 ## Active Solana migration ownership
 
 - Lead: account/interface decisions, shared docs, checkpoint, operator-only Devnet package.

@@ -1,0 +1,3 @@
+﻿import {defineConfig,devices} from '@playwright/test';
+export default defineConfig({testDir:'./tests',workers:1,timeout:35000,expect:{timeout:10000},outputDir:process.env.PACT_SDK_QA_MODE==='live'?'test-results/live':'test-results/synthetic',reporter:[['list'],['html',{open:'never',outputFolder:process.env.PACT_SDK_QA_MODE==='live'?'playwright-report/live':'playwright-report/synthetic'}]],use:{baseURL:'http://127.0.0.1:3005',trace:'retain-on-failure',screenshot:'only-on-failure'},projects:[{name:'desktop-prism',use:{...devices['Desktop Chrome']}},{name:'mobile-prism',use:{...devices['Pixel 7']}}],webServer:{command:'node tests/start-server.mjs',url:'http://127.0.0.1:3005',reuseExistingServer:false,timeout:180000}});
+

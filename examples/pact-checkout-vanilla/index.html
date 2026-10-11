@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Palette Lab · PACT embedded checkout</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+  <main>
+    <header><a class="brand" href="/">◈ PALETTE LAB</a><span>INDEPENDENT VANILLA APP / SOLANA DEVNET</span></header>
+    <section class="hero"><p class="eyebrow">CREATIVE WORKSPACE / POWERED BY PACT</p><h1>Access, in place.<br><em>Color, in motion.</em></h1><p>License access without leaving this independent app. The embedded PACT checkout verifies a buyer-bound entitlement before the palette workspace opens.</p></section>
+    <div class="layout"><section class="workspace" id="premium-gate" data-state="locked"><div class="workspace-heading"><span class="eyebrow">01 / PALETTE WORKSPACE</span><span class="chip" id="access-status" role="status">License required</span></div><div class="workspace-copy"><h2 id="workspace-title">Your next palette is waiting.</h2><p id="workspace-message">Connect your wallet in the PACT checkout. A fresh, valid license is required.</p></div><div class="locked-view" id="locked-view"><span aria-hidden="true">⌁</span><h3>Good color needs clear permission.</h3><p>Payment confirmation and current access are checked separately.</p></div><div id="premium-content" hidden><div class="palette" id="palette"></div><div class="palette-footer"><h3 id="palette-name">Golden hour</h3><button id="remix" type="button" disabled>Remix palette ↗</button></div></div><p class="workspace-baseline">Fresh checks every 4 seconds. Access closes when verification becomes stale, expires, fails, or your wallet changes.</p></section><aside><div id="checkout" aria-label="PACT license checkout"></div></aside></div>
+    <details class="public-config"><summary>Inspect public Devnet configuration</summary><dl><div><dt>Program</dt><dd id="config-program"></dd></div><div><dt>Offer</dt><dd id="config-offer"></dd></div><div><dt>RPC</dt><dd id="config-rpc"></dd></div></dl><p>No private keys, wallet input, automatic connection, remote metadata fetch, or production fixture mode.</p></details>
+    <footer><b>PALETTE LAB / PACT EMBEDDED CHECKOUT</b><p>Client-side Devnet demonstration. Authenticate wallet ownership and authorize protected resources on the server before returning confidential content.</p></footer>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
