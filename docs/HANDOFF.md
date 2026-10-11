@@ -1,5 +1,10 @@
 # Agent handoff
 
+## Critical offer refresh stability
+
+- Lead owns rollback branch, isolated packaging/builds, release safety and final reconciliation. Frontend owns only `use-snapshot.ts` and initial-only loading presentation in `solana-app.tsx`; Backend reviews security/integration read-only; QA owns MutationObserver regression and 60/30-second observations; Reviewer gates final local readiness. No agent may deploy, push, modify Saturday or initiate wallet/chain actions.
+- Existing One-Link preview3009 remains the unchanged before candidate. Separate `.deployment-candidates/offer-stability` candidates use physical dependency copies; final preview http://localhost:3016/ runs PID38932, root session50092. Original previews3003-3009 remain protected. Before evidence: `web/test-results/flicker/before.json`; after evidence: `after.json` and matching PNGs. Fresh435 acceptance +46local-chain pass, focused16 supplemental pass, actual-config build/TypeScript pass. Six60s exact TEST offer cases have zero removals/replacements and retain focus; four30s home cases pass. Frontend visual PASS, Backend protected-code PASS, QA executed PASS and Reviewer final local READY reconcile without discrepancies. No real Phantom approval or transaction was attempted. No deployment/push is authorized by this local verdict; see `docs/OFFER_REFRESH_STABILITY.md` and independent QA report.
+
 ## One-link purchasing ownership
 
 - Lead: rollback branch/checkpoint, exact-byte link helper, isolated packaging, final preview, documentation and reviewed commit. Frontend: seller sharing and buyer review UI. Backend: independent metadata/protected-integration review. QA: fresh isolated baseline/final regressions and new feature/browser tests. Reviewer reconciles security and results before local readiness.

@@ -1,5 +1,7 @@
 # Decisions
 
+- Offer stability fix is local on `fix/offer-refresh-stability`, rollback `117b793`. Before edits, three 60-second production-preview observations each reproduced 15 offer-subtree removals at the four-second poll cadence, without recurring navigation or page errors. New query data briefly failed progress-reference/clock synchronization, hiding the snapshot. Reconcile accepted progress and clock before child commit; preserve all existing freshness, slot, session, expiry, error, wallet and transaction predicates. Same-slot reads never renew progress time; backward slots remain rejected. No cached offer authorizes purchase.
+
 - One-link purchasing uses the existing offer query parameter plus a `pact=v1` / base64url metadata fragment. Preserve exact committed UTF-8 bytes and all existing purchase guards; reject links above 2,048 characters or 1 KiB public metadata without truncation. Manual JSON remains the fallback. Feature branch `feat/one-link-purchasing`, rollback `26fc35e`; local work only.
 
 - Offer/input feedback follow-up stays local: suppress premature validation hints while editing, reserve ordinary feedback and seller-link space, and keep genuine RPC alerts readable. Solana Flow 02 reads `Purchase with SOL`; Devnet/test-currency disclosures remain. Preserve hooks, control handlers, licensing guards, SDK/program/configuration and production deployment.

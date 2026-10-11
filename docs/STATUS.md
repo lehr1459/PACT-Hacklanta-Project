@@ -1,5 +1,10 @@
 # Status
 
+## Critical buyer offer flicker - local READY
+
+- Root cause reproduced before edits on One-Link production build 117b793: each successful poll publishes new data before effect-based progress/clock synchronization; the temporary absent snapshot removes the offer subtree. Three 60-second cases each recorded 15 removals/reinsertions, without recurring document navigation or page errors.
+- Branch `fix/offer-refresh-stability`, rollback 117b793. Backend and Reviewer source reviews pass. Fresh435 acceptance +46local-chain checks pass; focused16 supplemental pass; SDK/web TypeScript and restored actual-config production build pass. Six60s exact TEST desktop/mobile manual/complete-link cases show zero panel removals/replacements and preserved focus; four30s home observations pass. No new page/console errors, recurring navigation or overflow. Preview http://localhost:3016/ runs the isolated candidate. Frontend visual PASS, independent QA PASS and Reviewer final local READY. Runbook/inventory: `docs/OFFER_REFRESH_STABILITY.md`; independent receipts: `docs/OFFER_STABILITY_QA.md`. Production remains unchanged; real Phantom/live transactions remain manual and unauthorized for this task.
+
 ## One-link purchasing - 2026-10-11
 
 - Local implementation on `feat/one-link-purchasing`; reviewed rollback checkpoint `26fc35e680b8c089ba3a9c0457435814447ff1b7`. Existing tags and public deployments are preserved.
