@@ -200,6 +200,29 @@ input[aria-invalid=true] { border-color: #c07369; background: #fffaf9; }
   font-size: 11px; line-height: 1.8;
 }
 .offer-address-echo { min-height: 60px; margin: 19px 0 0; }
+/* Public purchase links reuse the existing review and consent workflow. */
+.manual-purchase-controls { min-width: 0; padding: 15px 17px; border: 1px solid #dce5f1; border-radius: 9px; background: #f8fafd; }
+.manual-purchase-controls > summary { display: flex; align-items: center; min-height: 44px; color: #354f75; font-size: 12px; font-weight: 600; cursor: pointer; }
+.manual-purchase-controls > summary::after { content: ''; width: 7px; height: 7px; margin-left: auto; border-right: 1px solid #45699a; border-bottom: 1px solid #45699a; transform: rotate(45deg); }
+.manual-purchase-controls[open] > summary { margin-bottom: 16px; }
+.manual-purchase-controls[open] > summary::after { transform: rotate(225deg); }
+.manual-purchase-controls .input-feedback-field { min-width: 0; }
+.purchase-link-status, .purchase-link-error { margin: 0; }
+.purchase-link-status > b { display: block; min-height: 3.6em; }
+.shared-license-terms { background: #f2f6fc; }
+.shared-license-terms small { display: block; min-height: 3.6em; margin-top: 16px; line-height: 1.8; }
+.purchase-link-sharing { min-width: 0; margin-top: 28px; padding-top: 27px; border-top: 1px solid var(--line); }
+.purchase-link-sharing h3 { font-size: 22px; margin: 13px 0; }
+.purchase-link-sharing > .eyebrow { margin: 0; font-size: 9px; }
+.purchase-link-sharing .share-public-warning { padding: 14px; margin: 20px 0; border: 1px solid #d9e3f1; border-radius: 8px; background: #f4f7fc; color: #52657f; font-size: 11px; line-height: 1.8; }
+.purchase-link-sharing label { margin-top: 22px; }
+.purchase-link-sharing textarea { font: 11px/1.8 monospace; overflow-wrap: anywhere; resize: vertical; }
+.purchase-link-sharing > .button { margin-top: 15px; }
+.purchase-link-sharing .share-guidance { min-height: 60px; }
+.copy-feedback { min-height: 3.6em; margin: 12px 0 0; overflow-wrap: anywhere; }
+.metadata-copy { min-width: 0; margin-top: 17px; }
+.metadata-copy .copy-feedback { margin-bottom: 8px; }
+.metadata-copy label { margin-bottom: 18px; }
 .hash-preview {
   min-width: 0; padding: 15px 17px; border: 1px solid #e0e7f1; background: #f5f8fc;
   border-radius: 8px; font-size: 11px; overflow-wrap: anywhere;

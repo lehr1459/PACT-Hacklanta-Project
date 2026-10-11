@@ -1,5 +1,7 @@
 # Decisions
 
+- One-link purchasing uses the existing offer query parameter plus a `pact=v1` / base64url metadata fragment. Preserve exact committed UTF-8 bytes and all existing purchase guards; reject links above 2,048 characters or 1 KiB public metadata without truncation. Manual JSON remains the fallback. Feature branch `feat/one-link-purchasing`, rollback `26fc35e`; local work only.
+
 - Offer/input feedback follow-up stays local: suppress premature validation hints while editing, reserve ordinary feedback and seller-link space, and keep genuine RPC alerts readable. Solana Flow 02 reads `Purchase with SOL`; Devnet/test-currency disclosures remain. Preserve hooks, control handlers, licensing guards, SDK/program/configuration and production deployment.
 
 - Operator explicitly approved publishing reviewed enterprise UI commit `3953f3b` to the existing personal Vercel project only. Lead executed one release from fresh isolated Git-extracted source after Backend/Reviewer package approval and six clean SDK-first gates. Production `dpl_6SXVEhtU4CHLp2UAq5Mj1NbbyUZh` preserves previous READY deployment and rollback `4123cc12`.

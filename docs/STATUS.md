@@ -1,5 +1,12 @@
 # Status
 
+## One-link purchasing - 2026-10-11
+
+- Local implementation on `feat/one-link-purchasing`; reviewed rollback checkpoint `26fc35e680b8c089ba3a9c0457435814447ff1b7`. Existing tags and public deployments are preserved.
+- Sellers can copy a buyer link containing the exact public metadata; buyers receive prefilled offer/terms and fresh on-chain matching before existing explicit consent and purchase guards. Limits are 1,024 metadata bytes and 2,048 URL characters, with manual recovery. No runtime dependency added.
+- Independent Backend protected-integration review and Frontend five-width visual review pass. Fresh baseline passes 387 acceptance plus 46 local chain checks; final passes 419 acceptance plus 46 local chain checks, TypeScript and restored actual-config production build. Preview http://localhost:3009/ passes three routes and 23 static assets; supplemental successful link copying passes at 390/1440px. Final Reviewer approves local readiness with no unresolved local blocker. Evidence/runbook: `docs/ONE_LINK_QA.md`, `docs/ONE_LINK_PURCHASING.md`.
+- No deployment, push, real wallet approval or blockchain transaction performed. Public TEST offer compatibility is read-only evidence; live Phantom purchase verification remains separate.
+
 ## Local input-feedback fix - 2026-10-11
 
 - Frontend fixed premature typing warnings and reserved feedback/link/copy space in Solana, Base and integration forms. Solana Flow 02 now reads `Purchase with SOL`; the wizard loading button retains its height at 320px. Five presentation files changed; no runtime dependencies or protected integration changes.

@@ -1,5 +1,10 @@
 # Agent handoff
 
+## One-link purchasing ownership
+
+- Lead: rollback branch/checkpoint, exact-byte link helper, isolated packaging, final preview, documentation and reviewed commit. Frontend: seller sharing and buyer review UI. Backend: independent metadata/protected-integration review. QA: fresh isolated baseline/final regressions and new feature/browser tests. Reviewer reconciles security and results before local readiness.
+- Baseline `.deployment-candidates/one-link/baseline` exports immutable `26fc35e` public inputs with physical dependency copies; final is separately packaged at `.deployment-candidates/one-link/final`. Fresh baseline387+46 and final419+46 pass; final SDK/web TypeScript and actual-config production build pass. QA released shared build ownership after serialized suites. Root preview http://localhost:3009/ (PID37544, tool session64859) passes routes/assets and supplemental successful exact link copying at 390/1440px; existing 3003-3008 PIDs remain unchanged. Final Reviewer approves local readiness, no local blocker. No production, Saturday source, SDK or program changes; no live wallet or blockchain actions. Lead alone records the reviewed feature checkpoint.
+
 ## Local input-feedback follow-up
 
 - Frontend owns five presentation files (Solana app, Base page, wizard, global CSS, integration CSS). Reviewer independently confirms all 68 control bindings and non-JSX logic match deployed `3953f3b`. Lead owns isolated packaging/build; QA owns targeted browser evidence under `web/test-results/ui-feedback-fix`.
