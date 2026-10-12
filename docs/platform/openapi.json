@@ -1,0 +1,1919 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PACT Developer Platform v1",
+    "version": "1.0.0",
+    "description": "Solana Devnet only. Public lookup is not authentication. No server signing/broadcast or registry. Authentication supports an explicitly opted-in single persistent Node process; multi-instance/serverless auth is unsupported."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3007/api/v1",
+      "description": "PACT local API"
+    },
+    {
+      "url": "http://localhost:3008/api/pact",
+      "description": "Independent same-origin example API"
+    }
+  ],
+  "paths": {
+    "/offers/{address}": {
+      "get": {
+        "operationId": "getOffer",
+        "description": "Read verified public offer parameters and commitment; no metadata preimage.",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "description": "Canonical public Solana address.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Offer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request body exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 128 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/offers/prepare": {
+      "post": {
+        "operationId": "prepareOffer",
+        "description": "Prepare unsigned create-offer transaction. Seller authorization/signature happens separately in their wallet.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepareOffer"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreparedOffer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request body exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 128 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/offers/{address}/metadata": {
+      "get": {
+        "operationId": "getMetadata",
+        "description": "No public metadata registry is installed. Verify the offer, then return typed METADATA_UNAVAILABLE; obtain exact JSON from the seller.",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "description": "Canonical public Solana address.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "METADATA_UNAVAILABLE. A commitment cannot reconstruct metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checkout/prepare": {
+      "post": {
+        "operationId": "prepareCheckout",
+        "description": "Validate fresh offer, buyer entitlement, exact public metadata/hash/price/duration and availability; return unsigned purchase transaction.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepareCheckout"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreparedCheckout"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request body exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 128 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/licenses/verify": {
+      "post": {
+        "operationId": "verifyLicense",
+        "description": "Public entitlement lookup only. Does not prove wallet control or authorize access.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LicenseInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicLicense"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request body exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 128 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/licenses/{offer}/{wallet}": {
+      "get": {
+        "operationId": "getLicense",
+        "description": "Read-only public entitlement status with freshness and explicit non-authentication claims.",
+        "parameters": [
+          {
+            "name": "offer",
+            "in": "path",
+            "required": true,
+            "description": "Canonical public Solana address.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+            }
+          },
+          {
+            "name": "wallet",
+            "in": "path",
+            "required": true,
+            "description": "Canonical public Solana address.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicLicense"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request body exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 128 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions/{signature}": {
+      "get": {
+        "operationId": "getTransactionStatus",
+        "description": "Read RPC signature status with searchTransactionHistory. not-found is uncertainty, not proof of non-submission or safe retry.",
+        "parameters": [
+          {
+            "name": "signature",
+            "in": "path",
+            "required": true,
+            "description": "Public transaction signature; no signed wire bytes.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transaction"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request body exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 128 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/challenge": {
+      "post": {
+        "operationId": "walletChallenge",
+        "description": "Same-origin POST. Sets pact_binding HttpOnly cookie; returns expiring domain/network/browser-bound message. Single-process authentication must be explicitly enabled.",
+        "parameters": [],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChallengeInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Challenge"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request body exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 128 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify": {
+      "post": {
+        "operationId": "verifyWalletProof",
+        "description": "Same-origin POST with pact_binding cookie. Atomically consumes challenge; verifies native Ed25519 signature; rotates opaque pact_session HttpOnly cookie.",
+        "parameters": [],
+        "security": [
+          {
+            "pactBinding": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Proof"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request body exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 128 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/session": {
+      "get": {
+        "operationId": "getWalletSession",
+        "description": "Read session identity only; no license/access grant.",
+        "parameters": [],
+        "security": [
+          {
+            "pactSession": []
+          },
+          {}
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request body exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 128 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logoutWallet",
+        "description": "Same-origin POST; invalidate session and clear binding/session cookies.",
+        "parameters": [],
+        "security": [
+          {
+            "pactSession": []
+          },
+          {}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request body exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 128 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/protected": {
+      "get": {
+        "operationId": "protectedOperation",
+        "description": "Derive wallet from opaque session; fresh authoritative entitlement for server-configured offer; recheck session after RPC before returning demo payload.",
+        "parameters": [],
+        "security": [
+          {
+            "pactSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Protected"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request body exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 128 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "Offer": {
+        "type": "object",
+        "properties": {
+          "program": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "offer": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "seller": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "priceLamports": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "durationSeconds": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "termsHash": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "contextSlot": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "chainTimestamp": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "startedAtMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "receivedAtMs": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "program",
+          "offer",
+          "seller",
+          "priceLamports",
+          "durationSeconds",
+          "termsHash",
+          "active",
+          "contextSlot",
+          "chainTimestamp",
+          "startedAtMs",
+          "receivedAtMs"
+        ]
+      },
+      "PrepareOffer": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          },
+          "programId": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "sellerWallet": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "nonce": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "metadataJson": {
+            "type": "string",
+            "description": "Exact UTF-8 public metadata, maximum 64 KiB. Hashes use Keccak-256; formatting matters."
+          }
+        },
+        "required": [
+          "network",
+          "sellerWallet",
+          "nonce",
+          "metadataJson"
+        ],
+        "additionalProperties": false
+      },
+      "PrepareCheckout": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          },
+          "programId": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "offerAddress": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "walletAddress": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "metadataJson": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "network",
+          "offerAddress",
+          "walletAddress",
+          "metadataJson"
+        ],
+        "additionalProperties": false
+      },
+      "PreparedOffer": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          },
+          "programId": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "offer": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "seller": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "nonce": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "priceLamports": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "durationSeconds": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "termsHash": {
+            "type": "string"
+          },
+          "transactionBase64": {
+            "type": "string",
+            "contentEncoding": "base64",
+            "description": "Unsigned v0 transaction. All signatures are zero; no server broadcast."
+          },
+          "blockhash": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "lastValidBlockHeight": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "network",
+          "programId",
+          "offer",
+          "seller",
+          "nonce",
+          "priceLamports",
+          "durationSeconds",
+          "termsHash",
+          "transactionBase64",
+          "blockhash",
+          "lastValidBlockHeight"
+        ]
+      },
+      "PreparedCheckout": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          },
+          "programId": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "quote": {
+            "$ref": "#/components/schemas/Offer"
+          },
+          "buyer": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "licensePda": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "transactionBase64": {
+            "type": "string",
+            "contentEncoding": "base64"
+          },
+          "blockhash": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "lastValidBlockHeight": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "network",
+          "programId",
+          "quote",
+          "buyer",
+          "licensePda",
+          "transactionBase64",
+          "blockhash",
+          "lastValidBlockHeight"
+        ]
+      },
+      "LicenseInput": {
+        "type": "object",
+        "properties": {
+          "offerAddress": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "walletAddress": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          }
+        },
+        "required": [
+          "offerAddress",
+          "walletAddress"
+        ],
+        "additionalProperties": false
+      },
+      "LicenseStatus": {
+        "type": "object",
+        "properties": {
+          "program": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "offer": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "wallet": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "licensePda": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "contextSlot": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "chainTimestamp": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "expiry": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "active",
+              "expired",
+              "missing"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "startedAtMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "receivedAtMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lastProgressAtMs": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "program",
+          "offer",
+          "wallet",
+          "licensePda",
+          "contextSlot",
+          "chainTimestamp",
+          "expiry",
+          "state",
+          "active",
+          "startedAtMs",
+          "receivedAtMs",
+          "lastProgressAtMs"
+        ]
+      },
+      "PublicLicense": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          },
+          "program": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "offerAddress": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "walletAddress": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "valid": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "active",
+              "expired",
+              "missing"
+            ]
+          },
+          "expiration": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "VALID",
+              "EXPIRED",
+              "MISSING"
+            ]
+          },
+          "walletControlProven": {
+            "const": false
+          },
+          "authorized": {
+            "const": false
+          },
+          "freshness": {
+            "type": "object",
+            "properties": {
+              "verifiedAtMs": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "maxAgeMs": {
+                "const": 8000
+              },
+              "contextSlot": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "chainTimestamp": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              }
+            },
+            "required": [
+              "verifiedAtMs",
+              "maxAgeMs",
+              "contextSlot",
+              "chainTimestamp"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/LicenseStatus"
+          }
+        },
+        "required": [
+          "network",
+          "program",
+          "offerAddress",
+          "walletAddress",
+          "valid",
+          "state",
+          "expiration",
+          "verifiedAt",
+          "reason",
+          "walletControlProven",
+          "authorized",
+          "freshness",
+          "status"
+        ]
+      },
+      "ChallengeInput": {
+        "type": "object",
+        "properties": {
+          "walletAddress": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          }
+        },
+        "required": [
+          "walletAddress"
+        ],
+        "additionalProperties": false
+      },
+      "Challenge": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "message": {
+            "type": "string",
+            "description": "Exact eleven-line origin/network/program/wallet/browser-bound authentication message. Never a transaction."
+          },
+          "expiresAt": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "challengeId",
+          "message",
+          "expiresAt"
+        ]
+      },
+      "Proof": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "signatureBase64": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9+/]{86}==$"
+          }
+        },
+        "required": [
+          "challengeId",
+          "signatureBase64"
+        ],
+        "additionalProperties": false
+      },
+      "Session": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "authenticated": {
+                "const": false
+              }
+            },
+            "required": [
+              "authenticated"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "authenticated": {
+                "const": true
+              },
+              "walletAddress": {
+                "type": "string",
+                "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+              },
+              "expiresAt": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "authenticated",
+              "walletAddress",
+              "expiresAt"
+            ]
+          }
+        ]
+      },
+      "Protected": {
+        "type": "object",
+        "properties": {
+          "authorized": {
+            "const": true
+          },
+          "walletAddress": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "offerAddress": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "payload": {
+            "type": "string"
+          },
+          "verification": {
+            "$ref": "#/components/schemas/PublicLicense"
+          }
+        },
+        "required": [
+          "authorized",
+          "walletAddress",
+          "offerAddress",
+          "expiresAt",
+          "payload",
+          "verification"
+        ]
+      },
+      "Transaction": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "not-found",
+              "processed",
+              "confirmed",
+              "finalized",
+              "failed"
+            ]
+          },
+          "slot": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "error": {},
+          "contextSlot": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "network",
+          "signature",
+          "state",
+          "slot",
+          "error",
+          "contextSlot"
+        ]
+      },
+      "Empty": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "pactSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "pact_session",
+        "description": "Opaque HttpOnly SameSite=Strict session; Secure on HTTPS."
+      },
+      "pactBinding": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "pact_binding",
+        "description": "Browser binding set by challenge route. Same-origin POST and exact Origin required."
+      }
+    }
+  }
+}

@@ -12,6 +12,8 @@ The canonical local checkout is `C:\Hackathon\PACT Hacklanta Project`. The old `
 
 ## Developer integration
 
+Developer Platform v1 adds versioned REST endpoints, `@pact/sdk/v1`, an SSR-safe React checkout and same-origin wallet authentication with fresh backend entitlement enforcement. Run the independent Canvas Lab example at `http://localhost:3008`; the local PACT preview uses port 3007. See the [developer quickstart](docs/platform/quickstart.md), [API specification](docs/platform/openapi.json) and [security limits](docs/platform/security.md). Authentication is explicitly limited to one persistent local Node process; no production deployment or package publication is implied.
+
 Open [Integrate your app](http://localhost:3003/integrate) for the Next.js/React setup wizard. It validates a public Devnet offer through the SDK and generates a local-package install command, configuration, Phantom-connected license gate and AI coding prompt. Its previews are labelled synthetic; generating instructions does not register or protect an app automatically. See the [wizard runbook](docs/INTEGRATION_WIZARD.md) and [independent acceptance evidence](docs/INTEGRATION_WIZARD_QA.md).
 
 The root `@pact/sdk` entrypoint remains the compatible read-only TypeScript verification API. `examples/pact-demo-app` is a separate Phantom-connected premium-feature demo that consumes it without copying marketplace verification code. New opt-in `@pact/sdk/checkout` and `@pact/sdk/widget` entrypoints support an explicitly approved embedded Devnet purchase; a signature alone never unlocks access.

@@ -21,7 +21,22 @@
       "default": "./dist/widget.js"
     },
     "./pact-checkout.mjs": "./dist/pact-checkout.mjs",
-    "./pact-checkout.js": "./dist/pact-checkout.js"
+    "./pact-checkout.js": "./dist/pact-checkout.js",
+    "./v1": {
+      "types": "./dist/v1.d.ts",
+      "import": "./dist/v1.js",
+      "default": "./dist/v1.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js",
+      "default": "./dist/react.js"
+    }
   },
   "files": [
     "dist",
@@ -40,6 +55,17 @@
   },
   "devDependencies": {
     "esbuild": "0.28.2",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "@types/node": "24.10.0",
+    "@types/react": "19.3.0",
+    "react": "19.3.0"
+  },
+  "peerDependencies": {
+    "react": ">=18 <20"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   }
 }

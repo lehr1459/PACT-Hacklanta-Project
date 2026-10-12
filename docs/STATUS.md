@@ -162,3 +162,13 @@ The sections below are historical phase records; their pending deployment/fundin
 - 2026-10-11: Saturday NFL Sites version 2 deployed successfully to https://saturday-lights-pact-demo.lehr-exe.chatgpt.site. TypeScript/build/34 Node/6 local browser/2 public browser tests pass; read-only expired/missing entitlements denied. Evidence: docs/SATURDAY_NFL_RELEASE.md.
 
 - 2026-10-11: Local repository renamed to PACT Hacklanta Project at C:\Hackathon\PACT Hacklanta Project; old checkout path retained as a compatibility view. Git has no configured remote, so no GitHub repository was renamed. PACT branding, SDK package identities, deployed URLs, Vercel project, environment and blockchain functionality are unchanged. See docs/REPOSITORY_RENAME.md.
+
+## Developer Platform v1 — local acceptance complete
+
+- Branch: codex/developer-platform-v1. Pre-product rollback checkpoint: 7f217d506245b02ae4818d3e0bf6d3ff9941edda.
+- Implemented additive REST API, SDK v1/server/React exports, signed-wallet authentication, fresh backend enforcement and independent Canvas Lab example. Docs: docs/platform/README.md and IMPLEMENTATION.md.
+- Independent QA: 536 passing checks (435 preserved acceptance, 46 local program, 41 new Node, 14 new browser). Backend additionally passed four focused auth tests. SDK/web/example builds and TypeScript, packed consumer boundaries and OpenAPI passed.
+- Frontend/Reviewer passed responsive visuals and 60.064-second actual read-only TEST checkout stability; no recurring offer disappearance/remount. Initial failures and fixes are retained in qa/platform-v1/REPORT.md.
+- Local previews: http://localhost:3007/ and http://localhost:3008/. Authentication requires the exact configured origin.
+- Production deployment dpl_AeyVsH68MJ784e5YePwziDGvbbr3, Solana/Base programs, original SDK workflows and Saturday Lights remain unchanged. No push/publish/deployment/real wallet or blockchain transaction occurred.
+- Release limit: process-local authentication requires one persistent Node process; distributed/serverless auth is blocked pending a shared atomic store and separate security review. Real Phantom proofs/purchases remain manual.
