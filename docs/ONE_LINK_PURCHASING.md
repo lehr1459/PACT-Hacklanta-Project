@@ -49,7 +49,7 @@ http://localhost:3009/?offer=7EdfowQEZyVyyp7bYdQyzmprZtVU9mVba8cysHm2Ardh#pact=v
 The isolated actual-config production preview is running at http://localhost:3009/ (PID 37544). Its `/`, `/integrate` and `/base` routes and all 23 referenced static assets pass HTTP smoke checks. The built application uses the deployed Eiii program and official Devnet RPC. Output lives at `.deployment-candidates/one-link/final/web`. To start the already-built candidate later in another terminal, use a free local port:
 
 ```powershell
-Set-Location C:\Hackathon\PACT\.deployment-candidates\one-link\final\web
+Set-Location 'C:\Hackathon\PACT Hacklanta Project\.deployment-candidates\one-link\final\web'
 $oneLinkPort = 3009
 while (Get-NetTCPConnection -State Listen -LocalPort $oneLinkPort -ErrorAction SilentlyContinue) { $oneLinkPort++ }
 Write-Host "PACT One-Link: http://localhost:$oneLinkPort/"
@@ -61,7 +61,7 @@ Use the selected port in local links. Do not rebuild while serving this candidat
 Reproduce from the PACT root with existing dependencies, no install. Stop only this feature's preview before rebuilding; leave other demos running. Run groups sequentially with QA ports free:
 
 ```powershell
-Set-Location C:\Hackathon\PACT
+Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 node qa/one-link/prepare.mjs baseline
 node qa/one-link/prepare.mjs final
 node qa/one-link/build.mjs

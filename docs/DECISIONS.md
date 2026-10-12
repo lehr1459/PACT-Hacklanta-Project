@@ -70,3 +70,7 @@
 - 2026-10-10: Phase 1 proceeds with the bundled contract as the fixed design baseline. Dependency versions and actual local test results must be recorded before frontend integration; no testnet deployment without explicit user approval.
 - 2026-10-10: Use project-local Foundry v1.8.5, Solidity 0.8.24, OpenZeppelin v5.4.0, and forge-std v1.9.7; verify release checksum and dependency commits via reproducible setup. Compiled ABI lives at `contracts/abi/PactLicensing.json`.
 - 2026-10-10: Frontend requires exact off-chain metadata hash, matching price/duration, and buyer approval before purchase. It verifies RPC chain ID 84532 and contract code, simulates writes, and claims success only after a successful receipt. Missing deployment address stays an explicit setup state.
+
+- 2026-10-11: User selected existing PACT-integrated Saturday demo for NFL release; original Saturday Site and PACT marketplace/program preserved. ESPN server feeds and fresh game-start validation extend existing device-local tracker. See docs/SATURDAY_NFL_RELEASE.md.
+
+- 2026-10-11: Local repository renamed to PACT Hacklanta Project at C:\Hackathon\PACT Hacklanta Project; old checkout path retained as a compatibility view. Git has no configured remote, so no GitHub repository was renamed. PACT branding, SDK package identities, deployed URLs, Vercel project, environment and blockchain functionality are unchanged. See docs/REPOSITORY_RENAME.md.

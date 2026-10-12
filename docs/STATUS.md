@@ -158,3 +158,7 @@ The sections below are historical phase records; their pending deployment/fundin
 - Frontend production build and TypeScript checks passed independently in QA. Production GET `/` returned HTTP 200; all 13 JavaScript assets returned 200. Seller/buyer metadata hash approval, RPC chain verification, and receipt-derived offer ID implemented.
 - No browser available in this session; browser interaction and wallet/testnet E2E are outstanding.
 - Local preview running at `http://localhost:3000` with contract setup pending. Local Phase 1 implementation is complete; deployment approval and testnet demo remain separate gates.
+
+- 2026-10-11: Saturday NFL Sites version 2 deployed successfully to https://saturday-lights-pact-demo.lehr-exe.chatgpt.site. TypeScript/build/34 Node/6 local browser/2 public browser tests pass; read-only expired/missing entitlements denied. Evidence: docs/SATURDAY_NFL_RELEASE.md.
+
+- 2026-10-11: Local repository renamed to PACT Hacklanta Project at C:\Hackathon\PACT Hacklanta Project; old checkout path retained as a compatibility view. Git has no configured remote, so no GitHub repository was renamed. PACT branding, SDK package identities, deployed URLs, Vercel project, environment and blockchain functionality are unchanged. See docs/REPOSITORY_RENAME.md.

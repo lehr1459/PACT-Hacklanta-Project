@@ -1,6 +1,14 @@
-# PACT — Programmable Agreements, Contracts & Transfers
+# PACT Hacklanta Project
+
+PACT — Programmable Agreements, Contracts & Transfers.
+
+## GitHub project
+
+Source repository: [lehr1459/PACT-Hacklanta-Project](https://github.com/lehr1459/PACT-Hacklanta-Project) (private; sign in with repository access). The existing public demo is [PACT Hacklanta](https://pact-hacklanta-demo.vercel.app/). This source publication preserves the release history and tags; it does not deploy the app or authorize blockchain transactions. See [GitHub setup and source-validation limits](docs/GITHUB_PUBLICATION.md).
 
 Hacklanta MVP: **digital licensing only**, now targeting **Solana Devnet**. A seller defines an offer, a buyer pays test SOL, and the program atomically settles payment and records a buyer-bound, time-limited entitlement. PACT Studio unlocks only after a fresh chain-validated read. The previous Base Sepolia implementation remains preserved at `/base` and in `contracts/`.
+
+The canonical local checkout is `C:\Hackathon\PACT Hacklanta Project`. The old `C:\Hackathon\PACT` path remains a compatibility view for existing processes and archived evidence. Repository naming does not change PACT branding, package identities, the Vercel project or public URLs. See [rename details](docs/REPOSITORY_RENAME.md).
 
 ## Developer integration
 
@@ -11,7 +19,7 @@ The root `@pact/sdk` entrypoint remains the compatible read-only TypeScript veri
 The vanilla JavaScript checkout example is independent of the marketplace and requires no React or Next.js. Build the SDK, then run `node examples/pact-checkout-vanilla/server.mjs` from the repository root. It uses port 3006 with available-port fallback, preserving Saturday Lights on 3005. See the [embedded checkout runbook](docs/EMBEDDED_CHECKOUT.md) for configuration, browser bundles, security limits and the separately authorized real-wallet test.
 
 ```powershell
-Set-Location 'C:\Hackathon\PACT'
+Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 npm --prefix packages/pact-sdk ci
 npm --prefix packages/pact-sdk run build
 npm --prefix examples/pact-demo-app ci
@@ -27,7 +35,7 @@ See the [SDK API and React/Next.js/Node examples](packages/pact-sdk/README.md), 
 The native Rust program lives in `solana/`; its versioned manual binary interface is `solana/wire-spec.json`. Build and execute the compiled SBF locally without signing credentials:
 
 ```powershell
-cd C:\Hackathon\PACT\solana
+cd 'C:\Hackathon\PACT Hacklanta Project\solana'
 powershell -ExecutionPolicy Bypass -File scripts/setup.ps1
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1
 powershell -ExecutionPolicy Bypass -File scripts/test.ps1
@@ -38,8 +46,8 @@ The frontend uses Phantom/Solana Wallet Adapter with client-only providers. Conn
 See [independent QA](docs/SOLANA_QA.md), [web setup and manual Chrome checks](web/README.md), and the [operator-only deployment package](docs/SOLANA_DEPLOYMENT_PACKAGE.md). Deployer/program addresses, funding and live wallet evidence remain pending. No agent deploys, accesses credentials, requests wallet approval or broadcasts.
 
 ## Start here (Windows / VS Code)
-1. Extract this ZIP to `C:\Hackathon\PACT` (a **separate project**, not over the existing Hacklanta agent project).
-2. Open the `PACT` folder in VS Code. Your `.github/agents/*.agent.md` profiles are included here; existing Hacklanta agents are not overwritten.
+1. Extract this ZIP to `C:\Hackathon\PACT Hacklanta Project` (a **separate project**, not over the existing Hacklanta agent project).
+2. Open the `PACT Hacklanta Project` folder in VS Code. Your `.github/agents/*.agent.md` profiles are included here; existing Hacklanta agents are not overwritten.
 3. Open Copilot Chat, select **Lead Architect** (if agent profiles are supported), and paste `prompts/START_HERE.md`. Or use Codex and ask it to read `AGENTS.md` plus that prompt.
 4. Let the agent inspect your environment, then scaffold and implement **Phase 1**. This ZIP contains specifications, agent instructions, example data and a minimal runnable contract/test foundation; it is **not a deployed finished app**.
 5. No wallet keys or seed phrases should be shared with an AI agent or committed to Git.
@@ -69,7 +77,7 @@ The last command simulates locally without broadcasting. The local contract gate
 ## Run the web app
 
 ```powershell
-cd C:\Hackathon\PACT\web
+cd 'C:\Hackathon\PACT Hacklanta Project\web'
 npm ci
 npm run dev
 ```

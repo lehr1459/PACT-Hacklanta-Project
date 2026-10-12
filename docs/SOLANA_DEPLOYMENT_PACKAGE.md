@@ -12,7 +12,7 @@ The local migration candidate is frozen under tag `solana-local-ready` after acc
 
 - Native Rust with Pinocchio `0.9.2` and `pinocchio-system 0.3.0`; not an Anchor CLI build. Authoritative native binary interface: `solana/wire-spec.json` (not a generated Anchor IDL).
 - Official Anza platform tools `v1.57`, pinned checksums; direct bundled Cargo build for `sbpf-solana-solana` avoids CLI automatic keypair generation. No WSL, administrator restart, or remote compiler required.
-- Deployable artifact: `C:\Hackathon\PACT\solana\artifacts\pact_licensing.so`, **35784 bytes**.
+- Deployable artifact: `C:\Hackathon\PACT Hacklanta Project\solana\artifacts\pact_licensing.so`, **35784 bytes**.
 - Artifact SHA256: `d13828b060327ef9f702b076b8681e4b9e1e8c04f961191d1df17b2babf52a62`; independently reproduced by QA. Source/lockfile/tool/interface hashes: `solana/artifacts/evidence.json`.
 - Actual local execution: **23 LiteSVM program tests passed** (9 Backend plus 14 independent QA). Loaded the compiled SBF, exercised CPI settlement and account mutation/rollback; signature verification disabled and zero signatures used, never signing keys. This is not mocked program logic, cryptographic signature validation, or live Devnet evidence.
 - Independent Solana Playwright acceptance: **32 passed** (24 browser executions plus 8 helper executions across desktop/mobile). Includes Phantom connection/rejection/disconnection/account changes, missing extension and program setup, Devnet mismatch, fresh/expired/invalid snapshots, bounded metadata and transaction failure/identity handling. Synthetic providers and intercepted RPCs only; see QA for separate setup and Base regression results.
@@ -51,7 +51,7 @@ $pactPayer = '<operator-controlled signer path outside PACT>'
 $pactProgramSigner = '<operator-controlled program-address signer path outside PACT>'
 $pactPublicPayer = 'HXmEkejco1WDhYx3j94388JUSkqL6cCyf3BxxUdQZuz2'
 $pactProgramAddress = '<public program address>'
-$pactSbf = 'C:\Hackathon\PACT\solana\artifacts\pact_licensing.so'
+$pactSbf = 'C:\Hackathon\PACT Hacklanta Project\solana\artifacts\pact_licensing.so'
 $pactExpectedHash = 'd13828b060327ef9f702b076b8681e4b9e1e8c04f961191d1df17b2babf52a62'
 if ((Get-FileHash -LiteralPath $pactSbf -Algorithm SHA256).Hash.ToLower() -ne $pactExpectedHash) {
   throw 'Artifact differs from the reviewed candidate. Stop.'

@@ -1,5 +1,6 @@
 {
   "name": "pact-web",
+  "description": "Next.js frontend for PACT Hacklanta Project.",
   "version": "0.1.0",
   "private": true,
   "scripts": {

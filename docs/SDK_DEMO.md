@@ -54,7 +54,7 @@ Independent read-only `npm audit --omit=dev` found four moderate advisory entrie
 First install/build the SDK and example from the repository root (local development dependencies only):
 
 ```powershell
-Set-Location 'C:\Hackathon\PACT'
+Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 npm --prefix packages/pact-sdk ci
 npm --prefix packages/pact-sdk run build
 npm --prefix examples/pact-demo-app ci
@@ -65,13 +65,13 @@ Use separate terminals for the two applications. Do not start a second listener 
 
 ```powershell
 # PACT marketplace, existing public Devnet configuration
-Set-Location 'C:\Hackathon\PACT'
+Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 npm --prefix web run dev -- --hostname 127.0.0.1 --port 3003
 ```
 
 ```powershell
 # Independent Prism Studio production preview
-Set-Location 'C:\Hackathon\PACT'
+Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 npm --prefix examples/pact-demo-app start
 ```
 

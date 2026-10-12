@@ -61,7 +61,7 @@ Final preview: http://localhost:3007/. Existing demos on ports 3003–3006 retai
 To rebuild/restart the isolated redesign manually, first stop only an existing redesign process on 3007 using its own terminal, then run:
 
 ```powershell
-Set-Location C:\Hackathon\PACT
+Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 node qa\ui-redesign\prepare-preview.mjs
 Set-Location .deployment-candidates\ui-redesign\preview\web
 $env:NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID = 'EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy'

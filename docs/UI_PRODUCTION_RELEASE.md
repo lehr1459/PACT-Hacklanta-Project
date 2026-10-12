@@ -43,7 +43,7 @@ Previous deployment `dpl_7j8igjsYx9SjsrrKZsXBx79FJcQF` remains **READY** at http
 Operator recovery command, only if rollback is required:
 
 ```powershell
-Set-Location 'C:\Hackathon\PACT\.deployment-candidates\ui-production-20261010-232407\pact'
+Set-Location 'C:\Hackathon\PACT Hacklanta Project\.deployment-candidates\ui-production-20261010-232407\pact'
 npx --yes vercel@63.1.2 rollback dpl_7j8igjsYx9SjsrrKZsXBx79FJcQF --scope lehr98-9390 --yes
 ```
 

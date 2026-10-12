@@ -30,7 +30,7 @@ Generated verification uses a persistent SDK client per identity/visibility sess
 The SDK is unpublished. Do not substitute a registry `npm install @pact/sdk` command. Build the existing local package first:
 
 ```powershell
-Set-Location 'C:\Hackathon\PACT'
+Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 npm --prefix packages/pact-sdk ci
 npm --prefix packages/pact-sdk run build
 ```
@@ -38,7 +38,7 @@ npm --prefix packages/pact-sdk run build
 From the target application's directory:
 
 ```powershell
-npm install "C:/Hackathon/PACT/packages/pact-sdk"
+npm install "C:/Hackathon/PACT Hacklanta Project/packages/pact-sdk"
 ```
 
 The target must already be a React/Next.js TypeScript application with its normal React/types/build setup. For another machine, run `npm pack` in the built SDK package, copy the generated `pact-sdk-0.1.0.tgz`, then install that file's actual local path. Nothing is published by these commands.
@@ -87,7 +87,7 @@ The final actual-config production preview is restored on port 3003 (PID `11020`
 Start PACT from a separate terminal only if port 3003 is not already running:
 
 ```powershell
-Set-Location 'C:\Hackathon\PACT'
+Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 npm --prefix web run dev -- --hostname 127.0.0.1 --port 3003
 ```
 

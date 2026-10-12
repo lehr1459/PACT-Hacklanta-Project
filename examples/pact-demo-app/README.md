@@ -4,7 +4,7 @@ A separate, read-only Next.js application that imports the public `@pact/sdk` pa
 
 ## Run locally
 
-From `C:\Hackathon\PACT` in PowerShell:
+From `C:\Hackathon\PACT Hacklanta Project` in PowerShell:
 
 ```powershell
 Push-Location packages/pact-sdk

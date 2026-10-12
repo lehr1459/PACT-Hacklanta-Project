@@ -31,7 +31,7 @@ function CopyBlock({ title, value, filename }: { title: string; value: string; f
   }
   return <section className="integration-code-block">
     <div className="integration-block-heading"><div><h3>{title}</h3>{filename ? <span>{filename}</span> : null}</div><button type="button" className="button subtle" onClick={() => void copy()}>Copy {title.toLowerCase()}</button></div>
-    {title === 'Install command' ? <p className="muted">Prerequisite: from <code>C:/Hackathon/PACT</code>, run <code>npm --prefix packages/pact-sdk ci</code>, then <code>npm --prefix packages/pact-sdk run build</code>. Run the command below from your target app directory, where React and its TypeScript types are already installed. For another machine, build and run <code>npm pack</code> in the SDK folder, copy the resulting tarball, and install its actual local path. The SDK is unpublished.</p> : null}
+    {title === 'Install command' ? <p className="muted">Prerequisite: from <code>C:/Hackathon/PACT Hacklanta Project</code>, run <code>npm --prefix packages/pact-sdk ci</code>, then <code>npm --prefix packages/pact-sdk run build</code>. Run the command below from your target app directory, where React and its TypeScript types are already installed. For another machine, build and run <code>npm pack</code> in the SDK folder, copy the resulting tarball, and install its actual local path. The SDK is unpublished.</p> : null}
     <textarea ref={text} readOnly value={value} aria-label={title} spellCheck={false} rows={Math.min(14, Math.max(3, value.split('\n').length))} />
     <p className="fine integration-copy-feedback" role="status">{message}</p>
   </section>;

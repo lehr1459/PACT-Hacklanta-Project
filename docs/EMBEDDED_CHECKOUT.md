@@ -7,7 +7,7 @@
 From a new terminal:
 
 ```powershell
-Set-Location 'C:\Hackathon\PACT'
+Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 npm --prefix packages/pact-sdk ci
 npm --prefix packages/pact-sdk run build
 npm --prefix packages/pact-sdk run typecheck
@@ -21,7 +21,7 @@ The example uses a static-file allowlist and serves the built SDK browser files;
 For SDK and widget regression checks, use another terminal after stopping any QA server on port 3008. These commands use synthetic providers only; the `live` mode below permits public offer reads and has no wallet provider:
 
 ```powershell
-Set-Location 'C:\Hackathon\PACT'
+Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 npm --prefix packages/pact-sdk test
 node examples/pact-checkout-vanilla/tests/build-saturday-consumer.mjs
 $env:PACT_CHECKOUT_QA_MODE = 'mock'
@@ -38,7 +38,7 @@ Use the existing installed Playwright browser/tooling. Full marketplace/wizard p
 The SDK is not published to npm. Build it as above, then install from the target application's directory:
 
 ```powershell
-npm install 'C:/Hackathon/PACT/packages/pact-sdk'
+npm install 'C:/Hackathon/PACT Hacklanta Project/packages/pact-sdk'
 ```
 
 For another machine, run `npm pack` inside the built SDK package, copy its generated tarball, and install the tarball's actual path. Do not assume a registry package is available. `npm pack` only produces a local artifact; no publication is authorized.

@@ -39,7 +39,7 @@ Baseline source is isolated under `.deployment-candidates/offer-stability/baseli
 Reproduction from the PACT root, with existing dependencies:
 
 ```powershell
-Set-Location C:\Hackathon\PACT
+Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 node qa/offer-stability/prepare.mjs baseline
 node qa/offer-stability/prepare.mjs final
 node qa/offer-stability/run.mjs build
@@ -54,7 +54,7 @@ node qa/offer-stability/preservation.mjs
 Prepare copied test configuration once, serially, before running acceptance groups. Shared web builds remain serialized; SDK build/tests complete before consumer suites. Isolated generated/checkout/Prism ports are 3012/3015/3017, preserving the One-Link preview 3009. Stop only this fix's preview before rebuilding; preserve all earlier demos. Once actual-config output is restored, launch in another terminal:
 
 ```powershell
-Set-Location C:\Hackathon\PACT\.deployment-candidates\offer-stability\final\web
+Set-Location 'C:\Hackathon\PACT Hacklanta Project\.deployment-candidates\offer-stability\final\web'
 node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3016
 ```
 

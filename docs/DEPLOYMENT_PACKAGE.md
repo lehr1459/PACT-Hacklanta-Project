@@ -34,7 +34,7 @@ The default production build was restored after fixture testing: setup pending, 
 Run these in your own private PowerShell terminal. These commands create an encrypted wallet locally; they do not broadcast blockchain transactions. Installed Foundry v1.8.5 help was checked for the explicit directory/account syntax. Do not run bare `cast wallet new`: that form prints a private key.
 
 ```powershell
-$cast = 'C:\Hackathon\PACT\contracts\.tools\foundry-v1.8.5\cast.exe'
+$cast = 'C:\Hackathon\PACT Hacklanta Project\contracts\.tools\foundry-v1.8.5\cast.exe'
 $pactKeystoreDir = Join-Path $env:USERPROFILE '.foundry\keystores'
 New-Item -ItemType Directory -Force -Path $pactKeystoreDir | Out-Null
 $pactKeystoreFile = Join-Path $pactKeystoreDir 'pact-test-deployer'
@@ -48,7 +48,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Encrypted wallet creation failed' }
 & $cast wallet address --account pact-test-deployer
 ```
 
-Choose and retain the password privately; omit password flags/environment variables and do not paste terminal contents containing secrets into chat. Do not open, upload, or commit the encrypted keystore. Keep a private backup outside the PACT repository. Only the public `0x` address is shared for preflight.
+Choose and retain the password privately; omit password flags/environment variables and do not paste terminal contents containing secrets into chat. Do not open, upload, or commit the encrypted keystore. Keep a private backup outside the PACT Hacklanta Project repository. Only the public `0x` address is shared for preflight.
 
 Funding steps (operator only):
 
@@ -66,7 +66,7 @@ The operator also prepares two distinct browser-wallet accounts and obtains Base
 
 ## Proposed commands — not executed
 
-Run from `C:\Hackathon\PACT\contracts` in an operator-controlled PowerShell terminal. Do not run the broadcast command until the operator explicitly approves the final candidate and command.
+Run from `C:\Hackathon\PACT Hacklanta Project\contracts` in an operator-controlled PowerShell terminal. Do not run the broadcast command until the operator explicitly approves the final candidate and command.
 
 ```powershell
 $forge = './.tools/foundry-v1.8.5/forge.exe'

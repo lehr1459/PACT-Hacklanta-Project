@@ -4,7 +4,7 @@ Palette Lab is a static HTML/CSS/JavaScript consumer of PACT's self-contained br
 
 ## Local startup
 
-From `C:\Hackathon\PACT` in PowerShell:
+From `C:\Hackathon\PACT Hacklanta Project` in PowerShell:
 
 ```powershell
 Push-Location packages/pact-sdk

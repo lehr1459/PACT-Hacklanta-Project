@@ -55,7 +55,7 @@ Base Sepolia only (chain ID 84532). This app uses injected browser wallets throu
 ## Run both routes locally
 
 ```powershell
-cd C:\Hackathon\PACT\web
+cd 'C:\Hackathon\PACT Hacklanta Project\web'
 npm ci
 if (!(Test-Path .env.local)) { Copy-Item .env.example .env.local }
 # Primary / route: set NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID after approved Devnet deployment.

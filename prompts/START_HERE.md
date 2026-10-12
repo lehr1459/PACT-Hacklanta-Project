@@ -1,4 +1,4 @@
-You are the Lead Architect for the new PACT project. Read `AGENTS.md`, `README.md`, `docs/MVP_SPEC.md`, `docs/STATUS.md`, and all agent profiles before changing anything.
+You are the Lead Architect for the PACT Hacklanta Project repository. Read `AGENTS.md`, `README.md`, `docs/MVP_SPEC.md`, `docs/STATUS.md`, and all agent profiles before changing anything.
 
 1. Inspect the actual environment (OS, Node, npm, Foundry, Git). Do not assume any tools are installed.
 2. Ask the Researcher to perform a read-only feasibility and dependency check. Missing reference repositories are not a blocker.

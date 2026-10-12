@@ -12,7 +12,7 @@ PASS for the authorized local scope. No unresolved critical local acceptance fai
 
 ## Phase 2 reproduce
 
-From `C:\Hackathon\PACT\web` (dependencies installed, Chromium installed with `npx.cmd playwright install chromium`; Playwright pinned to 1.64.0):
+From `C:\Hackathon\PACT Hacklanta Project\web` (dependencies installed, Chromium installed with `npx.cmd playwright install chromium`; Playwright pinned to 1.64.0):
 
 ```powershell
 npm.cmd run test:browser
@@ -30,7 +30,7 @@ node tests/artifact-check.mjs
 
 The test server helper builds and runs a production server on **127.0.0.1:3001**. Fixture mode compiles a synthetic address and localhost RPC; tests intercept RPC responses and inject a test-only EIP-1193 provider. No private keys or signing implementations exist in these fixtures. Every configured browser test checks that no POST request leaves the localhost fixture destinations, with external POSTs aborted. Restore the normal build after running fixtures; they are not a testnet transaction or deployed-contract substitute.
 
-From `C:\Hackathon\PACT\contracts`, independent commands executed with exit 0:
+From `C:\Hackathon\PACT Hacklanta Project\contracts`, independent commands executed with exit 0:
 
 ```powershell
 .\scripts\setup.ps1
@@ -77,7 +77,7 @@ Reviewed `AGENTS.md`, startup prompt, QA profile, MVP specification, and contrac
 
 ### Phase 1 reproduce
 
-From `C:\Hackathon\PACT\contracts`, PowerShell:
+From `C:\Hackathon\PACT Hacklanta Project\contracts`, PowerShell:
 
 ```powershell
 .\.tools\foundry-v1.8.5\forge.exe test --match-contract PactIndependentQA -vv
@@ -112,7 +112,7 @@ Independent tests verify exact expiry boundary and repurchase accounting; withdr
 Independent checks on the finalized web files:
 
 ```powershell
-cd C:\Hackathon\PACT\web
+cd 'C:\Hackathon\PACT Hacklanta Project\web'
 npm.cmd run typecheck
 npm.cmd run build
 npm.cmd run start -- --hostname 127.0.0.1 --port 3000

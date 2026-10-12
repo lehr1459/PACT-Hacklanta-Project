@@ -10,3 +10,8 @@ coverage/
 *.log
 .DS_Store
 .deployment-candidates/
+.vercel/
+test-results/
+playwright-report/
+*.tsbuildinfo
+packages/pact-sdk/dist/

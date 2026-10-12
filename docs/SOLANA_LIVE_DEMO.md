@@ -25,7 +25,7 @@ NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
 Start the frontend from PowerShell if the PACT preview is not already running:
 
 ```powershell
-Set-Location 'C:\Hackathon\PACT\web'
+Set-Location 'C:\Hackathon\PACT Hacklanta Project\web'
 npm run dev -- --hostname 127.0.0.1 --port 3003
 ```
 

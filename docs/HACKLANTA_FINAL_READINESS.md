@@ -51,7 +51,7 @@ First approve the new Vercel project/scope and new public Sites slug. Approval m
 PACT operator authentication uses the browser login; never paste an account token or wallet key into chat. CLI **63.1.2** was verified with read-only npm metadata, not installed or executed here. These are future operator commands:
 
 ```powershell
-Set-Location 'C:\Hackathon\PACT'
+Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 $approvedPactOrigin = Read-Host 'Approved PACT HTTPS origin, without path or query'
 $bundle = & '.\deployment\prepare-hacklanta.ps1' -PactPublicUrl $approvedPactOrigin | ConvertFrom-Json
 Set-Location $bundle.pactSource
@@ -78,7 +78,7 @@ For Saturday use the existing authenticated Sites account. **After approval only
 3. Prepare a new copy using the actual PACT origin and returned new ID, then source-helper **open** with the returned credential through hidden stdin. Keep its full returned opening object and `checkout_path`. If that supposedly new project's remote already contains source, stop and reopen into an empty separate checkout; reconcile retained source without forcing or overwriting history.
 
 ```powershell
-Set-Location 'C:\Hackathon\PACT'
+Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 # Set these public values from verified platform responses; no original Site ID.
 $bundle = & '.\deployment\prepare-hacklanta.ps1' -PactPublicUrl $verifiedPactOrigin -SaturdayProjectId $newSiteProjectId | ConvertFrom-Json
 Set-Location $bundle.saturdaySource
@@ -110,7 +110,7 @@ The proven marketplace and unchanged Saturday preview remain `http://localhost:3
 
 ```powershell
 # Terminal 1: existing final PACT production build; no rebuild of a serving .next.
-Set-Location 'C:\Hackathon\PACT\web'
+Set-Location 'C:\Hackathon\PACT Hacklanta Project\web'
 npm run start -- --hostname 127.0.0.1 --port 3003
 ```
 
