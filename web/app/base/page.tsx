@@ -1,4 +1,5 @@
 'use client';
+import { PactBrand } from '../../components/pact-brand';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useConnect, useConnection, useDisconnect, useSwitchChain, useWalletClient } from 'wagmi';
@@ -107,7 +108,7 @@ export default function Home() {
   const expiry = personalLicense.snapshot?.expiry;
 
   return <main>
-    <header className="topbar"><a className="brand" href="/" aria-label="PACT home"><span className="brand-mark">P</span>PACT<span className="brand-sub">License protocol</span></a><div className="wallet-tools"><span className="network"><i/>Base Sepolia · 84532</span>{isConnected ? <button className="button subtle" onClick={() => disconnect()}>{shortAddress(address!)} · Disconnect</button> : <button className="button dark" disabled={busy || !connectors.length} onClick={() => {setFailure(''); const connector = connectors[0]; if (connector) void connectAsync({connector}).catch(e => setFailure(errorText(e)));}}>Connect wallet ↗</button>}</div></header>
+    <header className="topbar"><PactBrand /><div className="wallet-tools"><span className="network"><i/>Base Sepolia · 84532</span>{isConnected ? <button className="button subtle" onClick={() => disconnect()}>{shortAddress(address!)} · Disconnect</button> : <button className="button dark" disabled={busy || !connectors.length} onClick={() => {setFailure(''); const connector = connectors[0]; if (connector) void connectAsync({connector}).catch(e => setFailure(errorText(e)));}}>Connect wallet ↗</button>}</div></header>
     <section className="hero"><div><p className="eyebrow">DIGITAL LICENSING / TESTNET DEMO</p><h1>Clear terms.<br/><span>Verifiable access.</span></h1><p className="hero-copy">Create a license offer, purchase a time-limited entitlement, and let your app verify access directly on chain.</p></div><aside className="hero-note"><span className="small-label">THE PACT FLOW</span><div><b>01</b> Define immutable terms</div><div><b>02</b> Purchase with test ETH</div><div><b>03</b> Verify wallet entitlement</div><p>Nontransferable access. No copyright transfer.</p></aside></section>
     {!pactAddress ? <div className="notice setup"><b>Local build ready · contract setup pending</b><p>No Base Sepolia contract address is configured. Add the approved deployment address to <code>NEXT_PUBLIC_PACT_CONTRACT_ADDRESS</code> and restart. Purchases and verification become available after deployment.</p></div> : <div className="contract-line">CONTRACT <a href={`https://sepolia.basescan.org/address/${pactAddress}`} target="_blank" rel="noreferrer">{shortAddress(pactAddress)} ↗</a><span>Base Sepolia test ETH only</span></div>}
     {isConnected && !correctChain ? <div className="notice"><b>Switch networks to continue</b><p>Your wallet is on chain {chainId}. PACT writes require Base Sepolia.</p><button className="button dark" onClick={() => void switchChainAsync({chainId: baseSepolia.id}).catch(e => setFailure(errorText(e)))}>Switch to Base Sepolia</button></div> : null}
@@ -140,7 +141,7 @@ export default function Home() {
         <article className="card compact"><p className="eyebrow">BUILT FOR CLARITY</p><div className="principle"><span>✓</span><div><b>Immutable offer terms</b><p>Fixed price, duration, and agreement hash.</p></div></div><div className="principle"><span>✓</span><div><b>Portable verification</b><p>Read entitlement by offer and wallet.</p></div></div><div className="principle"><span>✓</span><div><b>Time-limited access</b><p>Nontransferable. Valid until expiry.</p></div></div></article>
       </aside>
     </section>
-    <footer><span className="brand">PACT</span><p>Hacklanta MVP · Base Sepolia only · Test ETH has no monetary value.</p><p>Entitlements do not prove ownership, authenticity, or legal enforceability.</p></footer>
+    <footer><PactBrand compact /><p>Hacklanta MVP · Base Sepolia only · Test ETH has no monetary value.</p><p>Entitlements do not prove ownership, authenticity, or legal enforceability.</p></footer>
   </main>;
 }
 function safePrice(value: string) {if (!/^\d+(\.\d{1,18})?$/.test(value)) return undefined; try {const wei = parseEther(value); return wei > 0n && wei < 2n ** 256n ? wei : undefined;} catch {return undefined;}}

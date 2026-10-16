@@ -1,6 +1,7 @@
 import {FRESHNESS_MS, isLicenseStatusFresh, type LicenseStatus} from './index.js';
 import {createCheckoutClient, validateCheckoutMetadata, type CheckoutClient, type CheckoutProgress, type OfferInfo, type PurchaseResult, type WalletAdapter} from './checkout.js';
 
+export type PurchaseAccess = {allowed:boolean;reason?:string};
 export type WidgetState = {
   access:'disconnected'|'checking'|'unlicensed'|'expired'|'active'|'error'|'paused';
   wallet:string|null;
@@ -8,6 +9,7 @@ export type WidgetState = {
   license?:LicenseStatus;
   transaction:CheckoutProgress;
   message:string;
+  purchase?:{enabled:boolean;reason:string|null};
 };
 export type MountCheckoutOptions = {
   element:HTMLElement|string;
@@ -16,6 +18,8 @@ export type MountCheckoutOptions = {
   rpcUrl:string;
   metadataJson?:string;
   walletAdapter?:WalletAdapter;
+  /** Host prerequisites only; never replaces wallet or chain security checks. */
+  purchaseAccess?:PurchaseAccess;
   onState?:(state:Readonly<WidgetState>)=>void;
   onLicenseActive?:(license:Readonly<LicenseStatus>)=>void;
   /** Monotonic milliseconds; use the same clock for SDK reads and freshness. */
@@ -26,6 +30,11 @@ export type CheckoutController = {
   disconnect():Promise<void>;
   refresh():Promise<void>;
   purchase():Promise<PurchaseResult>;
+  setPurchaseAccess(access?:PurchaseAccess):void;
+  /** Clears unsigned diagnostics only. Signed/protected attempts must be recovered. */
+  resetUnsubmittedAttempt():boolean;
+  /** Clears terminal failure diagnostics only after journal protection is released. */
+  resetResolvedFailure():boolean;
   getState():Readonly<WidgetState>;
   destroy():void;
 };
@@ -42,6 +51,7 @@ function freezeState(state:WidgetState):Readonly<WidgetState>{
   const copy:WidgetState={access:state.access,wallet:state.wallet,transaction:Object.freeze({...state.transaction}),message:state.message};
   if(state.offerInfo)copy.offerInfo=Object.freeze({...state.offerInfo});
   if(state.license)copy.license=Object.freeze({...state.license});
+  if(state.purchase)copy.purchase=Object.freeze({...state.purchase});
   return Object.freeze(copy);
 }
 function displaySol(lamports:string){try{const value=BigInt(lamports);return `${value/1000000000n}.${(value%1000000000n).toString().padStart(9,'0').replace(/0+$/,'')||'0'}`;}catch{return'Unavailable';}}
@@ -57,18 +67,20 @@ export function mountCheckout(input:MountCheckoutOptions):CheckoutController {
   const offer=options.offer;
   const now=options.now??(()=>performance.now());
   let disposed=false,closing=false,connecting=false,purchasing=false,reading:Promise<void>|null=null,refreshAgain=false,recovering=false;
-  let epoch=0,readError='',journalBlocked=false,consent=false,metadata=options.metadataJson??'',matched:{title:string;terms:string}|undefined;
+  let epoch=0,readError='',attemptError=false,journalBlocked=false,consent=false,metadata=options.metadataJson??'',matched:{title:string;terms:string}|undefined;
+  let purchaseAccess=normalizePurchaseAccess(options.purchaseAccess);
   let operationWallet:string|null=null,lastActive='',lastPublished='',publishing=false,publishAgain=false;
   const attempts=new Map<string,{progress:CheckoutProgress;protected:boolean}>();
   const state:WidgetState={access:'disconnected',wallet:null,transaction:{stage:'idle'},message:'Connect Phantom to verify access.'};
   let root:ShadowRoot;
   let client:CheckoutClient;
   const foreground=()=>navigator.onLine&&document.visibilityState==='visible';
+  function normalizePurchaseAccess(access?:PurchaseAccess):PurchaseAccess|undefined{return access?{allowed:access.allowed===true,reason:access.reason?publicMessage(access.reason,'Purchase is unavailable.'):undefined}:undefined;}
   const alive=()=>{if(disposed||closing)throw new Error('Checkout was destroyed.');};
   function currentWallet(){try{return client.getWallet();}catch{return null;}}
   function identity(wallet:string|null){
     if(wallet===state.wallet)return;
-    epoch++;state.wallet=wallet;state.license=undefined;consent=false;readError='';
+    epoch++;state.wallet=wallet;state.license=undefined;consent=false;readError='';attemptError=false;
     state.transaction={...(wallet?attempts.get(wallet)?.progress:undefined)??{stage:'idle'}};
     refreshAgain=true;
   }
@@ -124,7 +136,7 @@ export function mountCheckout(input:MountCheckoutOptions):CheckoutController {
   }
   client=createCheckoutClient({programId:options.programId,rpcUrl:options.rpcUrl,walletAdapter:options.walletAdapter,now,onState:progress});
   try{root=ownedRoots.get(element)??element.attachShadow({mode:'open'});ownedRoots.set(element,root);mounted.add(element);}catch(error){client.destroy();throw error;}
-  root.innerHTML=`<style>${style}</style><section part="root" data-pact-widget><header part="header"><div class="brand" part="brand"><span class="mark" aria-hidden="true">P</span>PACT</div><span class="badge">SOLANA DEVNET</span></header><h2 id="title" part="title">Review this license.</h2><p class="fine">Connect your own wallet. Test SOL has no monetary value.</p><div class="wallet" id="wallet" part="wallet"></div><div class="actions"><button id="connect" type="button" part="button connect">Connect Phantom</button><button id="disconnect" type="button" part="button disconnect" hidden>Disconnect</button><button id="refresh" type="button" part="button refresh">Refresh license</button></div><div class="quote" part="quote"><div class="row"><div><div class="fine">LICENSE PRICE</div><div class="price" id="price">Loading offer…</div></div><span class="badge" id="availability">CHECKING</span></div><p class="fine" id="duration"></p><div class="public-label">PROGRAM</div><div id="program" class="public"></div><div class="public-label">OFFER</div><div id="offer" class="public"></div><div class="public-label">SELLER</div><div id="seller" class="public"></div><div class="public-label">TERMS HASH</div><div id="hash" class="public"></div></div><div class="terms" id="terms-panel" part="terms" hidden><h3>Hash-matched license terms</h3><p id="terms"></p></div><details class="metadata" part="metadata" id="metadata-panel"><summary>License metadata (exact JSON)</summary><label class="metadata-label" for="metadata">Paste the seller's exact metadata JSON</label><textarea id="metadata" maxlength="65536" spellcheck="false"></textarea><p class="fine" id="metadata-message" role="status"></p></details><label class="consent" part="consent"><input id="consent" type="checkbox" disabled><span>I reviewed and approve these matching terms, the exact price, and the duration.</span></label><button id="purchase" class="primary" type="button" part="button purchase" disabled>Purchase license</button><p class="fine">Purchase pays the seller directly. Your wallet also pays network fees and entitlement-account rent.</p><div id="status" class="status" part="status" role="status" aria-live="polite"><b id="access"></b><span id="message" part="message"></span></div><div id="transaction" class="transaction" part="transaction" hidden><b>Transaction state</b><p id="transaction-stage"></p><p id="transaction-message"></p><p id="transaction-buyer" class="public"></p><a id="explorer" target="_blank" rel="noreferrer" hidden></a></div><p class="boundary">Client-side gating alone is not production-grade security. Authenticate wallet ownership and authorize protected resources on your server. Entitlements do not prove copyright ownership. Devnet only.</p></section>`;
+  root.innerHTML=`<style>${style}</style><section part="root" data-pact-widget><header part="header"><div class="brand" part="brand"><span class="mark" aria-hidden="true">P</span>PACT</div><span class="badge">SOLANA DEVNET</span></header><h2 id="title" part="title">Review this license.</h2><p class="fine">Connect your own wallet. Test SOL has no monetary value.</p><div class="wallet" id="wallet" part="wallet"></div><div class="actions"><button id="connect" type="button" part="button connect">Connect Phantom</button><button id="disconnect" type="button" part="button disconnect" hidden>Disconnect</button><button id="refresh" type="button" part="button refresh">Refresh license</button></div><div class="quote" part="quote"><div class="row"><div><div class="fine">LICENSE PRICE</div><div class="price" id="price">Loading offer…</div></div><span class="badge" id="availability">CHECKING</span></div><p class="fine" id="duration"></p><div class="public-label">PROGRAM</div><div id="program" class="public"></div><div class="public-label">OFFER</div><div id="offer" class="public"></div><div class="public-label">SELLER</div><div id="seller" class="public"></div><div class="public-label">TERMS HASH</div><div id="hash" class="public"></div></div><div class="terms" id="terms-panel" part="terms" hidden><h3>Hash-matched license terms</h3><p id="terms"></p></div><details class="metadata" part="metadata" id="metadata-panel"><summary>License metadata (exact JSON)</summary><label class="metadata-label" for="metadata">Paste the seller's exact metadata JSON</label><textarea id="metadata" maxlength="65536" spellcheck="false"></textarea><p class="fine" id="metadata-message" role="status"></p></details><label class="consent" part="consent"><input id="consent" type="checkbox" disabled><span>I reviewed and approve these matching terms, the exact price, and the duration.</span></label><button id="purchase" class="primary" type="button" part="button purchase" aria-describedby="purchase-reason" disabled>Purchase license</button><p id="purchase-reason" class="fine" part="purchase-reason" role="status" aria-live="polite"></p><p class="fine">Purchase pays the seller directly. Your wallet also pays network fees and entitlement-account rent.</p><div id="status" class="status" part="status" role="status" aria-live="polite"><b id="access"></b><span id="message" part="message"></span></div><div id="transaction" class="transaction" part="transaction" hidden><b>Transaction state</b><p id="transaction-stage"></p><p id="transaction-message"></p><p id="transaction-buyer" class="public"></p><a id="explorer" target="_blank" rel="noreferrer" hidden></a></div><p class="boundary">Client-side gating alone is not production-grade security. Authenticate wallet ownership and authorize protected resources on your server. Entitlements do not prove copyright ownership. Devnet only.</p></section>`;
   const node=<T extends HTMLElement>(id:string)=>root.getElementById(id) as T;
   const buttons={connect:node<HTMLButtonElement>('connect'),disconnect:node<HTMLButtonElement>('disconnect'),refresh:node<HTMLButtonElement>('refresh'),purchase:node<HTMLButtonElement>('purchase')};
   const editor=node<HTMLTextAreaElement>('metadata'),checkbox=node<HTMLInputElement>('consent');
@@ -132,6 +144,39 @@ export function mountCheckout(input:MountCheckoutOptions):CheckoutController {
   node('offer').textContent=offer;
   node('program').textContent=options.programId;
   function quoteFresh(){const quote=state.offerInfo,t=now();return Boolean(quote&&Number.isFinite(t)&&t>=quote.receivedAtMs&&t-quote.startedAtMs>=0&&t-quote.startedAtMs<FRESHNESS_MS);}
+  function purchaseReadiness():{enabled:boolean;reason:string|null}{
+    let reason:string|null=null;
+    if(disposed||closing)reason='Checkout is closed.';
+    else if(!state.wallet)reason='Connect Phantom before purchasing.';
+    else if(!foreground())reason='Return to this page and go online before purchasing.';
+    else if(journalBlocked)reason='Pending purchase storage is unavailable. Purchases remain disabled.';
+    else if(protectedAttempt())reason='Check the pending transaction before starting another purchase.';
+    else if(connecting||purchasing||recovering)reason='Wait for the current checkout operation to finish.';
+    else if(state.access==='active')reason='This wallet already has an active license.';
+    else if(state.access==='error')reason='Refresh license verification before purchasing.';
+    else if(purchaseAccess?.allowed===false)reason=purchaseAccess.reason||'Purchase is unavailable.';
+    else if(!state.offerInfo?.active)reason='A verified, available offer is required before purchasing.';
+    else if(!quoteFresh())reason='Refresh the offer before purchasing.';
+    else if(!matched)reason='Supply exact matching license metadata before purchasing.';
+    else if(!consent)reason='Accept the matching license terms before purchasing.';
+    return {enabled:reason===null,reason};
+  }
+  function resetUnsubmittedAttempt():boolean{
+    alive();evaluate();
+    if(connecting||purchasing||recovering||journalBlocked||protectedAttempt()||state.transaction.signature||!['idle','preparing','awaiting-signature','rejected','failed','expired'].includes(state.transaction.stage))return false;
+    if(state.wallet)attempts.delete(state.wallet);
+    state.transaction={stage:'idle'};
+    if(attemptError){readError='';attemptError=false;}
+    publish(true);return true;
+  }
+  function resetResolvedFailure():boolean{
+    alive();evaluate();
+    if(connecting||purchasing||recovering||journalBlocked||protectedAttempt()||!['rejected','failed','expired'].includes(state.transaction.stage))return false;
+    if(state.wallet)attempts.delete(state.wallet);
+    state.transaction={stage:'idle'};
+    if(attemptError){readError='';attemptError=false;}
+    publish(true);return true;
+  }
   function matchMetadata(){
     matched=undefined;
     if(!state.offerInfo){node('metadata-message').textContent='A verified offer is required to check metadata.';return;}
@@ -152,7 +197,8 @@ export function mountCheckout(input:MountCheckoutOptions):CheckoutController {
     buttons.connect.hidden=Boolean(state.wallet);buttons.connect.disabled=connecting||purchasing;
     buttons.disconnect.hidden=!state.wallet;buttons.refresh.disabled=Boolean(reading)||purchasing||recovering;
     buttons.refresh.textContent=protectedAttempt()?'Check pending transaction':'Refresh license';
-    buttons.purchase.disabled=!state.wallet||!foreground()||!quote?.active||!quoteFresh()||!matched||!consent||connecting||purchasing||recovering||journalBlocked||protectedAttempt()||state.access==='active'||state.access==='error';
+    state.purchase=purchaseReadiness();buttons.purchase.disabled=!state.purchase.enabled;
+    node('purchase-reason').textContent=state.purchase.reason??'';
     buttons.purchase.textContent=purchasing?'Purchase in progress…':state.access==='active'?'License active':'Purchase license';
     editor.disabled=purchasing;
     const status=node('status');status.dataset.access=state.access;
@@ -193,7 +239,9 @@ export function mountCheckout(input:MountCheckoutOptions):CheckoutController {
     const unresolved=result.outcome==='unknown'||result.outcome==='finalized-unverified';
     const stage:CheckoutProgress['stage']=result.outcome==='finalized-unverified'?'finalized':result.outcome==='unknown'?(previous.stage==='confirmed'?'confirmed':'unknown'):result.outcome==='licensed'&&result.signature?'finalized':result.outcome==='already-licensed'?'idle':result.outcome==='licensed'?'idle':result.outcome;
     const messages={licensed:'Payment finalized. Fresh entitlement verification is required for current access.','already-licensed':'An existing active license was verified. No new purchase was submitted.',rejected:'The purchase was rejected. Access remains closed.',failed:'The transaction failed. Access remains closed.',expired:'The transaction expired without observed confirmation. Access remains closed.',unknown:'Confirmation is unresolved. Check the pending transaction; do not submit another purchase.','finalized-unverified':'Payment finalized, but fresh entitlement access could not be verified. Access remains closed.'};
-    const next:CheckoutProgress={...previous,stage,buyer,offer,signature:result.signature??previous.signature,message:result.error?`${messages[result.outcome]} ${publicMessage(result.error,'')}`:messages[result.outcome]};
+    const authBlocked=result.error?.code.startsWith('AUTH_')&&!result.signature;
+    const resultMessage=authBlocked?'Wallet authentication blocked checkout. No transaction was submitted.':result.outcome==='rejected'&&!result.signature?'The wallet signature was rejected. No transaction was submitted.':result.outcome==='failed'&&!result.signature?'Purchase preparation or wallet signing failed. No transaction was submitted.':messages[result.outcome];
+    const next:CheckoutProgress={...previous,stage,buyer,offer,code:result.error?.code,signature:result.signature??previous.signature,message:result.error?`${resultMessage} ${publicMessage(result.error,'')}`:resultMessage};
     attempts.set(buyer,{progress:next,protected:unresolved});
     if(state.wallet===buyer){state.transaction=next;state.license=undefined;
       if(result.license&&foreground()&&currentWallet()===buyer&&result.license.wallet===buyer&&result.license.offer===offer&&result.license.program===options.programId&&isLicenseStatusFresh(result.license,now())){state.license=result.license;readError='';}
@@ -217,13 +265,20 @@ export function mountCheckout(input:MountCheckoutOptions):CheckoutController {
     refresh,
     async purchase(){
       alive();evaluate();
-      if(connecting||purchasing||recovering)throw new Error('Checkout operation is already in progress.');
-      if(!state.wallet||!foreground()||!state.offerInfo?.active||!quoteFresh()||!matched||!consent||journalBlocked||protectedAttempt()||state.access==='active'||state.access==='error')throw new Error('Connect a wallet and approve matching available license terms before purchase.');
-      const buyer=state.wallet,json=metadata;purchasing=true;operationWallet=buyer;epoch++;state.license=undefined;readError='';publish(true);
+      const readiness=purchaseReadiness();if(!readiness.enabled)throw new Error(readiness.reason??'Purchase is unavailable.');
+      resetUnsubmittedAttempt();
+      resetResolvedFailure();
+      const currentReadiness=purchaseReadiness();if(!currentReadiness.enabled)throw new Error(currentReadiness.reason??'Purchase is unavailable.');
+      const buyer=state.wallet!,json=metadata;purchasing=true;operationWallet=buyer;epoch++;state.license=undefined;readError='';publish(true);
       try{if(reading)await reading;alive();if(currentWallet()!==buyer||!foreground())throw new Error('Wallet or page state changed before purchase.');const result=await client.purchaseLicense({offer,metadataJson:json,termsAccepted:true});if(!disposed&&!closing)acceptResult(result,buyer);return result;}
-      catch(error){if(!disposed&&!closing){state.license=undefined;readError=publicMessage(error,'Purchase could not complete. Check transaction state before continuing.');publish(true);}throw error;}
+      catch(error){if(!disposed&&!closing){state.license=undefined;readError=publicMessage(error,'Purchase could not complete. Check transaction state before continuing.');attemptError=true;
+        if(!state.transaction.signature&&!protectedAttempt()&&!journalBlocked){const unsigned=['idle','preparing'].includes(state.transaction.stage)||state.transaction.message?.includes('Nothing was signed');state.transaction={...state.transaction,stage:'failed',message:`Purchase could not complete. ${unsigned?'Nothing was signed or submitted.':'No submission was recorded. Review your wallet before continuing.'} ${readError}`};if(state.wallet)attempts.set(state.wallet,{progress:{...state.transaction},protected:false});}
+        publish(true);}throw error;}
       finally{purchasing=false;operationWallet=null;if(!disposed&&!closing){consent=false;publish();void verify().catch(()=>{});}}
     },
+    setPurchaseAccess(access){alive();purchaseAccess=normalizePurchaseAccess(access);publish(true);},
+    resetUnsubmittedAttempt,
+    resetResolvedFailure,
     getState(){if(!disposed)publish();return freezeState(state);},
     destroy(){if(disposed||closing)return;closing=true;epoch++;state.license=undefined;state.access='paused';state.message='Checkout removed. Access closed.';lastActive='';render();const closed=freezeState(state);lastPublished=JSON.stringify(closed);try{options.onState?.(closed);}catch{}disposed=true;clearInterval(poll);clearInterval(tick);unsubscribe();window.removeEventListener('online',environment);window.removeEventListener('offline',environment);document.removeEventListener('visibilitychange',environment);client.destroy();root.replaceChildren();mounted.delete(element);},
   };

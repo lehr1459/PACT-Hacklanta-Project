@@ -175,6 +175,15 @@ function signature(bytes: Uint8Array) { if (bytes.length !== 64 || bytes.every(b
 } return out; }
 function equal(a: Uint8Array, b: Uint8Array) { return a.length === b.length && a.every((v, i) => v === b[i]); }
 function diagnostic(e: unknown) { let m = e instanceof SendTransactionError ? e.transactionError.message : e instanceof Error ? e.message : 'Checkout request failed.'; return m.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/https?:\/\/\S+/gi, '[RPC endpoint]').replace(/\b(?:private key|seed phrase|recovery phrase|mnemonic|api[_ -]?key|authorization|bearer)\b[^.;]*/gi, '[redacted]').replace(/[A-Za-z0-9+/=_-]{100,}/g, '[encoded data omitted]').slice(0, 420); }
+function diagnosticCode(e:unknown):string{
+    const code=(e as {code?:unknown}|null)?.code;
+    return typeof code==='string'&&/^[A-Z][A-Z0-9_]{0,63}$/.test(code)?code:code===4001?'USER_REJECTED':'CHECKOUT_ERROR';
+}
+function walletRejected(e:unknown):boolean{
+    const code=diagnosticCode(e);
+    if(code.startsWith('AUTH_'))return false;
+    return (e as {code?:unknown}|null)?.code===4001||code==='USER_REJECTED'||/\b(?:user rejected|user denied|user declined|rejected by (?:the )?user)\b/i.test(diagnostic(e));
+}
 export function createCheckoutClient(options: CheckoutOptions): CheckoutClient {
     const settings = { ...options };
     if (settings.programId !== PACT_PROGRAM_ID)
@@ -296,7 +305,7 @@ export function createCheckoutClient(options: CheckoutOptions): CheckoutClient {
     async function prepare(offer: string, json: string, b: string, s: number) { emit('preparing', { buyer: b, offer }); const snap = await snapshot(offer, b); check(b, s); if (!snap.quote.active)
         error('Offer is deactivated.'); validateCheckoutMetadata(json, snap.quote); const r = await rpc('getLatestBlockhash', [{ commitment: 'confirmed' }]); check(b, s); if (!r?.value || !integer(r.value.lastValidBlockHeight))
         error('Invalid blockhash lifetime.'); const blockhash = key(r.value.blockhash).toBase58(); const ix = new TransactionInstruction({ programId: program, keys: [{ pubkey: key(b), isSigner: true, isWritable: true }, { pubkey: key(offer), isSigner: false, isWritable: false }, { pubkey: key(snap.quote.seller), isSigner: false, isWritable: true }, { pubkey: key(snap.license), isSigner: false, isWritable: true }, { pubkey: key(system), isSigner: false, isWritable: false }], data: Buffer.from('ff518198a9c9e869', 'hex') }); const transaction = new VersionedTransaction(new TransactionMessage({ payerKey: key(b), recentBlockhash: blockhash, instructions: [ComputeBudgetProgram.setComputeUnitLimit({ units: 200000 }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 0 }), ix] }).compileToV0Message()); return { quote: snap.quote, buyer: b, blockhash, lastValidBlockHeight: r.value.lastValidBlockHeight, transaction, baseline: snap.baseline }; }
-    function result(outcome: PurchaseResult['outcome'], record?: Journal, e?: unknown): PurchaseResult { return { outcome, ...(record ? { signature: record.signature } : {}), ...(e ? { error: { code: e instanceof PactError ? e.code : 'CHECKOUT_ERROR', message: diagnostic(e) } } : {}) }; }
+    function result(outcome: PurchaseResult['outcome'], record?: Journal, e?: unknown): PurchaseResult { return { outcome, ...(record ? { signature: record.signature } : {}), ...(e ? { error: { code: diagnosticCode(e), message: diagnostic(e) } } : {}) }; }
     async function recover(record: Journal, id: string): Promise<PurchaseResult> {
         const recoverySession = session;
         check(record.buyer, recoverySession);
@@ -420,15 +429,16 @@ export function createCheckoutClient(options: CheckoutOptions): CheckoutClient {
             error('Wallet session changed.'); return snap.quote; }), getLicenseStatus: ({ offer }) => operation(() => { const b = buyer(), s = session; return status(key(offer).toBase58(), b, s); }), preparePurchase: ({ offer, metadataJson }) => operation(async () => { const b = buyer(), s = session; const p = await prepare(offer, metadataJson, b, s); return { quote: { ...p.quote }, buyer: b, blockhash: p.blockhash, lastValidBlockHeight: p.lastValidBlockHeight, transaction: VersionedTransaction.deserialize(p.transaction.serialize()) }; }),
         purchaseLicense: input => { const captured = { ...input }; return operation(() => locked(captured.offer, async (b, s, id) => { if (captured.termsAccepted !== true)
             error('Explicit approval of matching terms is required.'); const old = pending(id); if (old)
-            return recover(old, id); const existing = await status(captured.offer, b, s); if (isLicenseStatusFresh(existing, time()))
-            return { outcome: 'already-licensed', license: existing }; const p = await prepare(captured.offer, captured.metadataJson, b, s); const original = Uint8Array.from(p.transaction.message.serialize()); await genesis(); check(b, s); const simulation = await rpc('simulateTransaction', [Buffer.from(p.transaction.serialize()).toString('base64'), { encoding: 'base64', sigVerify: false, commitment: 'confirmed' }]); check(b, s); if (!simulation?.value || !Object.hasOwn(simulation.value, 'err') || simulation.value.err)
-            error('Purchase simulation failed. Nothing was signed.'); await genesis(); check(b, s); emit('awaiting-signature', { buyer: b, offer: captured.offer }); let signed: VersionedTransaction; try {
+            return recover(old, id); let p:Awaited<ReturnType<typeof prepare>>,original:Uint8Array; try { const existing = await status(captured.offer, b, s); if (isLicenseStatusFresh(existing, time()))
+            return { outcome: 'already-licensed', license: existing }; p = await prepare(captured.offer, captured.metadataJson, b, s); original = Uint8Array.from(p.transaction.message.serialize()); await genesis(); check(b, s); const simulation = await rpc('simulateTransaction', [Buffer.from(p.transaction.serialize()).toString('base64'), { encoding: 'base64', sigVerify: false, commitment: 'confirmed' }]); check(b, s); if (!simulation?.value || !Object.hasOwn(simulation.value, 'err') || simulation.value.err)
+            error('Purchase simulation failed. Nothing was signed.'); await genesis(); check(b, s); } catch(e) { emit('failed',{buyer:b,offer:captured.offer,code:diagnosticCode(e),message:`Purchase preparation failed. Nothing was signed or submitted. ${diagnostic(e)}`});throw e; } emit('awaiting-signature', { buyer: b, offer: captured.offer }); let signed: VersionedTransaction; try {
             signed = await adapter.signTransaction(VersionedTransaction.deserialize(p.transaction.serialize()));
         }
         catch (e) {
             check(b, s);
-            emit('rejected', { buyer: b, offer: captured.offer });
-            return result('rejected', undefined, e);
+            const outcome=walletRejected(e)?'rejected':'failed';
+            emit(outcome, { buyer: b, offer: captured.offer,code:diagnosticCode(e),message:`${diagnostic(e)} No transaction was submitted.` });
+            return result(outcome, undefined, e);
         } check(b, s); const wire = Uint8Array.from(signed.serialize()), canonical = VersionedTransaction.deserialize(wire); if (!equal(wire, canonical.serialize()) || !equal(original, canonical.message.serialize()))
             error('Wallet changed the reviewed transaction. Nothing was submitted.'); const hash = signature(canonical.signatures[0]); let record: Journal = { version: 1, network: 'devnet', program: settings.programId, buyer: b, offer: captured.offer, action: 'Purchase license', signature: hash, blockhash: p.blockhash, lastValidBlockHeight: p.lastValidBlockHeight, state: 'wallet-signed', baseline: p.baseline }; save(id, record); emit('wallet-signed', { signature: hash, buyer: b, offer: captured.offer }); await genesis(); check(b, s); const height = await rpc('getBlockHeight', [{ commitment: 'confirmed' }]), valid = await rpc('isBlockhashValid', [p.blockhash, { commitment: 'confirmed' }]); check(b, s); if (!integer(height) || height > p.lastValidBlockHeight || valid?.value !== true)
             error('Signed transaction is expired or blockhash could not be verified; it was not submitted.'); let accepted = false; try {

@@ -16,6 +16,7 @@ export type PactCheckoutProps = Omit<MountCheckoutOptions,'element'|'walletAdapt
 export function PactCheckout(props:PactCheckoutProps) {
   const host=useRef<HTMLDivElement>(null);
   const callbacks=useRef(props);
+  const checkout=useRef<CheckoutController|undefined>(undefined);
   callbacks.current=props;
   const [failure,setFailure]=useState('');
   const {offer,programId,rpcUrl,metadataJson,walletAdapterFactory,now}=props;
@@ -26,18 +27,21 @@ export function PactCheckout(props:PactCheckoutProps) {
     setFailure('');
     try {
       adapter=walletAdapterFactory?.();
-      controller=mountCheckout({element:host.current,offer,programId,rpcUrl,metadataJson,now,
+      controller=mountCheckout({element:host.current,offer,programId,rpcUrl,metadataJson,now,purchaseAccess:callbacks.current.purchaseAccess,
         walletAdapter:adapter,
         onState:(state:Readonly<WidgetState>)=>callbacks.current.onState?.(state),
         onLicenseActive:license=>callbacks.current.onLicenseActive?.(license),
       });
+      checkout.current=controller;
       callbacks.current.onReady?.(controller);
     } catch {
+      if(checkout.current===controller)checkout.current=undefined;
       if(controller)controller.destroy();else adapter?.destroy();
       setFailure('Checkout could not initialize. Check the public offer, Devnet program and RPC configuration.');
     }
-    return ()=>controller?.destroy();
+    return ()=>{if(checkout.current===controller)checkout.current=undefined;controller?.destroy();};
   },[offer,programId,rpcUrl,metadataJson,walletAdapterFactory,now]);
+  useEffect(()=>{checkout.current?.setPurchaseAccess(props.purchaseAccess);},[props.purchaseAccess?.allowed,props.purchaseAccess?.reason]);
   return createElement('div',{className:props.className,style:props.style},
     createElement('div',{ref:host,'aria-label':'PACT embedded checkout'}),
     failure?createElement('p',{role:'alert'},failure):null,
