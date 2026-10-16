@@ -1,5 +1,9 @@
 # Status
 
+## Post-MVP cleanup — 2026-10-16
+
+Current repository map, baseline, preservation decisions and validation are in [POST_MVP_CLEANUP.md](POST_MVP_CLEANUP.md); follow-up work is in [TECHNICAL_DEBT.md](TECHNICAL_DEBT.md). Existing user work is preserved at `b05f89b`. Solana Devnet remains primary and Base Sepolia remains isolated. No deployment or push is part of this cleanup. Entries below are historical milestone records, not live preview/process state.
+
 ## Critical buyer offer flicker - local READY
 
 - Root cause reproduced before edits on One-Link production build 117b793: each successful poll publishes new data before effect-based progress/clock synchronization; the temporary absent snapshot removes the offer subtree. Three 60-second cases each recorded 15 removals/reinsertions, without recurring document navigation or page errors.

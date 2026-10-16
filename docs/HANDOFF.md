@@ -1,5 +1,9 @@
 # Agent handoff
 
+## Post-MVP cleanup — 2026-10-16
+
+Use [the cleanup audit](POST_MVP_CLEANUP.md), [documentation index](README.md) and [debt register](TECHNICAL_DEBT.md) before following older instructions below. Cleanup baseline `b05f89b` preserves the user's SDK/branding changes. Build the SDK before consumers, and serialize web browser builds. The local Windows checkout uses a junction for `contracts/`; conditional Next additional-root configuration supports it without changing chain code. Old preview PIDs, candidate paths and deployment permissions below are historical and must be re-established independently.
+
 ## Critical offer refresh stability
 
 - Lead owns rollback branch, isolated packaging/builds, release safety and final reconciliation. Frontend owns only `use-snapshot.ts` and initial-only loading presentation in `solana-app.tsx`; Backend reviews security/integration read-only; QA owns MutationObserver regression and 60/30-second observations; Reviewer gates final local readiness. No agent may deploy, push, modify Saturday or initiate wallet/chain actions.

@@ -15,3 +15,6 @@ test-results/
 playwright-report/
 *.tsbuildinfo
 packages/pact-sdk/dist/
+# Reproducible Playwright merge output and local SDK package archives.
+blob-report/
+packages/pact-sdk/*.tgz

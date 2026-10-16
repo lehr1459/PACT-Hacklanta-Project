@@ -1,5 +1,7 @@
 # PACT web
 
+For current repository startup and validation order, see the [root README](../README.md) and [post-MVP audit](../docs/POST_MVP_CLEANUP.md). Run from your actual checkout; historical absolute Windows paths in older evidence are not prerequisites.
+
 ## Low-code developer integration
 
 Open `/integrate` from **Integrate your app** in the marketplace. Next.js App Router and React TSX developers can name their app, validate an existing Devnet offer, and copy a local SDK install command, configuration, wallet-connected gate and self-contained AI coding prompt. Creating an offer uses the existing Seller studio and requires separate operator transaction authorization.
@@ -55,7 +57,7 @@ Base Sepolia only (chain ID 84532). This app uses injected browser wallets throu
 ## Run both routes locally
 
 ```powershell
-cd 'C:\Hackathon\PACT Hacklanta Project\web'
+cd web # from the repository root
 npm ci
 if (!(Test-Path .env.local)) { Copy-Item .env.example .env.local }
 # Primary / route: set NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID after approved Devnet deployment.

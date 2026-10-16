@@ -5,7 +5,7 @@
 Open PowerShell in the repository and build the SDK first:
 
 ```powershell
-Set-Location 'C:\Hackathon\PACT Hacklanta Project'
+# Run from your actual PACT checkout root.
 npm --prefix packages/pact-sdk ci
 npm --prefix packages/pact-sdk run build
 npm --prefix web ci

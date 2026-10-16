@@ -1,5 +1,7 @@
 # Changed-file inventory
 
+Historical implementation inventory. The five applied `after-fetch-fix` / `fix-*` repair helpers listed below were removed in the [post-MVP cleanup](../POST_MVP_CLEANUP.md); corrected fixtures and tests remain. These paths are not current executable instructions.
+
 Changes relative to rollback checkpoint `7f217d506245b02ae4818d3e0bf6d3ff9941edda`. Pre-existing agent/profile edits and the short Explorer link were captured in that checkpoint, not changed as platform functionality. Ignored build/dependency/QA artifacts and unrelated Saturday release document are excluded.
 
 ## Public project documentation
