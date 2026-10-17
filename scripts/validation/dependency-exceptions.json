@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "reviewedAt": "2026-10-16",
   "graphs": {
-    "sdk": "cb4b2bfb244a9e0744cbb53f4b68c0fc8ed2a14fd2a3f6e1fdca5c9083a59223",
-    "web": "a543d6766257ff70064f65cd20f55f365d158366498c7abb60349c1aa55bccc6",
-    "platform": "484400b5b230c0bb07d5d56081f2344786b24725ad7e579c3e2238af13962935",
+    "sdk": "e253fba5cd90782fe8fab5e3a99e7a4ed43576c15d8eeefb5f2161382b7efb60",
+    "web": "eeb2ed8ba8dc3dddb6d7d2c2674890b04fad5bc53a18682aa0a43f8d485d1fa5",
+    "platform": "0df5ca882311e0dc0723b1ce691b74884fc7c78ec0ee1f9b7c945689f4a3384e",
     "prism": "11d9c524a877b49bf701c14b204eb5ccb1d8e0f4fef41a599941bc2175d35508"
   },
   "exceptions": [

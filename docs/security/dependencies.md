@@ -12,6 +12,8 @@ An announced [HIGH-severity October21 Node security release](https://nodejs.org/
 
 Phase4 SDK version/engine metadata changes rebind the four lockfile graph fingerprints. Independent comparison verified every third-party dependency node unchanged; no exception scope or November15 expiry was extended.
 
+The first clean npm11.19.1 replay subsequently exposed omitted optional ws peers. The narrow corrective lock change adds [bufferutil4.1.0](https://registry.npmjs.org/bufferutil/4.1.0) in SDK/web/platform and [utf-8-validate6.0.6](https://registry.npmjs.org/utf-8-validate/6.0.6) under rpc-websockets in SDK/platform. Published integrity metadata was independently verified. Existing dependency nodes remain unchanged; only these graph additions are rebound, without extending exceptions. Both declare node-gyp-build install hooks; the helper was already locked. Bufferutil's optional native module can initialize through Node web3/ws imports, although first-party SDK sources do not construct WebSocket clients. Ws8 uses Node24's built-in UTF-8 validation before its optional-addon fallback. The corrected installed SDK audit still reports only the existing four moderate exceptions, no high/critical finding and no policy failure. Release preparation suppresses dependency install hooks; the regular clean lane separately verifies normal installation. No native-code memory-safety audit or immunity claim follows from registry results.
+
 ## Reproduce the npm gate
 
 ```text
