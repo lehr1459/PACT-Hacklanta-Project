@@ -129,6 +129,11 @@ test('Solana setup extracts a verified archive with native Windows tar despite a
   pins.platformTools.sha256=createHash('sha256').update(fs.readFileSync(archive)).digest('hex');
   fs.writeFileSync(path.join(workspace,'toolchain.json'),JSON.stringify(pins));
   run(`
+[Console]::WriteLine('Native extraction fixture: loading setup cmdlets')
+Import-Module Microsoft.PowerShell.Management
+Import-Module Microsoft.PowerShell.Utility
+$PSModuleAutoLoadingPreference='None'
+[Console]::WriteLine('Native extraction fixture: invoking setup')
 function global:tar.exe {throw 'Unqualified PATH tar must never run'}
 $message=$null
 try {& ${quote(path.join(workspace,'scripts/setup.ps1'))}}catch{$message=$_.Exception.Message}
