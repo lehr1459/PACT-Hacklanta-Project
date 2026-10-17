@@ -12,7 +12,7 @@ Windows PowerShell; Node 24.11.1; npm 11.6.2; Git 2.52.0.windows.1; pinned Solan
 | Phase | Acceptance | State |
 | --- | --- | --- |
 | 0 | Supported product matrix and precise licensing contract independently reviewed | PASS |
-| 1 | Clean-checkout CI, isolated packaged consumers, dependency triage and independent protocol/recovery fixtures | In progress; reviewed candidate awaiting committed-checkout replay |
+| 1 | Clean-checkout CI, isolated packaged consumers, dependency triage and independent protocol/recovery fixtures | PASS; committed clean Windows replay; hosted Linux execution remains external |
 | 2 | Bounded concurrent reads, enforced supported auth topology, real resource authorization, independent abuse budgets and correct recovery | Pending |
 | 3 | Reproducible program provenance, deployment verification tooling/governance and adversarial signed runtime tests | Pending |
 | 4 | Runtime-validated compatible API, versioned package artifact, portable docs and executable integration examples | Pending |
@@ -66,3 +66,9 @@ Fresh replay exposed and corrected the Python PATH assumption: exact Python 3.13
 Fresh chain setup downloaded and verified tools normally, passed 23 Solana and 23 Base tests and exact Base artifact checks, but correctly failed the approved Solana binary comparison. Three embedded absolute Cargo source paths made binary bytes depend on checkout location. An isolated historical-prefix remap reproduced the entire previous `d13828…` binary exactly; no arbitrary instruction differences were ignored. The stable virtual-prefix build (`670859b`) then produced byte-identical 35,704-byte ELF in short and long checkout locations, including a third build with exact committed LF manifest bytes: SHA-256 `408580c1ffd3068da9d66c2f7c3e1db5814ea15e4146c6f864eb4c271842c5c5`.
 
 Independent QA verified all candidate bytes, unchanged instruction/control-flow/arithmetic semantics and diagnostic/relocation equivalence, absence of host paths, exact source/manifest/lock/wire inputs, and independently passed all 23 compiled runtime tests. QA explicitly approved the local artifact replacement. `solana/artifacts/reproducibility.json` records six exact build-input hashes, source revision, matching output records, historical cause and local-only scope. The artifact gate now rejects build-input drift and invented Solana deployment fields; mutation tests pass. The newly reproducible local binary has not been deployed. Final committed clean-chain replay is still required.
+
+## Phase 1 final gate
+
+Clean committed `ff7ace7` checkout passed the complete `all-node --clean` lane: isolated installs, SDK/API tests, types, three production builds and route checks, marketplace mock/setup browser suites, generated consumers, checkout, Prism, platform and ten packed-consumer checks. App/SDK/example sources did not change between that revision and `bea32f3`; a fast-forward clean checkout separately passed the latest `node --clean` and `artifacts --clean` lanes at `bea32f3`. The fresh chain checkout at `bea32f3` passed `all-chain --clean`: 23 compiled Solana tests, 23 Base tests, and all exact artifact checks. Independent reviews approved protocol, dependency, CI and reproducible artifact changes. No deployment was performed.
+
+Phase 1 engineering gate: **PASS**. Prepared GitHub/Linux lanes require an authorized push/run before claiming hosted CI success; local Windows execution does not establish that result. Optional external Saturday checkout and live RPC modes were intentionally excluded from the deterministic gate. Receipt logs are retained under ignored `web/test-results/full-development/phase1-clean/`. Phase commits: `6e3ed1d`, `ff7ace7`, `20afb23`, `670859b`, `bea32f3`.
