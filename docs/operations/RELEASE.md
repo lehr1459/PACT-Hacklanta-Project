@@ -14,7 +14,7 @@ Create an ignored input index. Replace the example paths with actual retained re
 {
   "schemaVersion": 1,
   "sdkRelease": "web/test-results/sdk-release/candidate-REPLACE/sdk-release.json",
-  "consumerReport": "web/test-results/validation/packed/packed-consumer/report.json",
+  "consumerReport": "web/test-results/validation/all-node/packed-consumer/report.json",
   "solanaProvenance": "web/test-results/REPLACE/provenance.json",
   "historicalDeployment": "docs/development/evidence/devnet-historical-2026-10-17.json",
   "validation": [

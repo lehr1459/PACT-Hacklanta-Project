@@ -12,8 +12,8 @@ const child=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-
 let stderr='',output='';
 const closed=new Promise(resolve=>child.once('close',(code,signal)=>resolve({code,signal})));
 const errored=new Promise((_,reject)=>child.once('error',reject));
-const ready=new Promise(resolve=>child.stdout.on('data',chunk=>{output+=chunk;if(output.includes('Ready'))resolve();}));
-child.stderr.on('data',chunk=>{stderr+=chunk;});
+const ready=new Promise(resolve=>child.stdout.on('data',chunk=>{output=(output+chunk.toString()).slice(-16000);if(output.includes('Ready'))resolve();}));
+child.stderr.on('data',chunk=>{stderr=(stderr+chunk.toString()).slice(-16000);});
 let timer;
 try {
   await Promise.race([
@@ -34,6 +34,9 @@ try {
   }
   assert.equal(stderr,'');
   console.log('Production actual-config HTTP smoke PASS; stderr empty.');
+} catch(error) {
+  const diagnostics=(output+'\n'+stderr).replace(/https?:\/\/[^\s"'<>]+/g,'[redacted URL]');
+  throw new Error('Production route smoke failed; bounded server diagnostics:\n'+diagnostics,{cause:error});
 } finally {
   clearTimeout(timer);
   if(child.exitCode===null&&child.signalCode===null)child.kill();

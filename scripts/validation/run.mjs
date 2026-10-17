@@ -62,12 +62,13 @@ async function lane(name) {
     await command('next-environment-tests',['--test','scripts/validation/next-environment.test.mjs']);
     await command('archive-policy-tests',['--test','scripts/release/archive.test.mjs']);
   } else if(name==='build') {
+    const productionEnvironment={NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID:'EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy',NEXT_PUBLIC_SOLANA_RPC_URL:'https://api.devnet.solana.com',NEXT_PUBLIC_PACT_CONTRACT_ADDRESS:'',PACT_AUTH_MODE:'disabled'};
     for(const project of ['web','examples/pact-demo-app','examples/pact-platform-app']) {
       const cwd=path.join(root,project),id=project.replaceAll('/','-');
       await command(id+'-route-types',[path.join(cwd,'node_modules/next/dist/bin/next'),'typegen'],{cwd});
       await npm(id+'-typecheck',['run','typecheck'],cwd);
-      await command(id+'-production-build',[path.join(cwd,'node_modules/next/dist/bin/next'),'build'],{cwd,env:{NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID:'EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy',NEXT_PUBLIC_SOLANA_RPC_URL:'https://api.devnet.solana.com',NEXT_PUBLIC_PACT_CONTRACT_ADDRESS:'',PACT_AUTH_MODE:'disabled'}});
-      if(project==='web')await command('production-route-smoke',['examples/pact-checkout-vanilla/tests/web-production-smoke.mjs']);
+      await command(id+'-production-build',[path.join(cwd,'node_modules/next/dist/bin/next'),'build'],{cwd,env:productionEnvironment});
+      if(project==='web')await command('production-route-smoke',['examples/pact-checkout-vanilla/tests/web-production-smoke.mjs'],{env:productionEnvironment});
     }
   } else if(name==='browser-solana') {
     for(const mode of ['mock','setup'])await playwright('solana-'+mode,'tests/solana/playwright.config.ts',web,{PACT_SOLANA_QA_MODE:mode});
