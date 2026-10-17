@@ -1,24 +1,25 @@
 # Wallet authentication
 
-Connecting Phantom reveals an address; a public license lookup only reports entitlement state. Neither authenticates the user. PACT separately verifies an exact-message Ed25519 proof, then authorizes protected operations using fresh chain state.
+Connecting a wallet reveals an address. Looking up that address reports public entitlement. Neither proves control to your server. Authentication separately verifies an exact-message Ed25519 proof and creates a short-lived opaque session.
 
-```ts
+Run this only from a deliberate Authenticate control in a browser:
+
+```js
 import {PactClient} from '@pact/sdk/v1';
-const pact = new PactClient({network:'devnet',apiUrl:'/api/pact'});
-// Run only from a deliberate Authenticate button. Never on page load.
+const pact = new PactClient({network: 'devnet', apiUrl: '/api/pact'});
 await pact.auth.authenticate({
   getPublicKey: () => provider.publicKey?.toBase58() ?? null,
-  signMessage: async bytes => (await provider.signMessage(bytes,'utf8')).signature,
+  signMessage: async bytes => (await provider.signMessage(bytes, 'utf8')).signature,
 });
 const session = await pact.auth.session();
 ```
 
-The SDK checks challenge format, domain, Devnet genesis, program, current wallet, challenge ID, times and fixed purpose before requesting a message signature. It compares wallet identity before and after asynchronous steps. Application-level account-change, disconnect, hidden/offline and cancellation handlers must also clear UI state and log out; see the independent example. Signatures are public proof bytes, not wallet secrets. Do not log challenge/session cookies or persist a private key.
+`provider` is the intended connected wallet's message-signing provider. Wallet owners approve their own prompts. This message is not a purchase and sends no chain transaction. The SDK checks exact challenge origin, Devnet genesis, program, wallet, random IDs, purpose and times; it checks identity again across asynchronous steps.
 
-The server message is exactly eleven UTF-8 lines: protocol version, origin, network, genesis, program, wallet, random challenge ID, random browser-session binding, issued time, expiration and purpose. Challenge TTL defaults to two minutes; session TTL defaults to fifteen minutes. Verification uses Node native Ed25519 with the supplied wallet's public key and the exact stored message. The challenge is consumed synchronously before verification; replay and failed-proof reuse are rejected.
+The server's eleven-line UTF-8 challenge has a two-minute default TTL. It is bound to a random browser cookie and consumed synchronously before proof verification, including failed proofs. Successful verification rotates the opaque session, invalidating its predecessor; default session TTL is fifteen minutes. Cookies are HttpOnly, SameSite Strict and Secure on HTTPS. Do not expose internal session/binding IDs or log cookies.
 
-The browser-binding cookie must accompany proof. Successful verification rotates to a new opaque server session and invalidates the previous session. Cookies are HttpOnly, SameSite=Strict, origin checked and Secure on HTTPS. A caller cannot choose the authenticated wallet by submitting an address or signed message of its own.
+On account change, disconnect, hidden/offline state or cancellation, clear pending UI results, abort client work and log out. The server cannot observe extension account changes until the client reports them. A previous request cannot regain authorization merely because the same wallet signs in again; the original session incarnation is rechecked.
 
-This application-specific protocol is not a claim of full Wallet Standard SIWS implementation. It uses the existing Phantom message-signing capability and native cryptography rather than custom signature primitives. Official references: [Phantom integration](https://docs.phantom.com/solana/integrating-phantom), [Solana message authentication](https://solana.com/docs/frontend/messages-and-auth), [Node Ed25519 verification](https://nodejs.org/api/crypto.html#cryptoverifyalgorithm-data-key-signature-callback).
+Use the exact configured origin, including hostname and port. This protocol uses Phantom's message capability; it does not claim complete Wallet Standard SIWS support. Each application hosts its own same-origin handler. Cross-origin cookies, SSO, serverless, multiple processes and persistent sessions are outside the supported model. Explicitly enable `single-process` only on one persistent Node instance.
 
-The store is atomic only inside one persistent Node process. Set `authMode:'single-process'` deliberately; defaults are disabled and known serverless environments are refused. Restarting logs everyone out. A separate application must host its own same-origin auth handler, not try to reuse PACT cookies cross-origin. Multiple workers, serverless and shared sessions require a shared atomic store and a separate security review.
+Authentication proves wallet control. Each [protected resource](backend-enforcement.md) still requires fresh server entitlement. The executable [authorization example](examples/authorize.mjs) is smoke-tested with disposable local message proofs, not real wallet prompts.

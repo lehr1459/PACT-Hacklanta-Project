@@ -1,7 +1,7 @@
 // Install and exercise the actual SDK tarball outside this repository.
 // No symlinked dependencies, registry publication, wallet or network transaction.
 import assert from 'node:assert/strict';
-import {spawn} from 'node:child_process';
+import {spawn,execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import fs from 'node:fs/promises';
 import {createRequire} from 'node:module';
@@ -9,6 +9,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
+import {runDocumentationExamples} from './documentation.mjs';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const sdk = path.join(repo, 'packages/pact-sdk');
@@ -18,7 +19,8 @@ const output = path.resolve(args[1] ?? path.join(repo, 'web/test-results/packed-
 await fs.mkdir(output, {recursive: true});
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'pact-packed-consumer-'));
 const checks = [];
-const report = {status: 'running', temporary, node: process.version, checks};
+const gitStamp=()=>({revision:execFileSync('git',['rev-parse','HEAD'],{cwd:repo,encoding:'utf8',windowsHide:true}).trim(),workingTreeClean:execFileSync('git',['status','--porcelain','--untracked-files=all'],{cwd:repo,encoding:'utf8',windowsHide:true}).trim()===''});
+const report = {status: 'running', temporary, node: process.version, ...gitStamp(), checks};
 const manifest = JSON.parse(await fs.readFile(path.join(sdk, 'package.json'), 'utf8'));
 const web = JSON.parse(await fs.readFile(path.join(repo, 'web/package.json'), 'utf8'));
 const pins = {...web.dependencies, ...web.devDependencies};
@@ -46,9 +48,9 @@ async function executable(file) {
 }
 async function npmCli() {
   const possibilities = [
-    process.env.npm_execpath,
     path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'),
     path.resolve(path.dirname(process.execPath), '../lib/node_modules/npm/bin/npm-cli.js'),
+    process.env.npm_execpath,
   ];
   for (const directory of (process.env.PATH ?? '').split(path.delimiter)) possibilities.push(path.join(directory, 'node_modules/npm/bin/npm-cli.js'));
   for (const candidate of possibilities) if (candidate && /npm-cli\.js$/.test(candidate) && await executable(candidate)) return candidate;
@@ -128,7 +130,7 @@ try {
   const entries = new Set(pack.files.map(file => file.path));
   for (const name of ['.', './checkout', './widget', './v1', './server', './react', './pact-checkout.mjs', './pact-checkout.js']) assert.ok(Object.hasOwn(manifest.exports, name), `Missing compatible export ${name}`);
   for (const target of Object.values(manifest.exports)) for (const file of typeof target === 'string' ? [target] : Object.values(target)) assert.ok(entries.has(file.replace(/^\.\//, '')), `Missing packaged export ${file}`);
-  for (const entry of entries) assert.ok(entry === 'package.json' || entry === 'README.md' || entry.startsWith('dist/'), `Unexpected package content ${entry}`);
+  for (const entry of entries) assert.ok(['package.json','README.md','CHANGELOG.md','DISTRIBUTION.md'].includes(entry) || entry.startsWith('dist/'), `Unexpected package content ${entry}`);
   report.package = {version: manifest.version, filename: pack.filename, integrity: pack.integrity, sha256: createHash('sha256').update(await fs.readFile(archive)).digest('hex'), files: [...entries]};
   passed('tarball contents and all compatible exports', {files: entries.size});
 
@@ -183,6 +185,8 @@ export type ConsumerTypes={adapter:WalletAdapter;controller:CheckoutController};
   await write(plain, 'tsconfig.json', JSON.stringify({compilerOptions: typeOptions, include: ['consumer.ts']}));
   await run('plain-types', ['node_modules/typescript/bin/tsc', '--noEmit'], plain);
   passed('vanilla TypeScript public declarations with React absent');
+  await runDocumentationExamples({consumerDirectory:plain,outputDirectory:path.join(output,'documentation')});
+  passed('portable documentation examples against the installed SDK tarball');
 
   const app = path.join(temporary, 'next');
   await fs.mkdir(app);
@@ -209,6 +213,18 @@ assert.match(html,/<div/);console.log('PASS React server render without DOM or w
   const fixture = {offer: fixtures.offer.toBase58(), wallet: fixtures.wallet.toBase58(), license: fixtures.license.toBase58(), snapshot: fixtures.fixture(), genesis: fixtures.GENESIS, program: fixtures.PROGRAM};
   await write(app, 'fixture.json', JSON.stringify(fixture));
   const options = JSON.stringify({offer: fixture.offer, programId: fixture.program, rpcUrl: 'http://127.0.0.1:4022'});
+  const react18=path.join(temporary,'react18');await fs.mkdir(react18);
+  await write(react18,'package.json',JSON.stringify({name:'pact-isolated-react18',private:true,type:'module',dependencies:{'@pact/sdk':`file:${archive}`,react:'18.3.1','react-dom':'18.3.1'},devDependencies:{esbuild:manifest.devDependencies.esbuild}},null,2));
+  await install(react18,'react18-install');
+  for(const name of ['@pact/sdk','react','react-dom','esbuild'])await assertLocalDependency(react18,name);
+  await write(react18,'ssr.mjs',`import assert from 'node:assert/strict';import React,{createElement} from 'react';import {renderToString} from 'react-dom/server';import {PactCheckout} from '@pact/sdk/react';assert.equal(React.version,'18.3.1');assert.match(renderToString(createElement(PactCheckout,${options})),/PACT embedded checkout/);`);
+  await node(react18,'ssr.mjs','react18-ssr');
+  await write(react18,'consumer.mjs',`import React,{createElement} from 'react';import {createRoot} from 'react-dom/client';import {PactCheckout} from '@pact/sdk/react';createRoot(document.getElementById('root')).render(createElement(React.StrictMode,null,createElement('output',{id:'react-version'},React.version),createElement(PactCheckout,${options})));`);
+  await write(react18,'bundle.mjs',`import {build} from 'esbuild';await build({entryPoints:['consumer.mjs'],bundle:true,platform:'browser',format:'esm',target:'es2022',outfile:'consumer.js'});`);
+  await node(react18,'bundle.mjs','react18-browser-bundle');
+  await write(app,'public/react18.js',await fs.readFile(path.join(react18,'consumer.js')));
+  await write(app,'public/react18.html','<!doctype html><html lang="en"><head><title>React18 packed SDK</title></head><body><div id="root"></div><script type="module" src="/react18.js"></script></body></html>');
+  await fs.copyFile(path.join(react18,'package-lock.json'),path.join(output,'react18-package-lock.json'));
   await write(app, 'app/layout.tsx', `import type {ReactNode} from 'react';export default function Layout({children}:{children:ReactNode}){return <html lang="en"><body>{children}</body></html>;}`);
   await write(app, 'app/page.tsx', `import Consumer from './consumer';export default function Page(){return <main><h1>Packed SDK consumer</h1><Consumer /></main>;}`);
   await write(app, 'app/consumer.tsx', `'use client';
@@ -274,6 +290,13 @@ export const GET=handler;export const POST=handler;export const OPTIONS=handler;
       assert.equal(await page.locator('#react-checkout').getByRole('button', {name: 'Purchase license', exact: true}).isDisabled(), true);
       assert.deepEqual(errors, []); assert.deepEqual(forbidden, []); assert.ok(methods.includes('getMultipleAccounts'));
       passed('Next browser hydration, real SDK verification and React checkout');
+      await page.goto(`${server.origin}/react18.html`);
+      await page.locator('#react-version').filter({hasText:/^18\.3\.1$/}).waitFor();
+      await page.getByRole('button',{name:'Connect Phantom',exact:true}).waitFor();
+      assert.equal(await page.getByRole('button',{name:'Purchase license',exact:true}).isDisabled(),true);
+      assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+      report.react18Version='18.3.1';
+      passed('React18 independent install, server render and browser StrictMode mount');
       await page.goto(`${server.origin}/vanilla.html`);
       await page.evaluate(async options => {
         const module = await import('/pact-checkout.mjs');
@@ -298,6 +321,8 @@ export const GET=handler;export const POST=handler;export const OPTIONS=handler;
   assert.notEqual(rejected.code, 0, 'Client import of server-only entrypoint unexpectedly bundled');
   assert.match(rejected.text, /node:(?:crypto|async_hooks|cluster|worker_threads)|(?:Module not found|Can't resolve)[^\n]*(?:crypto|async_hooks|cluster|worker_threads)|server-only/i, 'Expected Node-only boundary diagnostic');
   passed('server entrypoint rejected by a real Next client build');
+  const after=gitStamp();assert.equal(after.revision,report.revision,'Source revision changed during consumer validation');
+  if(report.workingTreeClean)assert.equal(after.workingTreeClean,true,'Source changed during clean consumer validation');
   report.status = 'pass';
 } catch (error) {
   report.status = 'fail'; report.error = error instanceof Error ? error.stack : String(error);

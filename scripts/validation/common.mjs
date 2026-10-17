@@ -11,7 +11,7 @@ export function validationEnv(extra={}) {
 }
 export function npmCli() {
   const directory=path.dirname(process.execPath);
-  const candidates=[process.env.npm_execpath,path.join(directory,'node_modules/npm/bin/npm-cli.js'),path.resolve(directory,'../lib/node_modules/npm/bin/npm-cli.js')];
+  const candidates=[path.join(directory,'node_modules/npm/bin/npm-cli.js'),path.resolve(directory,'../lib/node_modules/npm/bin/npm-cli.js'),process.env.npm_execpath];
   const found=candidates.find(value=>value&&value.endsWith('.js')&&existsSync(value));
   if(!found)throw Error('Cannot locate npm-cli.js beside Node. Run with the pinned Node/npm installation.');
   return found;

@@ -6,6 +6,7 @@ import { PlatformError, canonicalAddress } from './server-auth.js';
 import { keccak_256 } from '@noble/hashes/sha3';
 import { createReadEngine, createEndpointHistory, numeric, type EndpointHistory } from './internal/license-reader.js';
 import { createReaderPool, type ReadOptions } from './internal/reader-pool.js';
+import { isTransactionError } from './internal/transaction-error.js';
 
 export type PlatformReaderOptions = { rpcUrl?: string; fetch?: typeof fetch; now?: () => number };
 export type PrepareOfferInput = { network: 'devnet'; programId?: string; sellerWallet: string; nonce: string; metadataJson: string };
@@ -41,9 +42,9 @@ export { createEndpointHistory };
 export function createPlatformReaderPool(options: PlatformReaderOptions, bounds: { history: EndpointHistory; activeLimit: number; queueLimit: number }) {
   const engine = createReadEngine({ ...options }, bounds.history);
   const operation = createReaderPool(engine.time, bounds.activeLimit, bounds.queueLimit);
-  async function latest(context: Parameters<typeof engine.rpc>[0]) {
-    const result = await engine.rpc(context, 'getLatestBlockhash', [{ commitment: 'confirmed' }]);
-    if (!result?.value || !numeric(result.value.lastValidBlockHeight)) throw new PlatformError('RPC_ERROR', 'Invalid blockhash lifetime.', 503);
+  async function latest(context: Parameters<typeof engine.rpc>[0], minimumSlot: number) {
+    const result = await engine.rpc(context, 'getLatestBlockhash', [{ commitment: 'confirmed', minContextSlot: minimumSlot }]);
+    if (!numeric(result?.context?.slot) || result.context.slot < minimumSlot || !result?.value || !numeric(result.value.lastValidBlockHeight)) throw new PlatformError('RPC_ERROR', 'Invalid blockhash context or lifetime.', 503);
     address(result.value.blockhash);
     return result.value as { blockhash: string; lastValidBlockHeight: number };
   }
@@ -67,7 +68,7 @@ export function createPlatformReaderPool(options: PlatformReaderOptions, bounds:
         validateCheckoutMetadata(x.metadataJson, quote);
         if (!quote.active) throw new PlatformError('OFFER_INACTIVE', 'Offer is inactive.', 409);
         if (status.active) throw new PlatformError('ALREADY_LICENSED', 'Wallet already has an active license.', 409);
-        const block = await latest(context), licensePda = status.licensePda;
+        const block = await latest(context, quote.contextSlot), licensePda = status.licensePda;
         const ix = new TransactionInstruction({ programId: program, keys: [
           { pubkey: new PublicKey(buyer), isSigner: true, isWritable: true },
           { pubkey: new PublicKey(offer), isSigner: false, isWritable: false },
@@ -95,15 +96,15 @@ export function createPlatformReaderPool(options: PlatformReaderOptions, bounds:
       n.writeBigUInt64LE(nonce);
       const [offer] = PublicKey.findProgramAddressSync([Buffer.from('offer'), new PublicKey(seller).toBuffer(), n], program);
       return operation(async context => {
-        await engine.preparationSnapshot(context, offer.toBase58());
-        const block = await latest(context), pv = Buffer.alloc(8), dv = Buffer.alloc(8);
+        const snapshot = await engine.preparationSnapshot(context, offer.toBase58());
+        const block = await latest(context, snapshot.contextSlot), pv = Buffer.alloc(8), dv = Buffer.alloc(8);
         pv.writeBigUInt64LE(price); dv.writeBigUInt64LE(duration);
         const ix = new TransactionInstruction({ programId: program, keys: [
           { pubkey: new PublicKey(seller), isSigner: true, isWritable: true },
           { pubkey: offer, isSigner: false, isWritable: true },
           { pubkey: new PublicKey(system), isSigner: false, isWritable: false },
         ], data: Buffer.concat([Buffer.from('ede9c0a8f807f9f1', 'hex'), n, pv, dv, hash]) });
-        return { network: 'devnet' as const, programId: PACT_PROGRAM_ID, offer: offer.toBase58(), seller, nonce: x.nonce, priceLamports: price.toString(), durationSeconds: duration.toString(), termsHash: '0x' + hash.toString('hex'), ...block, transactionBase64: transaction(seller, block.blockhash, ix) };
+        return { network: 'devnet' as const, programId: PACT_PROGRAM_ID, offer: offer.toBase58(), seller, nonce: x.nonce, priceLamports: price.toString(), durationSeconds: duration.toString(), termsHash: '0x' + hash.toString('hex'), ...snapshot, ...block, transactionBase64: transaction(seller, block.blockhash, ix) };
       }, options);
     },
     getTransactionStatus(input: { signature: string }, options?: ReadOptions) {
@@ -116,7 +117,7 @@ export function createPlatformReaderPool(options: PlatformReaderOptions, bounds:
         const status = result.value[0];
         if (status === null) return { network: 'devnet' as const, signature, state: 'not-found' as const, slot: null, error: null, contextSlot: result.context.slot };
         if (!numeric(status.slot) || status.slot > result.context.slot || !['processed', 'confirmed', 'finalized'].includes(status.confirmationStatus)
-          || !(status.err === null || status.err && typeof status.err === 'object')) throw new PlatformError('RPC_ERROR', 'Malformed transaction status.', 503);
+          || !(status.err === null || isTransactionError(status.err))) throw new PlatformError('RPC_ERROR', 'Malformed transaction status.', 503);
         return { network: 'devnet' as const, signature, state: status.err ? 'failed' : status.confirmationStatus, slot: status.slot, error: status.err, contextSlot: result.context.slot };
       }, options);
     },

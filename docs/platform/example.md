@@ -1,11 +1,10 @@
-# Independent Developer Platform example
+# Independent application example
 
-`examples/pact-platform-app` is a standalone Next.js application named Canvas Lab. It has its own page, React embedded checkout, same-origin REST handler, wallet authentication and server-protected operation. It imports the reusable SDK; it does not import PACT marketplace components. Existing Prism and vanilla checkout examples remain unchanged.
+`examples/pact-platform-app` (Canvas Lab) hosts its own Next.js page, optional React checkout, same-origin wallet proof and server resource handler. It imports public SDK exports, not marketplace components. The reusable [documentation examples](examples/lookup.mjs) are also tested against an independently installed tarball.
 
-From PowerShell:
+From your PACT checkout root:
 
-```powershell
-Set-Location 'C:\Hackathon\PACT Hacklanta Project'
+```sh
 npm --prefix packages/pact-sdk ci
 npm --prefix packages/pact-sdk run build
 npm --prefix examples/pact-platform-app ci
@@ -13,28 +12,23 @@ npm --prefix examples/pact-platform-app run build
 npm --prefix examples/pact-platform-app run start
 ```
 
-Open `http://localhost:3008` (use this exact origin rather than `127.0.0.1`, because challenges are origin-bound). A port change requires updating the launch port and `PACT_APP_ORIGIN` together. Public offer, RPC and exact public metadata may be configured using the example's environment template. Never put wallet secrets in configuration. Keep `SOLANA_RPC_URL` consistent with the public Devnet RPC; the backend independently checks the genesis hash.
+Open `http://localhost:3008` exactly. Changing the hostname/port requires changing the launch configuration and `PACT_APP_ORIGIN` together. Public offer, exact metadata and Devnet RPC are configuration; wallet secrets are not. No separate marketplace server is required. Repository source-copy installation serves development; use the tarball workflow for your own app.
 
-The example's `.npmrc` uses `install-links=true` so its local SDK dependency is installed as a package copy, with React supplied by the application. This avoids a second React instance from the SDK's development dependencies. Rebuild and reinstall the local SDK after changing SDK source; do not replace the consumer copy with a junction. A raw SSR rendering check verified the packed React component renders without browser globals or hook errors.
-
-Default public offer: `7EdfowQEZyVyyp7bYdQyzmprZtVU9mVba8cysHm2Ardh`. Default metadata:
+The default public TEST offer is mutable external demo state, not deployment discovery or proof of an entitlement. Its exact default metadata is:
 
 ```json
 {"schema":"pact-solana-license-v1","title":"TEST","terms":"TEST","priceLamports":"1000000","durationSeconds":"180"}
 ```
 
-These defaults are checked against the actual offer commitment at runtime. No valid entitlement or purchase success is assumed. A seller may have deactivated the offer or Devnet may be unavailable.
+The application checks it against the live offer. For another offer, replace both configuration and original exact metadata. An unavailable or deactivated offer must not be converted into a successful demonstration.
 
-Manual Phantom verification, requiring explicit operator authorization for real wallet operations:
+Manual browser walkthrough, only with separately authorized wallet actions:
 
-1. Set Phantom to Solana Devnet. Open the exact configured origin. Connect your buyer wallet in the embedded checkout.
-2. Confirm the on-chain offer, hash-matched terms, 0.001 SOL price and 180-second duration. For a different offer, update both public configuration and exact metadata. Buyer needs price plus transaction fee and entitlement-account rent.
-3. Click Authenticate wallet. Review the challenge domain, Devnet, wallet, nonce and expiry in Phantom. Signing this message proves wallet control; it is not a purchase and does not prove entitlement.
-4. With no license, Run protected operation must be denied by the backend. A client-submitted address or valid boolean cannot authorize it.
-5. Separately authorize the purchase only when ready. Accept matching terms and press Purchase license. Review Phantom's purchase transaction and approve manually. Wait for finalized settlement plus fresh entitlement verification. Do not retry an unknown signature; use its recovery control.
-6. After authenticating wallet control, Run protected operation returns a protected payload only if the backend verifies the current license. Every click is a new server check. The response clears from the UI at eight seconds from the request start or the entitlement expiry, whichever comes first. Transport time consumes this budget; a response arriving after the deadline is rejected rather than displayed.
-7. Switch accounts, disconnect, hide the page, go offline or wait for expiry. Access closes; a new wallet must authenticate its own identity. Expired or failed chain verification must deny subsequent protected operations.
+1. Select Devnet and connect the intended wallet. Review the actual offer and exact matching terms.
+2. Click Authenticate wallet and review the challenge origin/wallet/purpose. Message signing proves control; it neither purchases nor proves entitlement.
+3. Without a current license, protected asset/action requests must fail on the server.
+4. Separately approve a purchase if desired. Accept terms, request the transaction once and approve it in your wallet. Keep its signature; recover unknown status rather than blindly retrying.
+5. With wallet proof and a fresh active entitlement, request the private asset or protected calculation. The server checks both authorization boundaries.
+6. Change accounts, disconnect, hide/go offline, log out or wait for expiry. The UI closes access and subsequent protected requests must deny. Account changes clear/abort local work and log out; the server cannot directly observe an extension event.
 
-No transaction or message is requested on page load. Automated tests use synthetic providers only. This example makes no claim that already delivered content can be retracted or that license issuance transfers copyright.
-
-Authentication is intentionally single-process and local: challenge/session state is in process memory. Restarts invalidate sessions. Do not deploy this example on multiple instances/serverless without an atomic shared store and security review. The winning PACT Vercel deployment and Saturday Lights remain untouched.
+The route serves a server-only sample asset and an in-memory bounded calculation. It does not promise durable writes, DRM or legal ownership. Authentication requires one persistent Node process and same-origin cookies; restarts invalidate sessions. Do not deploy this model across workers/replicas/serverless. Existing public deployments and the Base fallback remain separate.

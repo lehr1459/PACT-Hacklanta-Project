@@ -4,7 +4,7 @@ Use the repository root in a fresh committed checkout. Required automation is `s
 
 ## Toolchains and installation
 
-Node **24.11.1**, npm **11.6.2**, and Chromium matching the locked Playwright are the initial supported engineering environment. Required JavaScript lanes run in Linux CI. The pinned Solana compiler and Foundry setup currently require Windows; the chain CI lane uses Python **3.13.5**. See `solana/toolchain.json`, `solana/requirements-lock.txt` and `contracts/dependencies.json` for immutable tool/dependency pins.
+Node **24.22.0**, npm **11.19.1**, and Chromium matching the locked Playwright are the current engineering validation target. Phase1–3 receipts retain their actual older runtime versions; they are not relabeled. `scripts/validation/runtime.json` records official distribution checksums and the October21 security-review deadline. Environment and SDK release checks reject a malformed or elapsed deadline. Use an isolated verified runtime or the pinned CI installation; no machine-wide upgrade is required. Required JavaScript lanes are prepared for Linux CI; actual hosted results must be recorded separately. The pinned Solana compiler and Foundry setup currently require Windows; the chain CI lane uses Python **3.13.5**. See `solana/toolchain.json`, `solana/requirements-lock.txt` and `contracts/dependencies.json` for immutable tool/dependency pins.
 
 ```text
 node scripts/validation/run.mjs environment
@@ -66,3 +66,12 @@ Record failures and intentional skips by name and mode. Mock-mode skips for test
 Use clean CI checkouts without active `.env` files. Never inspect or overwrite a user's local configuration to make tests pass. The runner removes inherited fixture, public configuration and authentication flags and supplies explicit per-lane values; Next's own environment-file loading is another reason release validation must use a clean checkout. Phase 5 release/environment guards build on this requirement.
 
 `--clean` makes the runner reject ambient active environment files by their existence without reading them; CI enables this check automatically. Use it for local clean-checkout release evidence as well. A targeted run against a developer's existing configuration remains useful but is not a clean-release result.
+
+## SDK release candidate
+
+```text
+node scripts/release/sdk.mjs
+node scripts/validation/run.mjs packed --clean
+```
+
+Run both from a clean committed checkout with the current runtime. The first exports only committed SDK build/package inputs into two independent temporary projects, installs locked dependencies with isolated empty npm configuration and prepares byte-identical tarballs. It records source blobs, SHA-256, verified npm SHA-512 integrity, contents and runtime hashes under ignored `web/test-results/sdk-release/candidate-*`. It never publishes and keeps distribution approval false. The packed lane separately checks installed consumers and executable documentation, including optional React absence, React18/19 rendering, browser mount/hydration, Node server routes and forbidden server imports. Compare the packed consumer's archive hash to the release candidate before approval. The package remains private pending owner licensing/distribution decisions; registry provenance is not claimed by these local receipts.

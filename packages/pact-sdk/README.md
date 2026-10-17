@@ -1,19 +1,20 @@
-# @pact/sdk 0.1.0
+# @pact/sdk 0.2.0
 
-The root entrypoint provides read-only digital-license verification for PACT on **Solana Devnet**. The program is fixed to `EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy`. The separate checkout entrypoint described below supports an explicit purchase; root verification does not sign or submit transactions. An entitlement does not establish copyright ownership. This demo SDK makes no production security claim.
+The root entrypoint provides read-only digital-license verification for PACT on **Solana Devnet**. The program is fixed to `EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy`. The separate checkout entrypoint described below supports an explicit purchase; root verification does not sign or submit transactions. An entitlement does not establish copyright ownership. This unpublished candidate needs the release checks and owner approvals described in [distribution policy](DISTRIBUTION.md).
 
 ## Install and package
 
-From the repository root, build the SDK before installing it into another project:
+Obtain the approved tarball and its SHA-256 manifest through an authorized channel, then install your copy in your own application:
 
 ```sh
-npm --prefix packages/pact-sdk ci
-npm --prefix packages/pact-sdk run build
-cd your-application
-npm install /absolute/path/to/PACT/packages/pact-sdk
+npm install /absolute/path/to/pact-sdk-0.2.0.tgz
 ```
 
-An application inside this repository may use `"@pact/sdk": "file:../packages/pact-sdk"` (adjust the path). For a portable tarball, run `npm pack` inside this package, then `npm install /path/to/pact-sdk-0.1.0.tgz`. Compiled JavaScript and declarations are included. Exports use ESM; Node CommonJS consumers can use `await import('@pact/sdk')`. Runtime dependencies are pinned `@solana/web3.js` 1.99.0, `buffer` 6.0.3 and `@noble/hashes` 1.8.0. Build dependencies are TypeScript 5.9.3 and esbuild 0.28.2. Node 20+ with fetch is recommended; tested with Node 24.
+Consumers need the tarball and a resulting lockfile, without a sibling PACT checkout or its node_modules. Use `npm ci` for subsequent installs. Repository contributors can run `node scripts/release/sdk.mjs` from a clean committed checkout with the pinned runtime to prepare two independent source builds and an exact matching tarball; no publication occurs. Internal examples may use file dependencies, with SDK build first.
+
+Compiled ESM, declarations and browser bundles are included. CommonJS can use `await import('@pact/sdk')`. Runtime dependencies are pinned `@solana/web3.js` 1.99.0, `buffer` 6.0.3 and `@noble/hashes` 1.8.0. React is optional (`>=18 <20`); server modules require Node 24.22.0 or a reviewed later Node24 patch. The validation pin is Node24.22.0/npm11.19.1, Next.js16.4 and locked Chromium. Other Node majors and native wallet environments are not validated targets. See the release's consumer evidence for exact combinations and the dated Node security review; a version pin is not a security clearance.
+
+The 0.2 HTTP client rejects incomplete or inconsistent successful responses, including older servers omitting nonce or preparation context. Upgrade the matching API and SDK together. Offer nonce enables PDA verification, prepared offers carry context/timing, and transaction status declarations include contextSlot. Prepared v0 transactions must be unsigned, use the expected payer/program/instructions and match exact metadata. The HTTP client does not grant authorization to the browser. See [changelog](CHANGELOG.md).
 
 ## API
 

@@ -2,7 +2,15 @@
 
 Reviewed: 2026-10-16. Owner: Security and SDK maintainers. Next review: 2026-11-15, or before dependency changes, native-wallet support, new parser/UUID use, or commercial release, whichever occurs first.
 
-This is an advisory and reachability assessment, not a production-security certification. No dependency was automatically upgraded, downgraded, or overridden to reduce an audit count. Existing Base Sepolia isolation and Solana program semantics are preserved.
+This is an advisory and reachability assessment, not a production-security certification. No application dependency was blindly upgraded, downgraded, or overridden to reduce an audit count. Existing Base Sepolia isolation and Solana program semantics are preserved.
+
+## Runtime review — October 17
+
+The original Node24.11.1 runtime predates published security fixes in the official [January](https://nodejs.org/en/blog/vulnerability/december-2025-security-releases), [March](https://nodejs.org/en/blog/vulnerability/march-2026-security-releases) and [July](https://nodejs.org/en/blog/vulnerability/july-2026-security-releases) releases. PACT parses external JSON and serves HTTP; response limits do not prove immunity to runtime vulnerabilities. Node **24.22.0** with npm **11.19.1** is the compatible same-major replacement validation target. The portable Windows ZIP and node.exe were checked against official release SHA-256 values; the global workstation runtime was not changed. Exact pins/checksums are in `scripts/validation/runtime.json` and the [official release](https://nodejs.org/en/blog/release/v24.22.0).
+
+An announced [HIGH-severity October21 Node security release](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases) remains undisclosed as of October17. Version24.22.0 must not be called clearance for that issue. Recheck before hosting and by October21; the runtime policy makes missing, malformed and expired review dates fail release validation. Later published fixes require a reviewed pin update and relevant regression checks. Dev-only Python3.13.5 and npm's entire own dependency graph have not received an independent exhaustive security audit; hash pins and application npm audits do not imply one.
+
+Phase4 SDK version/engine metadata changes rebind the four lockfile graph fingerprints. Independent comparison verified every third-party dependency node unchanged; no exception scope or November15 expiry was extended.
 
 ## Reproduce the npm gate
 

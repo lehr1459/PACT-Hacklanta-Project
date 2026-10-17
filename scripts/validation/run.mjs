@@ -3,6 +3,7 @@ import {execFileSync} from 'node:child_process';
 import {writeSync} from 'node:fs';
 import path from 'node:path';
 import {root,npmCli,execute} from './common.mjs';
+import {loadRuntimePolicy} from './runtime.mjs';
 
 const requested=process.argv[2]??'help';
 const requireClean=process.argv.includes('--clean')||['true','1'].includes(process.env.CI);
@@ -38,9 +39,10 @@ const prism=(name,env={})=>command(name,[path.join(root,'examples/pact-demo-app/
 async function lane(name) {
   console.log(`\nValidation lane: ${name}`);
   if(name==='environment') {
-    if(process.version!=='v24.11.1')throw Error('Required Node v24.11.1; found '+process.version);
+    const runtime=await loadRuntimePolicy();
+    if(process.version!=='v'+runtime.node)throw Error('Required Node v'+runtime.node+'; found '+process.version);
     const version=execFileSync(process.execPath,[npmCli(),'--version'],{encoding:'utf8'}).trim();
-    if(version!=='11.6.2')throw Error('Required npm 11.6.2; found '+version);
+    if(version!==runtime.npm)throw Error('Required npm '+runtime.npm+'; found '+version);
     results.push({name:'environment',status:'passed',node:process.version,npm:version,platform:process.platform});await record();
   } else if(name==='install') {
     await npm('sdk-ci',['ci'],sdk);await npm('sdk-build',['run','build'],sdk);
@@ -54,6 +56,8 @@ async function lane(name) {
     await command('artifact-policy-tests',['--test','scripts/validation/artifacts.test.mjs']);
     await command('deployment-identity-tests',['--test','scripts/solana/deployment-identity.test.mjs']);
     await command('provenance-tests',['--test','scripts/solana/provenance.test.mjs']);
+    await command('sdk-release-policy-tests',['--test','scripts/release/sdk.test.mjs']);
+    await command('runtime-review-tests',['--test','scripts/validation/runtime.test.mjs']);
   } else if(name==='build') {
     for(const project of ['web','examples/pact-demo-app','examples/pact-platform-app']) {
       const cwd=path.join(root,project),id=project.replaceAll('/','-');

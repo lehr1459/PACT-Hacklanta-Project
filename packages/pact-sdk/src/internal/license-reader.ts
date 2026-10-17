@@ -253,6 +253,7 @@ export function createReadEngine(options: PactClientOptions, history: EndpointHi
     return {
       status, licenseData,
       quote: {
+        nonce: o.readBigUInt64LE(40).toString(),
         program: PACT_PROGRAM_ID, offer: input.offer, seller: new PublicKey(seller).toBase58(),
         priceLamports: o.readBigUInt64LE(48).toString(), durationSeconds: o.readBigUInt64LE(56).toString(),
         termsHash: '0x' + o.subarray(64, 96).toString('hex'), active: o[96] === 1,
@@ -269,7 +270,8 @@ export function createReadEngine(options: PactClientOptions, history: EndpointHi
     if (account !== null && accountBytes(account, system).length !== 0) fail('INVALID_ACCOUNT', 'Offer account must be uninitialized.');
     executable(pa);
     const timestamp = clock(ca, result.context.slot);
-    observe(context, result.context.slot, timestamp);
+    const { received } = observe(context, result.context.slot, timestamp);
+    return { contextSlot: result.context.slot, chainTimestamp: timestamp.toString(), startedAtMs: context.startedAtMs, receivedAtMs: received };
   }
   return { time, rpc, genesis, snapshot, preparationSnapshot };
 }

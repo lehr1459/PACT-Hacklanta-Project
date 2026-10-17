@@ -6,6 +6,8 @@ import { createPhantomAdapter, canonicalWallet, type WalletAdapter } from './ada
 export { createPhantomAdapter };
 export type { WalletAdapter };
 export type OfferInfo = {
+    /** Present on HTTP v0.2 quotes; optional for existing direct-RPC integrations. */
+    nonce?: string;
     program: string;
     offer: string;
     seller: string;

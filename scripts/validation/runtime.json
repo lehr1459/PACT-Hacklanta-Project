@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "node": "24.22.0",
+  "npm": "11.19.1",
+  "supportedMajor": 24,
+  "release": "https://nodejs.org/en/blog/release/v24.22.0",
+  "distributions": {
+    "win-x64": {
+      "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-win-x64.zip",
+      "sha256": "f9683a19877e12a9b167305c8db71040d812876359de21f0d2e97c3f321f80c3",
+      "nodeExecutableSha256": "ba93f9a70bd86fce3ebbb39ec758501458453467aa92a34a0a3602d1e3fc2b9c"
+    },
+    "linux-x64": {
+      "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-linux-x64.tar.xz",
+      "sha256": "cc2f601cee82d9a5a233302fe307abc600727035fd7d2c3a3571755989e95008"
+    }
+  },
+  "securityReviewDue": "2026-10-21",
+  "announcedSecurityRelease": "https://nodejs.org/en/blog/vulnerability/october-2026-security-releases",
+  "securityStatus": "Earlier published Node24 fixes incorporated. An announced HIGH-severity October21 update remains pending; this pin is not security clearance for that undisclosed issue. Recheck before hosting and at the review deadline."
+}

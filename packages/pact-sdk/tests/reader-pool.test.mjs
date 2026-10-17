@@ -37,7 +37,7 @@ function rpc(t, state = {}) {
       if(state.mutate) state.mutate(result,q);
     } else if(q.method==='getLatestBlockhash') {
       if(state.failBlockhash) throw Error('private upstream URL must not escape');
-      result={value:{blockhash:seller.toBase58(),lastValidBlockHeight:200}};
+      result={context:{slot:state.blockhashSlot??state.slot??100},value:{blockhash:seller.toBase58(),lastValidBlockHeight:200}};
     } else result={context:{slot:state.slot??100},value:[null]};
     return Response.json({jsonrpc:'2.0',id:q.id,result});
   };
@@ -308,4 +308,16 @@ test('server offer creation rejects historical first Clock before issuing a bloc
   await assert.rejects(reader.prepareOffer({network:'devnet',sellerWallet:seller.toBase58(),nonce:'1',metadataJson}),code('STALE'));
   assert.equal(history.slot,-1);
   assert.ok(source.calls.every(q=>q.method!=='getLatestBlockhash'));
+});
+
+test('preparation requires blockhash context at least its validated snapshot and requests that minimum',async t=>{
+  for(const operation of ['offer','checkout']) {
+    const source=rpc(t,{slot:101,timestamp:1001n,missing:true,blockhashSlot:100});
+    const reader=small({fetch:source.fetch,now:()=>EPOCH});
+    const prepare=()=>operation==='offer'?reader.prepareOffer({network:'devnet',sellerWallet:seller.toBase58(),nonce:'1',metadataJson})
+      :reader.prepareCheckout({network:'devnet',offerAddress:input.offer,walletAddress:input.wallet,metadataJson});
+    await assert.rejects(prepare(),code('RPC_ERROR'));
+    assert.equal(source.calls.find(q=>q.method==='getLatestBlockhash').params[0].minContextSlot,101);
+    source.state.blockhashSlot=101;assert.equal((await prepare()).lastValidBlockHeight,200);
+  }
 });

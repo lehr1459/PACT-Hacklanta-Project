@@ -1,46 +1,36 @@
 # Developer quickstart
 
-## Run PACT and the independent example
+For a new application, obtain the reviewed `pact-sdk-0.2.0.tgz` and hash through the release owner, then install it in your application:
 
-Open PowerShell in the repository and build the SDK first:
+```sh
+npm install /absolute/path/to/pact-sdk-0.2.0.tgz
+```
 
-```powershell
-# Run from your actual PACT checkout root.
+The SDK is not published to npm. External sharing requires the owner's licensing approval. See the [developer guide](../development/DEVELOPER_GUIDE.md) for build, runtime and package verification details.
+
+## Public lookup
+
+```js
+import {createPactClient, isLicenseStatusFresh} from '@pact/sdk';
+const pact = createPactClient({rpcUrl: 'https://api.devnet.solana.com'});
+const status = await pact.getLicenseStatus({offer: offerAddress, wallet: walletAddress});
+const active = isLicenseStatusFresh(status, Date.now());
+```
+
+Supply canonical public addresses for your offer and wallet. This is a network read, so invoke it deliberately. `active` is public entitlement state; it does not authenticate the caller or protect a resource. The complete [lookup module](examples/lookup.mjs) is exercised against the packed artifact.
+
+## Run the repository example
+
+From your checkout root:
+
+```sh
 npm --prefix packages/pact-sdk ci
 npm --prefix packages/pact-sdk run build
-npm --prefix web ci
-npm --prefix web run build
 npm --prefix examples/pact-platform-app ci
 npm --prefix examples/pact-platform-app run build
-```
-
-In one terminal, start the PACT preview (public APIs work with authentication disabled):
-
-```powershell
-Set-Location 'C:\Hackathon\PACT Hacklanta Project\web'
-npm run start -- --hostname 127.0.0.1 --port 3007
-```
-
-In a second terminal, start the independent application:
-
-```powershell
-Set-Location 'C:\Hackathon\PACT Hacklanta Project'
 npm --prefix examples/pact-platform-app run start
 ```
 
-Open `http://localhost:3007/integrate` and `http://localhost:3008`. The example opts into single-process authentication locally and hosts its own `/api/pact` handler. Authentication cannot span independent server processes or origins.
+Open `http://localhost:3008` exactly. Canvas Lab hosts its own same-origin `/api/pact` handler; a separate PACT marketplace process is unnecessary. Its source dependency is for repository development; third-party consumers use the tarball above.
 
-## Read a license through the API
-
-```ts
-import {PactClient} from '@pact/sdk/v1';
-const pact = new PactClient({network:'devnet',apiUrl:'http://localhost:3007'});
-const offer = await pact.offers.get(offerAddress);
-const license = await pact.licenses.verify({offerAddress,walletAddress});
-console.log(offer.priceLamports, license.valid);
-// license.walletControlProven and license.authorized are always false.
-```
-
-For an application's own backend, use the [server handler](backend-enforcement.md), [React checkout](embedded-checkout.md) and [wallet proof](wallet-authentication.md). Registering an application or embedding a button does not automatically protect it. Confidential data and protected actions must be enforced by that application's server.
-
-Exact metadata travels from the seller through a complete buyer link or an explicitly supplied JSON string. It cannot be recovered from an offer address/hash alone. The default TEST example metadata must still pass the live commitment check.
+Next, follow [embedded checkout](embedded-checkout.md), [wallet proof](wallet-authentication.md) and [backend enforcement](backend-enforcement.md). Copying a checkout button does not protect confidential data. Preserve exact seller metadata and never put wallet secrets in application configuration.
