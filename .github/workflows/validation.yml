@@ -73,6 +73,11 @@ jobs:
   pinned-chain:
     runs-on: windows-2022
     timeout-minutes: 30
+    defaults:
+      run:
+        # Match the pinned build scripts' Windows PowerShell host. A pwsh ->
+        # node -> powershell chain otherwise inherits incompatible module paths.
+        shell: powershell
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

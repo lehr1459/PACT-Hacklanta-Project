@@ -88,6 +88,7 @@ async function lane(name) {
   else if(name==='dependencies')await command('dependency-policy',['scripts/validation/dependencies.mjs']);
   else if(name==='windows-setup') {
     if(process.platform!=='win32')throw Error('Pinned chain toolchain requires Windows; use the Windows CI job.');
+    await command('powershell-integrity-tests',['--test','scripts/validation/powershell-integrity.test.mjs']);
     const virtualPython=path.join(root,'solana/.tools/venv/Scripts/python.exe');
     let hasVirtualPython=true;try{await access(virtualPython);}catch{hasVirtualPython=false;}
     let python=virtualPython;
