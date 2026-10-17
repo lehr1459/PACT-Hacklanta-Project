@@ -78,7 +78,9 @@ async function lane(name) {
     await command('pinned-python',['-c','import sys; assert sys.version_info[:3] == (3,13,5), sys.version; print(sys.version)'],{binary:python});
     if(!hasVirtualPython)await command('solana-python-venv',['-m','venv',path.join(root,'solana/.tools/venv')],{binary:python});
     await command('solana-setup',['-NoProfile','-ExecutionPolicy','Bypass','-File','solana/scripts/setup.ps1'],{binary:'powershell.exe'});
-    await command('foundry-setup',['-NoProfile','-ExecutionPolicy','Bypass','-File','contracts/scripts/setup.ps1'],{binary:'powershell.exe'});
+    // Nested dependency repositories have no Solidity EOL attributes. Reproduce
+    // the reviewed CRLF dependency sources without changing global Git config.
+    await command('foundry-setup',['-NoProfile','-ExecutionPolicy','Bypass','-File','contracts/scripts/setup.ps1'],{binary:'powershell.exe',env:{GIT_CONFIG_COUNT:'1',GIT_CONFIG_KEY_0:'core.autocrlf',GIT_CONFIG_VALUE_0:'true'}});
   } else if(name==='chain') {
     if(process.platform!=='win32')throw Error('Pinned chain toolchain requires Windows; use the Windows CI job.');
     await command('solana-build',['-NoProfile','-ExecutionPolicy','Bypass','-File','solana/scripts/build.ps1'],{binary:'powershell.exe'});

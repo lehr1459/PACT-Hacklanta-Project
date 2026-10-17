@@ -25,6 +25,8 @@ node scripts/validation/run.mjs all-chain
 
 `all-chain` verifies/downloads the pinned tools, compiles the Solana program, runs compiled local-runtime tests and Base Foundry tests, compares compiler settings/ABI/bytecode hashes, and rejects unexpected changes to approved artifact evidence. Local artifacts are not deployment attestations. The workflow does not deploy, publish or access signing credentials.
 
+Base's historical compiler evidence includes the nested dependency checkouts' CRLF source bytes. The Foundry setup subprocess explicitly supplies `core.autocrlf=true` for its Git operations so a fresh Windows runner reproduces those bytes. This does not change global Git configuration or rewrite approved evidence. Root `.gitattributes` separately fixes the tracked program/source/ABI byte conventions.
+
 Individual lanes are listed by:
 
 ```text
