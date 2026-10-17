@@ -229,7 +229,7 @@ export const GET=handler;export const POST=handler;export const OPTIONS=handler;
   const extracted = path.join(app, 'node_modules/@pact/sdk');
   for (const name of ['pact-checkout.mjs', 'pact-checkout.js']) {
     const bytes = await fs.readFile(path.join(extracted, 'dist', name));
-    assert.doesNotMatch(bytes.toString('utf8'), /node:crypto|node:async_hooks|function createWalletAuth/, 'Browser asset contains server-only implementation');
+    assert.doesNotMatch(bytes.toString('utf8'), /node:(?:crypto|async_hooks|cluster|worker_threads)|function createWalletAuth/, 'Browser asset contains server-only implementation');
     await write(app, `public/${name}`, bytes);
   }
   await write(app, 'public/vanilla.html', '<!doctype html><html lang="en"><head><title>Packed vanilla consumer</title></head><body><div id="esm"></div><div id="iife"></div><script src="/pact-checkout.js"></script></body></html>');
@@ -296,7 +296,7 @@ export const GET=handler;export const POST=handler;export const OPTIONS=handler;
   await write(app, 'app/consumer.tsx', `'use client';import {createWalletAuth} from '@pact/sdk/server';export default function Consumer(){return <p>{String(typeof createWalletAuth)}</p>;}`);
   const rejected = await run('server-in-client-rejected', ['node_modules/next/dist/bin/next', 'build'], app, {allowFailure: true});
   assert.notEqual(rejected.code, 0, 'Client import of server-only entrypoint unexpectedly bundled');
-  assert.match(rejected.text, /node:(?:crypto|async_hooks)|(?:Module not found|Can't resolve)[^\n]*(?:crypto|async_hooks)|server-only/i, 'Expected Node-only boundary diagnostic');
+  assert.match(rejected.text, /node:(?:crypto|async_hooks|cluster|worker_threads)|(?:Module not found|Can't resolve)[^\n]*(?:crypto|async_hooks|cluster|worker_threads)|server-only/i, 'Expected Node-only boundary diagnostic');
   passed('server entrypoint rejected by a real Next client build');
   report.status = 'pass';
 } catch (error) {

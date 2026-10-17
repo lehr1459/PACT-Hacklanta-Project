@@ -20,7 +20,7 @@ The matrix is the target contract for Phases 1–5. New resource enforcement, co
 | Deployment | Public read-only web may use stateless hosting with auth disabled; authenticated examples require one persistent process | A Vercel public preview is not evidence of supported distributed authentication |
 | Availability | Bounded concurrency and request budgets; dependency failures deny access; monitored controlled pilots | No contractual uptime guarantee. Devnet/RPC can be unavailable or reset; no stale-positive fallback |
 
-Initial capacity is an engineering target to measure, not a service promise: eight active chain operations with a bounded queue and five-second operation deadline; separate public/auth/protected request budgets. All limits must be configurable within validated bounds and tested under overload. Do not claim a target was met without its test evidence.
+Initial capacity is an engineering target to measure, not a service promise: eight active chain operations with a bounded queue and five-second operation deadline; separate public/auth/protected request budgets. HTTP request budgets are configurable within validated bounds and tested under overload; chain, queue, deadline and byte limits are fixed reviewed safety caps in this release. Do not claim a target was met without its test evidence.
 
 ## Exact licensing semantics
 

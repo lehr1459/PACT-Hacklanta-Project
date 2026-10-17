@@ -17,8 +17,9 @@ export type PactApiOptions=PlatformReaderOptions&{
  resources?:Readonly<Record<string,ResourcePolicy>>;
  requestBudgets?:{public?:Budget;auth?:Budget;protected?:Budget};
 };
+function positiveFresh(s:LicenseStatus,now:number){return isLicenseStatusFresh(s,now)&&BigInt(s.expiry)>BigInt(Math.floor(now/1000));}
 function verification(s:LicenseStatus,now:number){
- if(s.active&&!isLicenseStatusFresh(s,now))throw new PlatformError('STALE','License verification is stale.',503);
+ if(s.active&&!positiveFresh(s,now))throw new PlatformError('STALE','License verification is stale.',503);
  return{network:'devnet' as const,program:PACT_PROGRAM_ID,offerAddress:s.offer,walletAddress:s.wallet,valid:isLicenseStatusFresh(s,now),state:s.state,expiration:s.state==='missing'?null:s.expiry,verifiedAt:new Date(now).toISOString(),reason:s.state==='active'?'VALID' as const:s.state==='expired'?'EXPIRED' as const:'MISSING' as const,walletControlProven:false as const,authorized:false as const,freshness:{verifiedAtMs:now,maxAgeMs:FRESHNESS_MS,contextSlot:s.contextSlot,chainTimestamp:s.chainTimestamp},status:s};
 }
 function capacity(input:Budget|undefined,defaults:number){
@@ -65,7 +66,7 @@ export function createPactApiHandler(options:PactApiOptions){
   alive(signal);if(session(token).walletAddress!==wallet)throw new PlatformError('AUTH_REQUIRED','Wallet session changed.',401);
   const status=await protectedReader.getLicenseStatus({offer,wallet},{signal});
   alive(signal);if(session(token).walletAddress!==wallet)throw new PlatformError('AUTH_REQUIRED','Session changed during verification.',401);
-  if(!isLicenseStatusFresh(status,now()))throw new PlatformError('LICENSE_REQUIRED','An active verified license is required.',403);
+  if(!positiveFresh(status,now()))throw new PlatformError('LICENSE_REQUIRED','An active verified license is required.',403);
   return status;
  }
  return async(req:Request):Promise<Response>=>{
@@ -115,12 +116,13 @@ export function createPactApiHandler(options:PactApiOptions){
      if(size>1048576)throw new PlatformError('BODY_TOO_LARGE','Prepared resource exceeds 1 MiB.',500);
      const bytes=typeof prepared.body==='string'?Buffer.from(prepared.body):Buffer.from(prepared.body);
      const contentType=prepared.contentType??'application/octet-stream',commit=prepared.commit;
-     if(contentType.length>128||!/^[\x20-\x7e]+$/.test(contentType)||commit?.constructor.name==='AsyncFunction')throw new PlatformError('INTERNAL_ERROR','Invalid prepared resource contract.',500);
-     await entitlement(token,policy.offer,s.walletAddress,signal);
+     if(typeof contentType!=='string'||contentType.length>128||!/^[\x20-\x7e]+$/.test(contentType)||commit?.constructor.name==='AsyncFunction')throw new PlatformError('INTERNAL_ERROR','Invalid prepared resource contract.',500);
+     const finalStatus=await entitlement(token,policy.offer,s.walletAddress,signal);
      // No await between the final check, synchronous host commit and response construction.
-     alive(signal);session(token);
      headers.set('content-type',contentType);
      const response=new Response(bytes,{headers});
+     alive(signal);session(token);
+     if(!positiveFresh(finalStatus,now()))throw new PlatformError('LICENSE_REQUIRED','The entitlement expired before delivery.',403);
      if(commit&&commit()!==undefined)throw new PlatformError('INTERNAL_ERROR','Resource commit must return undefined synchronously.',500);
      return response;
     }

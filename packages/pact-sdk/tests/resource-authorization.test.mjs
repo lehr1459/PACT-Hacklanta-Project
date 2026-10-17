@@ -83,6 +83,99 @@ test('public active-license lookup is not resource authorization; forged cookies
   denied(await call(e)); denied(await call(e, undefined, { cookie: 'pact_session=' + e.identity.wallet })); zero(e);
 });
 
+test('real-time authenticated cold starts reject old or future provider Clocks before resource preparation', bounds, async t => {
+  for (const offset of [-120, 120]) await t.test(String(offset), async t => {
+    const e = environment(t, { options: { now: undefined } }), session = await authenticate(e);
+    e.rpc.state.timestamp = BigInt(Math.floor(Date.now() / 1000) + offset);
+    e.rpc.state.expiry = e.rpc.state.timestamp + 600n;
+    const result = await call(e, undefined, session);
+    denied(result); assert.equal(result.status, 503); assert.equal(JSON.parse(result.text).error.code, 'STALE'); zero(e);
+  });
+});
+
+test('server Clock skew uses an inclusive sixty-second boundary without granting any extra expiry time', bounds, async t => {
+  for (const [timestamp, now, allowed] of [
+    [940n, 1000000, true], [1060n, 1000000, true],
+    [939n, 1000000, false], [1061n, 1000000, false],
+    [940n, 1000001, false], [1060n, 999999, false],
+  ]) await t.test(`${timestamp}/${now}`, async t => {
+    const e = environment(t); e.clock.value = now; e.rpc.state.timestamp = timestamp; e.rpc.state.expiry = 2000n;
+    const session = await authenticate(e), result = await call(e, undefined, session);
+    if (allowed) { assert.equal(result.status, 200, result.text); assert.equal(result.text, PRIVATE); committed(e); }
+    else { denied(result); assert.equal(result.status, 503); assert.equal(JSON.parse(result.text).error.code, 'STALE'); zero(e); }
+  });
+});
+
+test('chain-relative active entitlement cannot authorize at or after conservative server-wall expiry', bounds, async t => {
+  for (const [expiry, allowed] of [[980n, false], [1000n, false], [1001n, true]])
+    await t.test(String(expiry), async t => {
+      const e = environment(t); e.rpc.state.timestamp = 950n; e.rpc.state.expiry = expiry;
+      const result = await call(e, undefined, await authenticate(e));
+      if (allowed) { assert.equal(result.status, 200, result.text); assert.equal(result.text, PRIVATE); committed(e); }
+      else { denied(result); assert.equal(result.status, 503); assert.equal(JSON.parse(result.text).error.code, 'STALE'); zero(e); }
+    });
+});
+
+test('invalid cold snapshots cannot poison shared slot or Clock history before a valid authorization', bounds, async t => {
+  for (const mode of ['old-clock', 'future-clock', 'corrupt-license']) await t.test(mode, async t => {
+    const e = environment(t), session = await authenticate(e);
+    e.rpc.state.slot = 10000;
+    e.rpc.state.timestamp = mode === 'old-clock' ? 880n : mode === 'future-clock' ? 1120n : 1001n;
+    e.rpc.state.expiry = 2000n;
+    if (mode === 'corrupt-license') e.rpc.state.mutate = result => { result.value[1].owner = '11111111111111111111111111111111'; };
+    denied(await call(e, undefined, session)); zero(e);
+    e.rpc.state.slot = 1; e.rpc.state.timestamp = 1000n; e.rpc.state.expiry = 1060n; delete e.rpc.state.mutate;
+    const recovered = await call(e, undefined, session);
+    assert.equal(recovered.status, 200, recovered.text); assert.equal(recovered.text, PRIVATE);
+    assert.equal(e.counts.prepare, 1); assert.equal(e.counts.commit, 1);
+    const snapshots = e.rpc.calls.filter(q => q.method === 'getMultipleAccounts');
+    assert.equal(snapshots[1].params[1].minContextSlot, undefined, 'Rejected snapshot must not publish its slot watermark');
+  });
+});
+
+test('valid chain observation retains its watermark when conservative wall expiry denies authorization', bounds, async t => {
+  const e = environment(t), session = await authenticate(e);
+  e.rpc.state.slot = 10000; e.rpc.state.timestamp = 950n; e.rpc.state.expiry = 980n;
+  const stale = await call(e, undefined, session);
+  denied(stale); assert.equal(JSON.parse(stale.text).error.code, 'STALE'); zero(e);
+  e.rpc.state.slot = 1; e.rpc.state.timestamp = 1000n; e.rpc.state.expiry = 1060n;
+  denied(await call(e, undefined, session)); zero(e);
+  const snapshots = e.rpc.calls.filter(q => q.method === 'getMultipleAccounts');
+  assert.equal(snapshots[1].params[1].minContextSlot, 10001, 'A valid chain observation remains an anchor even when positive interpretation fails');
+  e.rpc.state.slot = 10001;
+  const recovered = await call(e, undefined, session);
+  assert.equal(recovered.status, 200, recovered.text); assert.equal(recovered.text, PRIVATE);
+  assert.equal(e.counts.prepare, 1); assert.equal(e.counts.commit, 1);
+});
+
+test('wall expiry crossing during prepare or final response construction cannot reach synchronous commit', bounds, async t => {
+  for (const boundary of ['after-prepare', 'response-construction']) await t.test(boundary, async t => {
+    let commits = 0, constructed = false;
+    const e = environment(t, { prepare() {
+      if (boundary === 'after-prepare') e.clock.value = 1001000;
+      return { body: PRIVATE, commit() { commits++; } };
+    } });
+    e.rpc.state.timestamp = 950n; e.rpc.state.expiry = 1001n;
+    const session = await authenticate(e), original = globalThis.Response;
+    if (boundary === 'response-construction') globalThis.Response = class extends original {
+      constructor(body, options) {
+        super(body, options);
+        if (body instanceof Uint8Array && Buffer.from(body).toString() === PRIVATE) {
+          constructed = true; e.clock.value = 1001000;
+        }
+      }
+    };
+    try {
+      const result = await call(e, undefined, session);
+      denied(result); assert.equal(e.counts.prepare, 1); assert.equal(commits, 0);
+      if (boundary === 'response-construction') {
+        assert.equal(constructed, true, 'Exercise the final post-RPC/pre-commit boundary');
+        assert.equal(JSON.parse(result.text).error.code, 'LICENSE_REQUIRED');
+      }
+    } finally { globalThis.Response = original; }
+  });
+});
+
 test('missing, expired, failed, wrong-genesis and corrupt entitlement reads never reach resource callback', bounds, async t => {
   for (const mode of ['missing', 'expired', 'rpc-failed', 'wrong-genesis', 'corrupt-owner']) {
     await t.test(mode, async t => {
@@ -292,7 +385,7 @@ test('UTF-8 byte limit permits exactly one MiB and refuses oversized strings or 
 });
 
 test('invalid prepared bodies and unsafe content types fail before commit and do not expose callback errors', bounds, async t => {
-  for (const value of [{ body: {} }, { body: PRIVATE, contentType: 'text/plain\r\nX-Evil: yes' }]) {
+  for (const value of [{ body: {} }, { body: PRIVATE, contentType: 5 }, { body: PRIVATE, contentType: 'text/plain\r\nX-Evil: yes' }]) {
     let commits = 0;
     const e = environment(t, { prepare: () => ({ ...value, commit() { commits++; } }) });
     denied(await call(e, undefined, await authenticate(e))); assert.equal(commits, 0);

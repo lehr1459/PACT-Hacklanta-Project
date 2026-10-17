@@ -93,10 +93,10 @@ for(const vector of golden.vectors){
       assertIndependentTransaction(Buffer.from(prepared.transaction.serialize()).toString('base64'),vector.unsignedBuyBase64);
       assert.equal(prepared.lastValidBlockHeight,golden.lastValidBlockHeight);
     }finally{checkout.destroy();}
-    const prepared=await createPlatformReader({rpcUrl,fetch:fixture.fetch,now}).prepareCheckout({network:'devnet',offerAddress:vector.offer,walletAddress:golden.buyer,metadataJson:vector.metadataJson});
+    const prepared=await createPlatformReader({rpcUrl,fetch:fixture.fetch,now:()=>1000000}).prepareCheckout({network:'devnet',offerAddress:vector.offer,walletAddress:golden.buyer,metadataJson:vector.metadataJson});
     assertIndependentTransaction(prepared.transactionBase64,vector.unsignedBuyBase64);assert.equal(prepared.licensePda,vector.license);
     const creation=rpcFixture(vector,{offerMissing:true});
-    const offer=await createPlatformReader({rpcUrl,fetch:creation.fetch,now}).prepareOffer({network:'devnet',sellerWallet:golden.seller,nonce:vector.nonce,metadataJson:vector.metadataJson});
+    const offer=await createPlatformReader({rpcUrl,fetch:creation.fetch,now:()=>1000000}).prepareOffer({network:'devnet',sellerWallet:golden.seller,nonce:vector.nonce,metadataJson:vector.metadataJson});
     assert.equal(offer.offer,vector.offer);assert.equal(offer.termsHash,vector.metadataKeccak256);
     assertIndependentTransaction(offer.transactionBase64,vector.unsignedCreateBase64);
   });

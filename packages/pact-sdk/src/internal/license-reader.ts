@@ -6,6 +6,7 @@ export const DEVNET_GENESIS = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
 export const DEFAULT_RPC_URL = 'https://api.devnet.solana.com';
 export const FRESHNESS_MS = 8000, SLOT_PROGRESS_MS = 12000, READ_TIMEOUT_MS = 5000;
 const RESPONSE_LIMIT = 128 * 1024;
+const MAX_CHAIN_CLOCK_SKEW_MS = 60000n;
 const program = new PublicKey(PACT_PROGRAM_ID);
 const clockAddress = 'SysvarC1ock11111111111111111111111111111111';
 const system = '11111111111111111111111111111111';
@@ -39,10 +40,14 @@ export type ReadContext = {
 export type EndpointHistory = {
   lastNow: number; slot: number; timestamp: bigint;
   slotProgress: number; timestampProgress: number; requireTimestampProgress: boolean;
+  requireWallClockAlignment: boolean;
 };
 /** Internal: share only between pools for the same trusted endpoint and clock. */
-export function createEndpointHistory(requireTimestampProgress = true): EndpointHistory {
-  return { lastNow: -Infinity, slot: -1, timestamp: -1n, slotProgress: 0, timestampProgress: 0, requireTimestampProgress };
+export function createEndpointHistory(serverPolicy = true): EndpointHistory {
+  return {
+    lastNow: -Infinity, slot: -1, timestamp: -1n, slotProgress: 0, timestampProgress: 0,
+    requireTimestampProgress: serverPolicy, requireWallClockAlignment: serverPolicy,
+  };
 }
 function fail(code: PactErrorCode, message: string): never { throw new PactError(code, message); }
 function key(value: string): PublicKey {
@@ -178,6 +183,12 @@ export function createReadEngine(options: PactClientOptions, history: EndpointHi
   function observe(context: ReadContext, slot: number, timestamp: bigint) {
     const received = time();
     context.check();
+    if (history.requireWallClockAlignment) {
+      const wallTime = BigInt(Math.trunc(received)), chainTime = timestamp * 1000n;
+      if (chainTime < wallTime - MAX_CHAIN_CLOCK_SKEW_MS || chainTime > wallTime + MAX_CHAIN_CLOCK_SKEW_MS) {
+        fail('STALE', 'Chain Clock is outside the trusted server time window.');
+      }
+    }
     if (slot < history.slot) fail('INVALID_ACCOUNT', 'Invalid or backwards snapshot context.');
     if (timestamp < history.timestamp) fail('STALE', 'Chain time moved backwards.');
     const slotProgress = slot > history.slot ? received : history.slotProgress;
@@ -226,6 +237,12 @@ export function createReadEngine(options: PactClientOptions, history: EndpointHi
     }
     const { received, progress } = observe(context, result.context.slot, timestamp);
     const active = expiry > timestamp;
+    // Server authorization also fails closed when a lagging, otherwise tolerated
+    // Clock would make an entitlement look active past the trusted wall expiry.
+    // The valid chain observation remains anchored; its interpretation is stale.
+    if (history.requireWallClockAlignment && active && expiry <= BigInt(Math.floor(received / 1000))) {
+      fail('STALE', 'License expiry has passed the trusted server clock.');
+    }
     const status: LicenseStatus = {
       program: PACT_PROGRAM_ID, offer: input.offer, wallet: input.wallet, licensePda: license.toBase58(),
       contextSlot: result.context.slot, chainTimestamp: timestamp.toString(), expiry: expiry.toString(),

@@ -9,6 +9,7 @@ import { createPlatformReader, createPlatformReaderPool, createEndpointHistory }
 import { fixture, input, seller, wallet, offer, PROGRAM, GENESIS, corrupt } from './fixtures.mjs';
 
 const metadataJson = JSON.stringify({schema:'pact-solana-license-v1',title:'Pool fixture',terms:'Public synthetic terms.',priceLamports:'1000000',durationSeconds:'60'});
+const EPOCH = 1000000;
 const readonly = new Set(['getGenesisHash','getMultipleAccounts','getLatestBlockhash','getSignatureStatuses']);
 const code = expected => error => error?.code === expected;
 function deferred() { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; }
@@ -64,7 +65,7 @@ test('eight simultaneous snapshots retain each caller identity and exact request
     return Response.json({jsonrpc:'2.0',id:q.id,result:snapshotFor(identity)});
   };
   t.after(()=>assert.ok(calls.every(q=>readonly.has(q.method))));
-  const reader=createPlatformReader({fetch,now:()=>0});
+  const reader=createPlatformReader({fetch,now:()=>EPOCH});
   const mutable=identities.map(identity=>({offer:input.offer,wallet:identity}));
   const pending=mutable.map(value=>reader.getLicenseStatus(value));
   mutable.forEach(value=>{value.wallet=input.wallet;});
@@ -77,7 +78,7 @@ test('eight simultaneous snapshots retain each caller identity and exact request
 test('default pool admits exactly eight active plus sixteen queued; cancellation removes queue and quarantines ignored fetches', async t => {
   const held=deferred();let requests=0;
   const source=rpc(t,{transport:async(q)=>{requests++;await held.promise;return Response.json({jsonrpc:'2.0',id:q.id,result:GENESIS});}});
-  const reader=createPlatformReader({fetch:source.fetch,now:()=>0});
+  const reader=createPlatformReader({fetch:source.fetch,now:()=>EPOCH});
   const controllers=Array.from({length:24},()=>new AbortController());
   const pending=controllers.map(c=>reader.getLicenseStatus(input,{signal:c.signal}).catch(error=>error));
   await flush();assert.equal(requests,8);
@@ -95,11 +96,11 @@ test('default pool admits exactly eight active plus sixteen queued; cancellation
 test('queue begins the deadline at admission, including wait time', async t => {
   const source=rpc(t),held=deferred();let hold=true;
   const fetch=async(url,init)=>{if(hold){hold=false;await held.promise;}return source.fetch(url,init);};
-  let now=0;const reader=small({fetch,now:()=>now},createEndpointHistory(),1,1);
+  let now=EPOCH;const reader=small({fetch,now:()=>now},createEndpointHistory(),1,1);
   const first=reader.getLicenseStatus(input).catch(error=>error);
   const queued=reader.getLicenseStatus(input).catch(error=>error);
   await flush();
-  now=5000;held.resolve();
+  now=EPOCH+5000;held.resolve();
   assert.equal((await first).code,'TIMEOUT');assert.equal((await queued).code,'TIMEOUT');
   assert.equal(source.calls.length,1,'queue expiration prevents its first transport');
 });
@@ -119,7 +120,7 @@ test('FIFO queued reads capture caller identity before waiting', async () => {
     assert.ok(identity);started.push(identity);
     return Response.json({jsonrpc:'2.0',id:q.id,result:snapshotFor(identity)});
   };
-  const reader=small({fetch,now:()=>0},createEndpointHistory(),1,2);
+  const reader=small({fetch,now:()=>EPOCH},createEndpointHistory(),1,2);
   const inputs=identities.map(identity=>({offer:input.offer,wallet:identity}));
   const reads=inputs.map(value=>reader.getLicenseStatus(value));
   inputs.forEach(value=>{value.offer=seller.toBase58();value.wallet=wallet.toBase58();});
@@ -146,7 +147,7 @@ test('late cancelled valid snapshot cannot update high-water or progress and its
   const held=deferred(),source=rpc(t),history=createEndpointHistory();
   let block=true;
   const fetch=async(url,init)=>{const q=JSON.parse(init.body);if(block&&q.method==='getMultipleAccounts'){await held.promise;return Response.json({jsonrpc:'2.0',id:q.id,result:snapshotFor(input.wallet,{slot:999,timestamp:9999n})});}return source.fetch(url,init);};
-  const reader=small({fetch,now:()=>0},history),controller=new AbortController();
+  const reader=small({fetch,now:()=>EPOCH},history),controller=new AbortController();
   const pending=reader.getLicenseStatus(input,{signal:controller.signal});await flush();controller.abort();
   await assert.rejects(pending,code('CANCELLED'));
   await assert.rejects(reader.getLicenseStatus(input),code('BUSY'));
@@ -157,7 +158,7 @@ test('late cancelled valid snapshot cannot update high-water or progress and its
 test('body read and body cancellation promises independently retain quarantined capacity', async () => {
   const read=deferred(),cancel=deferred();let calls=0,reads=0;
   const fetch=async()=>{calls++;return{ok:true,status:200,headers:new Headers(),body:{getReader:()=>({read:()=>{reads++;return read.promise;},cancel:()=>cancel.promise,releaseLock(){}})}};};
-  const reader=small({fetch,now:()=>0}),controller=new AbortController();
+  const reader=small({fetch,now:()=>EPOCH}),controller=new AbortController();
   const pending=reader.getLicenseStatus(input,{signal:controller.signal});await flush();assert.equal(reads,1);
   controller.abort();await assert.rejects(pending,code('CANCELLED'));
   await assert.rejects(reader.getLicenseStatus(input),code('BUSY'));
@@ -167,16 +168,16 @@ test('body read and body cancellation promises independently retain quarantined 
 });
 
 test('shared global progress prevents idle-worker false stalls and requires both Clock and slot advancement', async t => {
-  let now=0;const source=rpc(t),history=createEndpointHistory();
+  let now=EPOCH;const source=rpc(t,{expiry:2000n}),history=createEndpointHistory();
   const a=small({fetch:source.fetch,now:()=>now},history),b=small({fetch:source.fetch,now:()=>now},history);
   await a.getLicenseStatus(input);
-  now=11000;source.state.slot=101;source.state.timestamp=1001n;await b.getLicenseStatus(input);
-  now=13000;assert.equal((await a.getLicenseStatus(input)).lastProgressAtMs,11000);
-  now=23000;source.state.slot=102;
+  now=EPOCH+11000;source.state.slot=101;source.state.timestamp=1001n;await b.getLicenseStatus(input);
+  now=EPOCH+13000;assert.equal((await a.getLicenseStatus(input)).lastProgressAtMs,EPOCH+11000);
+  now=EPOCH+23000;source.state.slot=102;
   await assert.rejects(a.getLicenseStatus(input),code('STALE'));
   assert.equal(history.slot,101,'frozen Clock cannot advance the high-water');
   source.state.timestamp=1002n;assert.equal((await b.getLicenseStatus(input)).contextSlot,102);
-  now=60000;source.state.slot=103;source.state.timestamp=1003n;
+  now=EPOCH+60000;source.state.slot=103;source.state.timestamp=1003n;
   assert.equal((await a.getLicenseStatus(input)).contextSlot,103,'both advancing after idle recovers');
   source.state.slot=102;await assert.rejects(b.getLicenseStatus(input),code('INVALID_ACCOUNT'));
   source.state.slot=104;source.state.timestamp=1002n;await assert.rejects(b.getLicenseStatus(input),code('STALE'));
@@ -191,27 +192,27 @@ test('out-of-order concurrent snapshots compare against the latest committed sha
     if(first) await old.promise;
     return Response.json({jsonrpc:'2.0',id:q.id,result:snapshotFor(input.wallet,{slot:first?100:101,timestamp:first?1000n:1001n})});
   };
-  const reader=small({fetch,now:()=>0},createEndpointHistory(),2,0);
+  const reader=small({fetch,now:()=>EPOCH},createEndpointHistory(),2,0);
   const pending=reader.getLicenseStatus(input);await flush();
   assert.equal((await reader.getLicenseStatus(input)).contextSlot,101);
   old.resolve();await assert.rejects(pending,code('INVALID_ACCOUNT'));
 });
 
 test('invalid account observations and signature-only reads cannot refresh frozen-provider health', async t => {
-  let now=0;const source=rpc(t),history=createEndpointHistory();const reader=small({fetch:source.fetch,now:()=>now},history);
-  await reader.getLicenseStatus(input);now=11000;source.state.slot=101;source.state.timestamp=1001n;
+  let now=EPOCH;const source=rpc(t),history=createEndpointHistory();const reader=small({fetch:source.fetch,now:()=>now},history);
+  await reader.getLicenseStatus(input);now=EPOCH+11000;source.state.slot=101;source.state.timestamp=1001n;
   source.state.mutate=result=>{result.value[1].owner=seller.toBase58();};
   await assert.rejects(reader.getLicenseStatus(input),code('INVALID_ACCOUNT'));
-  assert.equal(history.slot,100);assert.equal(history.slotProgress,0);
+  assert.equal(history.slot,100);assert.equal(history.slotProgress,EPOCH);
   await reader.getTransactionStatus({signature:'1'.repeat(64)});
-  assert.equal(history.slot,100);assert.equal(history.timestampProgress,0);
-  delete source.state.mutate;now=12000;source.state.slot=100;source.state.timestamp=1000n;
+  assert.equal(history.slot,100);assert.equal(history.timestampProgress,EPOCH);
+  delete source.state.mutate;now=EPOCH+12000;source.state.slot=100;source.state.timestamp=1000n;
   await assert.rejects(reader.getLicenseStatus(input),code('STALE'));
 });
 
 for(const failure of ['metadata','blockhash']) test(`fully validated snapshot anchors high-water despite later ${failure} failure`, async t => {
   const source=rpc(t,{slot:101,timestamp:1001n,missing:true}),history=createEndpointHistory();
-  const reader=small({fetch:source.fetch,now:()=>0},history);
+  const reader=small({fetch:source.fetch,now:()=>EPOCH},history);
   source.state.failBlockhash=failure==='blockhash';
   await assert.rejects(reader.prepareCheckout({network:'devnet',offerAddress:input.offer,walletAddress:input.wallet,metadataJson:failure==='metadata'?metadataJson+' ':metadataJson}));
   assert.equal(history.slot,101);assert.equal(history.timestamp,1001n);
@@ -221,8 +222,8 @@ for(const failure of ['metadata','blockhash']) test(`fully validated snapshot an
 });
 
 test('offer creation shares endpoint Clock history with license snapshots', async t => {
-  let now=0;const source=rpc(t),history=createEndpointHistory(),reader=small({fetch:source.fetch,now:()=>now},history);
-  await reader.getLicenseStatus(input);now=12000;source.state.slot=101;
+  let now=EPOCH;const source=rpc(t),history=createEndpointHistory(),reader=small({fetch:source.fetch,now:()=>now},history);
+  await reader.getLicenseStatus(input);now=EPOCH+12000;source.state.slot=101;
   await assert.rejects(reader.prepareOffer({network:'devnet',sellerWallet:seller.toBase58(),nonce:'1',metadataJson}),code('STALE'));
   source.state.timestamp=1001n;
   await reader.prepareOffer({network:'devnet',sellerWallet:seller.toBase58(),nonce:'1',metadataJson});
@@ -231,8 +232,8 @@ test('offer creation shares endpoint Clock history with license snapshots', asyn
 
 test('public pool overload cannot consume reserved protected capacity; both pools share monotonic history', async t => {
   const held=deferred(),source=rpc(t),history=createEndpointHistory();let activePublic=0;
-  const publicReader=createPlatformReaderPool({now:()=>0,fetch:async(url,init)=>{activePublic++;await held.promise;return source.fetch(url,init);}},{history,activeLimit:4,queueLimit:8});
-  const protectedReader=createPlatformReaderPool({now:()=>0,fetch:source.fetch},{history,activeLimit:4,queueLimit:8});
+  const publicReader=createPlatformReaderPool({now:()=>EPOCH,fetch:async(url,init)=>{activePublic++;await held.promise;return source.fetch(url,init);}},{history,activeLimit:4,queueLimit:8});
+  const protectedReader=createPlatformReaderPool({now:()=>EPOCH,fetch:source.fetch},{history,activeLimit:4,queueLimit:8});
   const controllers=Array.from({length:12},()=>new AbortController());
   const pending=controllers.map(c=>publicReader.getLicenseStatus(input,{signal:c.signal}).catch(error=>error));
   await flush();assert.equal(activePublic,4);await assert.rejects(publicReader.getLicenseStatus(input),code('BUSY'));
@@ -250,7 +251,7 @@ for(const mode of ['oversized','utf8','json','transport','throw-undefined']) tes
     if(mode==='utf8') return new Response(new Uint8Array([0xff]));
     return new Response('{');
   };
-  for(const reader of [createPactClient({fetch,now:()=>0}),small({fetch,now:()=>0})]) {
+  for(const reader of [createPactClient({fetch,now:()=>0}),small({fetch,now:()=>EPOCH})]) {
     await assert.rejects(reader.getLicenseStatus(input),error=>error instanceof PactError&&error.code==='RPC_ERROR'&&!error.message.includes('secret'));
   }
 });
@@ -262,10 +263,49 @@ test('RPC accepts exactly 128 KiB and rejects enormous addresses before any tran
     const text=JSON.stringify({jsonrpc:'2.0',id:q.id,result:q.method==='getGenesisHash'?GENESIS:snapshotFor()});
     return new Response(text+' '.repeat(131072-Buffer.byteLength(text)));
   };
-  for(const reader of [createPactClient({fetch,now:()=>0}),small({fetch,now:()=>0})]) {
+  for(const reader of [createPactClient({fetch,now:()=>0}),small({fetch,now:()=>EPOCH})]) {
     assert.equal((await reader.getLicenseStatus(input)).active,true);
     const previous=calls;
     await assert.rejects(async()=>reader.getLicenseStatus({...input,wallet:'1'.repeat(1000000)}),code('INVALID_INPUT'));
     assert.equal(calls,previous);
   }
+});
+
+test('server first snapshot rejects historical and future Clock outside inclusive sixty-second bounds', async t => {
+  for(const [offset,accepted] of [[-61,false],[-60,true],[0,true],[60,true],[61,false]]) {
+    await t.test(`chain skew ${offset}s`,async t=>{
+      const source=rpc(t,{timestamp:1000n+BigInt(offset),expiry:2000n}),history=createEndpointHistory();
+      const reader=small({fetch:source.fetch,now:()=>EPOCH},history);
+      if(accepted) {
+        assert.equal((await reader.getLicenseStatus(input)).active,true);
+        assert.equal(history.slot,100);
+      } else {
+        await assert.rejects(reader.getLicenseStatus(input),code('STALE'));
+        assert.equal(history.slot,-1,'rejected Clock never anchors or refreshes endpoint health');
+        assert.equal(history.timestamp,-1n);
+        assert.equal(history.slotProgress,0);
+        assert.equal(history.timestampProgress,0);
+      }
+    });
+  }
+});
+
+test('server-only wall expiry denies lagging Clock positives without relabeling or forgetting a valid observation', async t => {
+  for(const expiry of [980n,1000n,1001n]) {
+    const source=rpc(t,{timestamp:950n,expiry}),history=createEndpointHistory();
+    const reader=small({fetch:source.fetch,now:()=>EPOCH},history);
+    if(expiry>1000n) assert.equal((await reader.getLicenseStatus(input)).active,true);
+    else await assert.rejects(reader.getLicenseStatus(input),code('STALE'));
+    assert.equal(history.slot,100,'within-bound valid Clock anchors the chain observation even if positive wall freshness fails');
+    assert.equal(history.timestamp,950n);
+    assert.equal((await createPactClient({fetch:source.fetch,now:()=>0}).getLicenseStatus(input)).active,true,'public browser verifier retains its chain-relative contract');
+  }
+});
+
+test('server offer creation rejects historical first Clock before issuing a blockhash or anchoring history', async t => {
+  const source=rpc(t,{timestamp:939n}),history=createEndpointHistory();
+  const reader=small({fetch:source.fetch,now:()=>EPOCH},history);
+  await assert.rejects(reader.prepareOffer({network:'devnet',sellerWallet:seller.toBase58(),nonce:'1',metadataJson}),code('STALE'));
+  assert.equal(history.slot,-1);
+  assert.ok(source.calls.every(q=>q.method!=='getLatestBlockhash'));
 });
