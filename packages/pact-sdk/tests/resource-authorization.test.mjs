@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPactApiHandler } from '../dist/server.js';
+import { createPactApiHandler, PlatformError } from '../dist/server.js';
+import { PactError } from '../dist/index.js';
 import { controlledRpc, signer, offer, seller, ORIGIN } from '../../../web/tests/platform/fixtures.mjs';
 
 // Disposable message proofs and synthetic account bytes only. Every recorded RPC
@@ -416,8 +417,29 @@ test('invalid prepared bodies and unsafe content types fail before commit and do
     const e = environment(t, { prepare: () => ({ ...value, commit() { commits++; } }) });
     denied(await call(e, undefined, await authenticate(e))); assert.equal(commits, 0);
   }
-  const e = environment(t, { prepare() { throw Error(PRIVATE); } });
-  denied(await call(e, undefined, await authenticate(e)));
+  for (const phase of ['prepare', 'commit']) for (const createError of [
+    () => new Error(PRIVATE),
+    () => new PlatformError('INVALID_INPUT', PRIVATE, 400),
+    () => new PactError('INVALID_INPUT', PRIVATE),
+  ]) {
+    let commits = 0;
+    const e = environment(t, { prepare: async () => {
+      if (phase === 'prepare') throw createError();
+      return { body: PRIVATE, commit() { commits++; throw createError(); } };
+    } });
+    const result = await call(e, undefined, await authenticate(e));
+    denied(result); assert.equal(result.status, 500);
+    assert.equal(JSON.parse(result.text).error.code, 'INTERNAL_ERROR');
+    assert.equal(commits, phase === 'prepare' ? 0 : 1);
+  }
+  for (const field of ['body', 'contentType', 'commit']) {
+    const e = environment(t, { prepare: () => Object.defineProperty({ body: PRIVATE }, field, {
+      get() { throw new PlatformError('INVALID_INPUT', PRIVATE, 400); },
+    }) });
+    const result = await call(e, undefined, await authenticate(e));
+    denied(result); assert.equal(result.status, 500);
+    assert.equal(JSON.parse(result.text).error.code, 'INTERNAL_ERROR');
+  }
 });
 
 test('async commit functions are refused before invocation; promise-returning contract violations never deliver bytes', bounds, async t => {

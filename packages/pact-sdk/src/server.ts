@@ -122,13 +122,18 @@ export function createPactApiHandler(options:PactApiOptions){
      const token=cookies(req).pact_session,s=session(token);
      await emptyBody(req,signal);
      await entitlement(token,policy.offer,s.walletAddress,signal);
-     const prepared=await policy.prepare(Object.freeze({walletAddress:s.walletAddress,offerAddress:policy.offer,signal}));
+     let prepared:PreparedResource;
+     try{prepared=await policy.prepare(Object.freeze({walletAddress:s.walletAddress,offerAddress:policy.offer,signal}));}
+     catch{throw new PlatformError('INTERNAL_ERROR','Resource preparation failed.',500);}
      alive(signal);
-     if(!prepared||!(typeof prepared.body==='string'||prepared.body instanceof Uint8Array)||prepared.commit!==undefined&&typeof prepared.commit!=='function')throw new PlatformError('INTERNAL_ERROR','Invalid prepared resource.',500);
-     const size=typeof prepared.body==='string'?Buffer.byteLength(prepared.body):prepared.body.byteLength;
+     let resourceBody:unknown,resourceType:unknown,resourceCommit:unknown;
+     try{resourceBody=prepared?.body;resourceType=prepared?.contentType;resourceCommit=prepared?.commit;}
+     catch{throw new PlatformError('INTERNAL_ERROR','Invalid prepared resource.',500);}
+     if(!(typeof resourceBody==='string'||resourceBody instanceof Uint8Array)||resourceCommit!==undefined&&typeof resourceCommit!=='function')throw new PlatformError('INTERNAL_ERROR','Invalid prepared resource.',500);
+     const size=typeof resourceBody==='string'?Buffer.byteLength(resourceBody):resourceBody.byteLength;
      if(size>1048576)throw new PlatformError('BODY_TOO_LARGE','Prepared resource exceeds 1 MiB.',500);
-     const bytes=typeof prepared.body==='string'?Buffer.from(prepared.body):Buffer.from(prepared.body);
-     const contentType=prepared.contentType??'application/octet-stream',commit=prepared.commit;
+     const bytes=Buffer.from(resourceBody);
+     const contentType=resourceType===undefined?'application/octet-stream':resourceType,commit=resourceCommit;
      if(typeof contentType!=='string'||contentType.length>128||!/^[\x20-\x7e]+$/.test(contentType)||commit?.constructor.name==='AsyncFunction')throw new PlatformError('INTERNAL_ERROR','Invalid prepared resource contract.',500);
      const finalStatus=await entitlement(token,policy.offer,s.walletAddress,signal);
      // No await between the final check, synchronous host commit and response construction.
@@ -136,7 +141,7 @@ export function createPactApiHandler(options:PactApiOptions){
      const response=new Response(bytes,{headers});
      alive(signal);session(token);
      if(!positiveFresh(finalStatus,now()))throw new PlatformError('LICENSE_REQUIRED','The entitlement expired before delivery.',403);
-     if(commit&&commit()!==undefined)throw new PlatformError('INTERNAL_ERROR','Resource commit must return undefined synchronously.',500);
+     if(commit){let result:unknown;try{result=commit();}catch{throw new PlatformError('INTERNAL_ERROR','Resource commit failed.',500);}if(result!==undefined)throw new PlatformError('INTERNAL_ERROR','Resource commit must return undefined synchronously.',500);}
      return response;
     }
     if(path==='/offers/prepare'&&req.method==='POST'){const x=await body(req,['network','programId','sellerWallet','nonce','metadataJson'],signal);return json(await reader.prepareOffer(x as Parameters<typeof reader.prepareOffer>[0],{signal}));}
