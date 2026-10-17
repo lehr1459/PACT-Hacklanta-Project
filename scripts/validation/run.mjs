@@ -18,12 +18,17 @@ await mkdir(directory,{recursive:true});
 const results=[];
 const summary={lane:requested,cleanEnvironmentRequired:requireClean,startedAt:new Date().toISOString(),node:process.version,platform:process.platform,revision:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),results};
 async function record(){await writeFile(path.join(directory,'results.json'),JSON.stringify(summary,null,2)+'\n');}
-async function command(name,args,{cwd=root,env={},binary=process.execPath}={}) {
+async function command(name,args,{cwd=root,env={},binary=process.execPath,probeOnly=false,capture=false}={}) {
   const logfile=path.join(directory,`${results.length+1}-${name}.log`),handle=await open(logfile,'w');
   const item={name,binary,args,cwd,environment:env,log:logfile,startedAt:new Date().toISOString(),status:'running'};
-  results.push(item);await record();const started=Date.now();
-  try {const result=await execute(binary,args,{cwd,env,onOutput:chunk=>writeSync(handle.fd,chunk)});Object.assign(item,result,{status:result.code===0?'passed':'failed'});if(result.code!==0)throw Error(`${name} exited ${result.code}`);}
-  catch(error){item.status='failed';item.error=error.message;throw error;}
+  results.push(item);await record();const started=Date.now();let captured='';
+  try {
+    const result=await execute(binary,args,{cwd,env,onOutput:(chunk,channel)=>{writeSync(handle.fd,chunk);if(capture&&channel==='stdout')captured+=chunk.toString('utf8');}});
+    Object.assign(item,result,{status:result.code===0?'passed':probeOnly?'unavailable':'failed'});
+    if(result.code!==0&&!probeOnly)throw Error(`${name} exited ${result.code}`);
+    return {...result,...(capture?{output:captured}:{})};
+  }
+  catch(error){item.status=probeOnly?'unavailable':'failed';item.error=error.message;if(probeOnly)return{code:1,signal:null,output:captured};throw error;}
   finally{item.durationMs=Date.now()-started;await handle.close();await record();}
 }
 const npm=(name,args,cwd=root)=>command(name,[npmCli(),...args],{cwd});
@@ -74,8 +79,17 @@ async function lane(name) {
     if(process.platform!=='win32')throw Error('Pinned chain toolchain requires Windows; use the Windows CI job.');
     const virtualPython=path.join(root,'solana/.tools/venv/Scripts/python.exe');
     let hasVirtualPython=true;try{await access(virtualPython);}catch{hasVirtualPython=false;}
-    const python=hasVirtualPython?virtualPython:'python';
-    await command('pinned-python',['-c','import sys; assert sys.version_info[:3] == (3,13,5), sys.version; print(sys.version)'],{binary:python});
+    let python=virtualPython;
+    const probe='import json,sys; assert sys.version_info[:3] == (3,13,5), sys.version; print(json.dumps({"executable":sys.executable,"version":sys.version}))';
+    if(!hasVirtualPython) {
+      python=undefined;
+      for(const candidate of [{binary:'py',prefix:['-3.13']},{binary:'python',prefix:[]}]) {
+        const result=await command('python-probe-'+candidate.binary,[...candidate.prefix,'-c',probe],{binary:candidate.binary,probeOnly:true,capture:true});
+        if(result.code===0) {const selected=JSON.parse(result.output);await access(selected.executable);python=selected.executable;break;}
+      }
+      if(!python)throw Error('Python 3.13.5 is required; neither the py -3.13 launcher nor python selected that exact interpreter. See probe receipts.');
+    }
+    await command('pinned-python',['-c',probe],{binary:python});
     if(!hasVirtualPython)await command('solana-python-venv',['-m','venv',path.join(root,'solana/.tools/venv')],{binary:python});
     await command('solana-setup',['-NoProfile','-ExecutionPolicy','Bypass','-File','solana/scripts/setup.ps1'],{binary:'powershell.exe'});
     // Nested dependency repositories have no Solidity EOL attributes. Reproduce

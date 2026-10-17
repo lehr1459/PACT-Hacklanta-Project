@@ -19,9 +19,9 @@ export function npmCli() {
 export async function execute(binary,args,{cwd=root,env={},onOutput=()=>{}}={}) {
   return new Promise((resolve,reject)=>{
     const child=spawn(binary,args,{cwd,env:validationEnv(env),stdio:['ignore','pipe','pipe'],windowsHide:true});
-    const forward=(stream,chunk)=>{stream.write(chunk);onOutput(chunk);};
-    child.stdout.on('data',chunk=>forward(process.stdout,chunk));
-    child.stderr.on('data',chunk=>forward(process.stderr,chunk));
+    const forward=(stream,chunk,channel)=>{stream.write(chunk);onOutput(chunk,channel);};
+    child.stdout.on('data',chunk=>forward(process.stdout,chunk,'stdout'));
+    child.stderr.on('data',chunk=>forward(process.stderr,chunk,'stderr'));
     child.once('error',reject);
     child.once('close',(code,signal)=>resolve({code:code??1,signal}));
   });
