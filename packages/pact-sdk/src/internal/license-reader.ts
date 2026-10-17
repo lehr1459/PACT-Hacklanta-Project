@@ -34,6 +34,8 @@ export type PactClientOptions = {
 export type ReadContext = {
   startedAtMs: number; signal: AbortSignal;
   check(): void;
+  /** Pool-owned monotonic budget; absent on the compatible browser wrapper. */
+  remainingMs?(): number;
   /** Retain raw work even after the caller has timed out. */
   track<T>(promise: Promise<T>): Promise<T>;
 };
@@ -49,7 +51,17 @@ export function createEndpointHistory(serverPolicy = true): EndpointHistory {
     requireTimestampProgress: serverPolicy, requireWallClockAlignment: serverPolicy,
   };
 }
-function fail(code: PactErrorCode, message: string): never { throw new PactError(code, message); }
+const validationFailures = new WeakSet<Error>(), transportFailures = new WeakSet<Error>();
+function fail(code: PactErrorCode, message: string): never {
+  const error = new PactError(code, message); validationFailures.add(error); throw error;
+}
+function transportFailure(): never {
+  const error = new PactError('RPC_ERROR', 'RPC transport failed.'); transportFailures.add(error); throw error;
+}
+/** Internal nominal classification; exported error instances cannot select failover. */
+export function isRetryableRpcFailure(error: unknown): boolean {
+  return error instanceof Error && transportFailures.has(error);
+}
 function key(value: string): PublicKey {
   try {
     if (typeof value !== 'string' || value.length < 32 || value.length > 44) throw Error();
@@ -97,7 +109,8 @@ export function createReadEngine(options: PactClientOptions, history: EndpointHi
   let id = 0;
   function time() {
     const value = now();
-    if (!Number.isFinite(value) || value < history.lastNow) fail('STALE', 'Local clock moved backwards.');
+    if (!Number.isFinite(value) || history.requireWallClockAlignment && !numeric(value)
+      || value < history.lastNow) fail('STALE', 'Local clock is invalid or moved backwards.');
     history.lastNow = value;
     return value;
   }
@@ -113,14 +126,17 @@ export function createReadEngine(options: PactClientOptions, history: EndpointHi
     try {
       context.check();
       while (true) {
-        const part = await reader.read();
+        let part: ReadableStreamReadResult<Uint8Array>;
+        try { part = await reader.read(); }
+        catch { context.check(); transportFailure(); }
         context.check();
         if (part.done) break;
         size += part.value.byteLength;
         if (size > RESPONSE_LIMIT) { cancel(); fail('RPC_ERROR', 'RPC response exceeded 128 KiB.'); }
         chunks.push(part.value);
       }
-      return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks)));
+      try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks))); }
+      catch { fail('RPC_ERROR', 'Invalid RPC response encoding.'); }
     } finally {
       context.signal.removeEventListener('abort', cancel);
       reader.releaseLock();
@@ -130,20 +146,26 @@ export function createReadEngine(options: PactClientOptions, history: EndpointHi
     try {
       context.check();
       const requestId = ++id;
-      const response = await context.track(Promise.resolve().then(() => {
+      const response = await context.track(Promise.resolve().then(async () => {
         context.check();
-        return fetcher(url, {
+        // Normalize at the untrusted transport boundary before preserving any
+        // factory validation errors, even if fetch throws the exported class.
+        try { return await fetcher(url, {
           method: 'POST', headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: requestId, method, params }),
           signal: context.signal, cache: 'no-store',
-        });
+        }); } catch { context.check(); transportFailure(); }
       }));
       const discard = () => {
         try { if (response.body) void context.track(response.body.cancel()).catch(() => {}); }
         catch { /* A failed transport may already have closed the stream. */ }
       };
       try { context.check(); } catch (error) { discard(); throw error; }
-      if (!response.ok) { discard(); fail('RPC_ERROR', `RPC HTTP ${response.status}.`); }
+      if (!response.ok) {
+        discard();
+        if (response.status === 429 || response.status >= 500 && response.status <= 599) transportFailure();
+        fail('RPC_ERROR', 'RPC HTTP request failed.');
+      }
       const stated = response.headers?.get('content-length');
       if (stated && (!/^\d+$/.test(stated) || Number(stated) > RESPONSE_LIMIT)) {
         discard(); fail('RPC_ERROR', 'RPC response exceeded 128 KiB.');
@@ -158,7 +180,7 @@ export function createReadEngine(options: PactClientOptions, history: EndpointHi
       // Preserve deadline/cancellation errors thrown by the owning context, but
       // never expose transport messages, URLs or malformed JSON decoder details.
       context.check();
-      if (error instanceof PactError) throw error;
+      if (error instanceof Error && (validationFailures.has(error) || transportFailures.has(error))) throw error;
       fail('RPC_ERROR', 'RPC transport or response failed.');
     }
   }
@@ -273,5 +295,16 @@ export function createReadEngine(options: PactClientOptions, history: EndpointHi
     const { received } = observe(context, result.context.slot, timestamp);
     return { contextSlot: result.context.slot, chainTimestamp: timestamp.toString(), startedAtMs: context.startedAtMs, receivedAtMs: received };
   }
-  return { time, rpc, genesis, snapshot, preparationSnapshot };
+  async function readiness(context: ReadContext) {
+    await genesis(context);
+    const result = await rpc(context, 'getMultipleAccounts', [[clockAddress, PACT_PROGRAM_ID], config()]);
+    if (!numeric(result?.context?.slot) || !Array.isArray(result.value) || result.value.length !== 2) fail('INVALID_ACCOUNT', 'Invalid readiness context.');
+    const [ca, pa] = result.value;
+    executable(pa);
+    const timestamp = clock(ca, result.context.slot);
+    const { received } = observe(context, result.context.slot, timestamp);
+    return { ready: true as const, network: 'devnet' as const, programId: PACT_PROGRAM_ID,
+      contextSlot: result.context.slot, chainTimestamp: timestamp.toString(), startedAtMs: context.startedAtMs, receivedAtMs: received };
+  }
+  return { time, rpc, genesis, snapshot, preparationSnapshot, readiness };
 }

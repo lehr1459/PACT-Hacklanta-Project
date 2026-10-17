@@ -1,3 +1,10 @@
-import { createPactApiHandler } from '@pact/sdk/server';
-// Explicit local single-process opt-in. Never enable authentication on Vercel.
-export const platformApi=createPactApiHandler({origin:process.env.PACT_APP_ORIGIN??'http://localhost:3007',authMode:process.env.PACT_AUTH_MODE==='single-process'?'single-process':'disabled',protectedOffer:process.env.PACT_PROTECTED_OFFER,rpcUrl:process.env.NEXT_PUBLIC_SOLANA_RPC_URL});
+import 'server-only';
+import {createPactApiHandler,resolvePactEnvironment} from '@pact/sdk/server';
+
+// Next inlines this intentionally public binding. Private RPC remains runtime-only.
+const binding=process.env.PACT_BUILD_BINDING_JSON;
+const configuration=resolvePactEnvironment({application:'marketplace',environment:process.env,
+ phase:process.env.NODE_ENV==='development'?'development':'start',...(binding?{expectedBinding:JSON.parse(binding)}:{})});
+export const platformApi=createPactApiHandler({origin:configuration.server.origin,authMode:configuration.server.authMode,
+ protectedOffer:configuration.server.policy==='licensed-demo-v1'?configuration.server.protectedOffer??undefined:undefined,
+ rpcUrls:configuration.server.rpcUrls,diagnostics:{onEvent:event=>{console.info(JSON.stringify(event));}}});

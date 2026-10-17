@@ -32,19 +32,15 @@ After finalized creation, the seller's offer address is displayed/selected and l
 
 The original blockhash and last valid block height are retained. Before sending, the app checks current block height and blockhash validity without requesting a replacement signature. Read-only signature polling tolerates temporary errors with bounded backoff for 120 seconds. A deadline alone means **confirmation unknown** or **confirmed; finalization pending**. Expiration requires finalized height beyond the validity window, another nonregressing history-status read with no confirmation, and an invalid finalized blockhash; observed confirmation is sticky and cannot become “expired.” There is no automatic signing or resubmission.
 
-Public-only recovery records persist per attempt under `pact.solana.pending.v1:<attempt-key>` in local storage; they contain public network/program/buyer/offer/signature/blockhash/height/state fields, never signed transaction bytes or credentials. Persistence failure stops sending. Synchronous handler locks prevent double clicks, and same-attempt Web Locks prevent concurrent tabs from signing or sending duplicates. A supported secure-context Chrome localhost session with Web Locks is required. An unresolved buyer/offer attempt survives wallet changes and reloads: another click checks its existing signature only. Safe expiration also requires a fresh canonical absent-entitlement snapshot before releasing that purchase guard. No reset/retry button bypasses protection. Known RPC acceptance or confirmation remains known even when storage updates fail; protection stays active.
+Public-only recovery records persist per attempt under `pact.solana.pending.v1:<attempt-key>` in local storage; they contain public network/program/buyer/offer/signature/blockhash/height/state fields, never signed transaction bytes or credentials. Persistence failure stops sending. Synchronous handler locks prevent double clicks, and same-attempt Web Locks prevent concurrent tabs from signing or sending duplicates. A supported secure-context Chrome localhost session with Web Locks is required. An unresolved buyer/offer attempt survives wallet changes and reloads: another click checks its existing signature only. Safe expiration also requires a fresh finalized canonical snapshot matching the exact recorded missing or initialized entitlement baseline before releasing that purchase guard; legacy records without that baseline remain protected. No reset/retry button bypasses protection. Known RPC acceptance or confirmation remains known even when storage updates fail; protection stays active.
 
 SDK RPC calls have a five-second HTTP timeout. Wallet/offer changes during approval prevent submission. An empty, system-owned canonical entitlement PDA is treated as uninitialized, matching the program's pre-funded-account initialization behavior; it never unlocks access.
 
 ### Manual Chrome wallet checks
 
-1. Without Phantom, confirm the missing-extension message and disabled connect control; install only through the explicit link.
-2. With Phantom installed, select Phantom, connect and reject once, then connect successfully. Confirm public key and disconnect behavior.
-3. Select Devnet in Phantom. With an approved program/RPC configuration, create and review metadata, buy from another wallet, and verify public access/expiry.
-4. Change accounts during reads and while a transaction is pending. Check attribution and that another account's entitlement never opens access.
-5. Reject signing; test wrong RPC genesis, RPC outage, hidden/offline resume, and stale access. These checks use only Devnet test SOL.
+Use the current [wallet and accessibility acceptance checklist](../docs/development/WALLET_ACCEPTANCE.md). It separates distinct seller/buyer flows, message proof, transaction review, settlement, expiry, recovery and actual mobile Phantom from synthetic fixtures. Wallet approvals, message/transaction signatures and broadcast remain **HUMAN ACTION REQUIRED**; the checklist records them as unexecuted until a human supplies observations. No seed or private key is required in source, logs or chat.
 
-Automated fixture evidence does not establish real-wallet signing or a deployed Devnet transaction. Those remain operator-controlled evidence steps.
+Automated fixture results do not establish actual wallet approval, native popup behavior, a screen-reader pass or a deployed transaction. Keep dated operator observations separate from fixture receipts.
 
 ### Dependency audit limitation
 

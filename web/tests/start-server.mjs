@@ -1,6 +1,7 @@
 import {spawn} from 'node:child_process';
 
 const env = {...process.env,
+  PACT_ENV_PROFILE:'test',PACT_APP_ORIGIN:'http://localhost:3001',PACT_AUTH_MODE:'disabled',PACT_SERVER_POLICY:'disabled',PACT_PROCESS_MODEL:'stateless',
   NEXT_PUBLIC_PACT_CONTRACT_ADDRESS: process.env.PACT_QA_MODE === 'setup' ? '' : '0x4444444444444444444444444444444444444444',
   NEXT_PUBLIC_RPC_URL: 'http://127.0.0.1:8547',
   NEXT_TELEMETRY_DISABLED: '1',

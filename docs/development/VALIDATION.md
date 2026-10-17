@@ -75,3 +75,16 @@ node scripts/validation/run.mjs packed --clean
 ```
 
 Run both from a clean committed checkout with the current runtime. The first exports only committed SDK build/package inputs into two independent temporary projects, installs locked dependencies with isolated empty npm configuration and prepares byte-identical tarballs. It records source blobs, SHA-256, verified npm SHA-512 integrity, contents and runtime hashes under ignored `web/test-results/sdk-release/candidate-*`. It never publishes and keeps distribution approval false. The packed lane separately checks installed consumers and executable documentation, including optional React absence, React18/19 rendering, browser mount/hydration, Node server routes and forbidden server imports. Compare the packed consumer's archive hash to the release candidate before approval. The package remains private pending owner licensing/distribution decisions; registry provenance is not claimed by these local receipts.
+
+## Focused accessibility
+
+After the SDK build and locked web dependencies are ready, run these commands from the repository root with the pinned runtime. Serialize the first command with other web builds: its fixture server uses `web/.next`.
+
+```text
+node web/node_modules/@playwright/test/cli.js test --config web/tests/accessibility.config.ts
+node web/node_modules/@playwright/test/cli.js test --config examples/pact-checkout-vanilla/tests/playwright.config.ts --grep @accessibility --reporter=list --output web/test-results/accessibility-widget
+```
+
+The first lane builds the fixture web application once and selects tagged Solana, Base and wizard cases. The second uses the existing static SDK-bundle harness and does not build Next. Outputs are separate from the full suites. The tagged tests also remain discoverable in their existing full configurations; these focused commands do not replace `all-node`.
+
+These checks use synthetic providers/RPC, desktop/Pixel7 emulation and narrow reflow. Actual Phantom popup behavior, screen-reader announcements, native zoom and real mobile wallet handoff require the [operator acceptance record](WALLET_ACCEPTANCE.md). Wallet approval/signing/broadcast steps remain **HUMAN ACTION REQUIRED**.

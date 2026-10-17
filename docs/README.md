@@ -19,6 +19,10 @@ Use the root [README](../README.md) for current startup and repository boundarie
 | [Embedded checkout](EMBEDDED_CHECKOUT.md) | Purchase lifecycle and recovery |
 | [Integration wizard](INTEGRATION_WIZARD.md) | Generated local SDK integration |
 | [Security limits](platform/security.md) | Authentication and entitlement enforcement limitations |
+| [Developer guide](development/DEVELOPER_GUIDE.md) | Portable SDK installation, lookup/auth/purchase/recovery boundaries |
+| [Environment profiles](operations/ENVIRONMENTS.md) / [release snapshots](operations/RELEASE.md) | Saved build bindings, local archive creation and relocated validation |
+| [Operating procedures](operations/RUNBOOKS.md) / [rollout gates](operations/ROLLOUT.md) | Diagnostics, incident ownership, rollback and staged evidence |
+| [Wallet and accessibility acceptance](development/WALLET_ACCEPTANCE.md) | Automated scope and exact remaining human checks |
 
 `STATUS.md`, `HANDOFF.md`, `DECISIONS.md`, `MVP_SPEC.md`, `BACKEND_PHASE2.md`, `HACKLANTA_*`, `*_QA.md`, release/readiness reports, `platform/CHANGED_FILES.md`, and `qa/platform-v1/REPORT.md` contain historical milestones or cumulative records. Keep them for design rationale and test evidence; use current source and fresh validation for present behavior. Deployment packages are operator runbooks, not authorization to deploy.
 

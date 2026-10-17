@@ -51,6 +51,10 @@ export function IntegrationWizard() {
   const [preview, setPreview] = useState<Preview>('locked');
   const request = useRef(0);
   const busyRef = useRef(false);
+  const form = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (Object.keys(errors).length) form.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [errors]);
 
   function invalidate() {
     request.current++;
@@ -99,7 +103,7 @@ export function IntegrationWizard() {
     <section className="integration-hero"><div><p className="eyebrow">FOR BUILDERS / INTEGRATION WORKSPACE</p><h1>Your app.<br /><span>Verifiable access.</span></h1><p className="hero-copy">Connect an existing PACT offer to your Next.js or React app. Get a configuration, a starting component, and an AI coding prompt you can review.</p></div><aside className="integration-hero-note"><span className="integration-icon" aria-hidden="true">↗</span><h2>A small setup.<br />A clear boundary.</h2><p>No registration or database. No wallet connection. Your app still needs to implement and test the integration.</p></aside></section>
     <ol className="integration-steps" aria-label="Integration steps"><li><b>01</b><span>Describe your app</span></li><li><b>02</b><span>Validate your offer</span></li><li className={generated ? 'is-ready' : ''}><b>03</b><span>Copy and implement</span></li></ol>
     <div className="integration-layout"><section className="card integration-form-card"><div className="card-heading"><span className="eyebrow">YOUR INTEGRATION</span><span className="pill">DEVNET ONLY</span></div><h2>Start with an offer.</h2><p className="muted">These public settings produce local instructions. They do not register your app or change anything on chain.</p>
-      <form className="form" onSubmit={event => void prepare(event)} noValidate>
+      <form ref={form} className="form" onSubmit={event => void prepare(event)} noValidate aria-busy={busy}>
         <label>Application name<input value={appName} maxLength={80} placeholder="Your studio or app" aria-invalid={Boolean(errors.appName)} aria-describedby={errors.appName ? 'integration-name-error' : undefined} onChange={event => { invalidate(); setAppName(event.target.value); }} /><span id="integration-name-error" className="integration-field-error">{errors.appName}</span></label>
         <label>Framework<select value={framework} aria-invalid={Boolean(errors.framework)} aria-describedby={errors.framework ? 'integration-framework-error' : undefined} onChange={event => { invalidate(); setFramework(event.target.value); }}><option value="nextjs">Next.js App Router</option><option value="react">React (TypeScript)</option></select><span id="integration-framework-error" className="integration-field-error">{errors.framework}</span></label>
         <label>Existing offer address<input value={offer} maxLength={64} placeholder="Solana offer PDA" spellCheck={false} autoComplete="off" aria-invalid={Boolean(errors.offer)} aria-describedby={`integration-offer-help${errors.offer ? ' integration-offer-error' : ''}`} onChange={event => { invalidate(); setOffer(event.target.value); }} /><span id="integration-offer-error" className="integration-field-error">{errors.offer}</span></label>

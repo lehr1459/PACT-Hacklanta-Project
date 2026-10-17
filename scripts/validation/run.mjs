@@ -58,6 +58,9 @@ async function lane(name) {
     await command('provenance-tests',['--test','scripts/solana/provenance.test.mjs']);
     await command('sdk-release-policy-tests',['--test','scripts/release/sdk.test.mjs']);
     await command('runtime-review-tests',['--test','scripts/validation/runtime.test.mjs']);
+    await command('environment-policy-tests',['--test','scripts/validation/environment.test.mjs']);
+    await command('next-environment-tests',['--test','scripts/validation/next-environment.test.mjs']);
+    await command('archive-policy-tests',['--test','scripts/release/archive.test.mjs']);
   } else if(name==='build') {
     for(const project of ['web','examples/pact-demo-app','examples/pact-platform-app']) {
       const cwd=path.join(root,project),id=project.replaceAll('/','-');

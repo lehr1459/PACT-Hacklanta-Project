@@ -31,6 +31,48 @@ async function mount(page:any,bundle='esm',initial:any={}){
 
 test.describe('self-contained checkout bundles, synthetic identity/RPC only',()=>{
  test.skip(live);
+ test('@accessibility default checkout keyboard focus is visible and follows hidden wallet controls',async({page})=>{
+  const f=await mount(page);await expect(page.locator('#price')).toContainText('0.001');
+  const connect=page.getByRole('button',{name:'Connect Phantom'});await connect.focus();
+  const contrast=await connect.evaluate(button=>{
+   const root=button.getRootNode() as ShadowRoot;
+   const rgb=(text:string)=>text.match(/[\d.]+/g)!.slice(0,3).map(Number).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+   const luminance=(value:number[])=>value[0]*.2126+value[1]*.7152+value[2]*.0722;
+   const outline=luminance(rgb(getComputedStyle(button).outlineColor)),background=luminance(rgb(getComputedStyle(root.querySelector('section')!).backgroundColor));
+   return (Math.max(outline,background)+.05)/(Math.min(outline,background)+.05);
+  });expect(contrast).toBeGreaterThanOrEqual(3);
+  await page.keyboard.press('Enter');const disconnect=page.getByRole('button',{name:'Disconnect',exact:true});
+  await expect(disconnect).toBeFocused();await page.keyboard.press('Space');await expect(connect).toBeFocused();
+  const summary=page.locator('#metadata-panel summary');await summary.focus();await page.keyboard.press('Enter');
+  const editor=page.getByLabel("Paste the seller's exact metadata JSON");await expect(editor).toBeVisible();await editor.fill('{');
+  await expect(editor).toHaveAttribute('aria-invalid','true');await expect(editor).toHaveAccessibleDescription(/Metadata is invalid/);
+  await editor.fill(metadataJson);await expect(editor).toHaveAttribute('aria-invalid','false');
+  await page.emulateMedia({forcedColors:'active',reducedMotion:'reduce'});await editor.focus();
+  expect(await editor.evaluate(el=>getComputedStyle(el).outlineStyle)).not.toBe('none');
+  await page.setViewportSize({width:320,height:800});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  expect(await page.evaluate(()=>(window as any).signed)).toBe(0);expect(f.calls).not.toContain('sendTransaction');expect(f.pageErrors).toEqual([]);
+ });
+ test('@accessibility unchanged checkout ticks do not mutate live-region text',async({page})=>{
+  await page.clock.install();const f=await mount(page);await expect(page.locator('#price')).toContainText('0.001');
+  await page.evaluate(()=>{
+   const root=document.querySelector('#checkout')!.shadowRoot!;(window as any).liveTextMutations=0;
+   const observer=new MutationObserver(records=>(window as any).liveTextMutations+=records.length);
+   for(const id of ['status','purchase-reason','metadata-message','transaction'])observer.observe(root.getElementById(id)!,{subtree:true,childList:true,characterData:true});
+  });
+  await page.clock.runFor(1000);expect(await page.evaluate(()=>(window as any).liveTextMutations)).toBe(0);
+  await page.getByRole('button',{name:'Connect Phantom'}).click();
+  await expect(page.locator('#status')).toContainText('License required');
+  expect(await page.evaluate(()=>(window as any).liveTextMutations)).toBeGreaterThan(0);
+  expect(f.pageErrors).toEqual([]);expect(f.calls).not.toContain('sendTransaction');
+ });
+ test('@accessibility wallet changes never steal focus from the metadata editor',async({page})=>{
+  const f=await mount(page);await expect(page.locator('#price')).toContainText('0.001');
+  await page.locator('#metadata-panel summary').click();const editor=page.locator('#metadata');await editor.focus();
+  await page.evaluate(address=>(window as any).changeWallet(address),wallet.toBase58());
+  await expect(page.getByRole('button',{name:'Disconnect',exact:true})).toBeVisible();await expect(editor).toBeFocused();
+  await page.evaluate(()=>(window as any).changeWallet(null));await expect(page.getByRole('button',{name:'Connect Phantom'})).toBeVisible();
+  await expect(editor).toBeFocused();expect(f.pageErrors).toEqual([]);expect(f.calls).not.toContain('sendTransaction');
+ });
  for(const bundle of ['esm','iife'])test(`${bundle}: explicit consent, exact metadata, finalized access and teardown`,async({page})=>{
   const f=await mount(page,bundle);await expect(page.locator('#price')).toContainText('0.001');
   expect(f.calls.every(m=>['getGenesisHash','getMultipleAccounts'].includes(m))).toBeTruthy();

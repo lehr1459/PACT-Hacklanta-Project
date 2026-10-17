@@ -7,7 +7,7 @@ export const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../
 export function validationEnv(extra={}) {
   const env={...process.env};
   for(const key of Object.keys(env))if(/^(?:NODE_PATH$|NODE_OPTIONS$|NODE_TEST_CONTEXT$|PACT_|NEXT_PUBLIC_|SOLANA_|VERCEL(?:_|$)|AWS_LAMBDA_)/.test(key))delete env[key];
-  return {...env,NEXT_TELEMETRY_DISABLED:'1',NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID:'',NEXT_PUBLIC_SOLANA_RPC_URL:'https://api.devnet.solana.com',NEXT_PUBLIC_PACT_CONTRACT_ADDRESS:'',NEXT_PUBLIC_RPC_URL:'https://sepolia.base.org',PACT_AUTH_MODE:'disabled',...(process.env.PACT_EXTERNAL_SATURDAY?{PACT_EXTERNAL_SATURDAY:process.env.PACT_EXTERNAL_SATURDAY}:{}),...extra};
+  return {...env,NEXT_TELEMETRY_DISABLED:'1',PACT_ENV_PROFILE:'ci',PACT_NETWORK:'devnet',PACT_PROCESS_MODEL:'stateless',PACT_SERVER_POLICY:'disabled',NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID:'',NEXT_PUBLIC_SOLANA_RPC_URL:'https://api.devnet.solana.com',NEXT_PUBLIC_PACT_CONTRACT_ADDRESS:'',NEXT_PUBLIC_RPC_URL:'https://sepolia.base.org',PACT_AUTH_MODE:'disabled',...(process.env.PACT_EXTERNAL_SATURDAY?{PACT_EXTERNAL_SATURDAY:process.env.PACT_EXTERNAL_SATURDAY}:{}),...extra};
 }
 export function npmCli() {
   const directory=path.dirname(process.execPath);

@@ -42,6 +42,49 @@ async function connect(page:Page){await page.getByRole('button',{name:'Connect w
 async function load(page:Page){await page.getByLabel('Offer address',{exact:true}).fill(offer.toBase58());}
 async function buyReady(page:Page){await page.getByLabel('Seller metadata JSON').fill(metadata);await page.getByRole('checkbox',{name:'I reviewed and approve these matching license terms.'}).check();}
 
+test('@accessibility Solana focused validation, consent, native details and reflow remain usable',async({page})=>{
+ const state=await fixture(page);state.licensed=false;await page.goto('/');await connect(page);
+ const address=page.getByLabel('Offer address',{exact:true});await address.fill('invalid');
+ await expect(address).toBeFocused();await expect(address).toHaveAttribute('aria-invalid','true');
+ await expect(address).toHaveAccessibleDescription('Enter a canonical Solana offer address.');
+ await expect(page.locator('#solana-offer-error')).toBeVisible();
+ await load(page);const editor=page.getByLabel('Seller metadata JSON');await editor.fill('{');
+ await expect(editor).toBeFocused();await expect(editor).toHaveAttribute('aria-invalid','true');
+ await expect(editor).toHaveAccessibleDescription(/Metadata is invalid or does not match/);
+ await expect(page.locator('#solana-metadata-feedback .field-validation')).toBeVisible();
+ await editor.fill(metadata);await expect(editor).toHaveAttribute('aria-invalid','false');
+ const consent=page.getByRole('checkbox',{name:'I reviewed and approve these matching license terms.'});
+ await page.keyboard.press('Tab');await expect(consent).toBeFocused();
+ await page.keyboard.press('Space');await expect(consent).toBeChecked();
+ const purchase=page.getByRole('button',{name:/^Purchase license\s*↗?$/});await expect(purchase).toBeEnabled();
+ await page.keyboard.press('Tab');await expect(purchase).toBeFocused();await page.keyboard.press('Shift+Tab');await expect(consent).toBeFocused();
+ const summary=page.locator('.manual-purchase-controls').first().locator('summary');
+ await summary.focus();await page.keyboard.press('Enter');await expect(address).not.toBeVisible();
+ await page.keyboard.press('Space');await expect(address).toBeVisible();
+ await page.emulateMedia({forcedColors:'active',reducedMotion:'reduce'});await address.focus();
+ expect(await address.evaluate(el=>getComputedStyle(el).outlineStyle)).not.toBe('none');
+ await page.setViewportSize({width:320,height:800});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ expect(state.sent).toBe(0);expect(await page.evaluate(()=>(window as any).qaPhantom.signCalls)).toBe(0);
+});
+
+test('@accessibility Solana keyboard verification exposes busy and text result semantics',async({page})=>{
+ const state=await fixture(page);await page.goto('/');
+ const tool=page.getByRole('button',{name:'Verify access',exact:false});await tool.focus();await page.keyboard.press('Enter');
+ await load(page);await page.getByLabel('Wallet public key').fill(buyer.toBase58());
+ let release!:()=>void;const held=new Promise<void>(resolve=>release=resolve);let blocking=true;
+ await page.route('http://127.0.0.1:8548/**',async route=>{if(blocking&&route.request().postDataJSON().method==='getMultipleAccounts')await held;await route.fallback();});
+ try{
+  await page.getByRole('button',{name:/Verify on chain/}).focus();await page.keyboard.press('Enter');
+  const form=page.getByRole('form',{name:'Public entitlement verification'});await expect(form).toHaveAttribute('aria-busy','true');
+  blocking=false;release();await expect(form).toHaveAttribute('aria-busy','false');
+  await expect(page.locator('#solana-verification-status')).toHaveAttribute('role','status');
+  await expect(page.locator('#solana-verification-status')).toContainText('Entitlement valid.');
+  await expect(page.getByTestId('solana-verification-result')).toContainText(buyer.toBase58());
+  await page.getByLabel('Wallet public key').fill('');await expect(page.locator('#solana-verification-status')).toBeEmpty();
+ }finally{blocking=false;release();}
+ expect(state.sent).toBe(0);
+});
+
 const recoveryId=`${program.toBase58()}:${buyer.toBase58()}:${offer.toBase58()}`;
 const recoveryPrimary=`pact.solana.checkout.v1:${recoveryId}`,recoveryMirror=`pact.solana.pending.v1:${recoveryId}`;
 function recoveryRecord(){return{version:1,network:'devnet',program:program.toBase58(),buyer:buyer.toBase58(),offer:offer.toBase58(),action:'Purchase license',signature:'2AXDGYSE4f2sz7tvMMzyHvUfcoJmxudvdhBcmiUSo6ijwfYmfZYsKRxboQMPh3R4kUhXRVdtSXFXMheka4Rc4P2',blockhash:program.toBase58(),lastValidBlockHeight:9999,state:'unknown',baseline:{kind:'initialized',expiry:'900',data:licenseBytes(900n).toString('base64')}};}

@@ -23,3 +23,5 @@ On account change, disconnect, hidden/offline state or cancellation, clear pendi
 Use the exact configured origin, including hostname and port. This protocol uses Phantom's message capability; it does not claim complete Wallet Standard SIWS support. Each application hosts its own same-origin handler. Cross-origin cookies, SSO, serverless, multiple processes and persistent sessions are outside the supported model. Explicitly enable `single-process` only on one persistent Node instance.
 
 Authentication proves wallet control. Each [protected resource](backend-enforcement.md) still requires fresh server entitlement. The executable [authorization example](examples/authorize.mjs) is smoke-tested with disposable local message proofs, not real wallet prompts.
+
+See [Wallet and accessibility acceptance](../development/WALLET_ACCEPTANCE.md) for the dated human-run Phantom checklist and the limits of synthetic/browser evidence. No actual wallet prompt approval is implied.

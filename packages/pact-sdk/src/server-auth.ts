@@ -1,7 +1,6 @@
 import { randomBytes, createPublicKey, verify as verifySignature } from 'node:crypto';
 import { PublicKey } from '@solana/web3.js';
-import cluster from 'node:cluster';
-import { isMainThread } from 'node:worker_threads';
+import {supportsSingleProcessAuth} from './internal/auth-topology.js';
 import { PACT_PROGRAM_ID, DEVNET_GENESIS } from './index.js';
 
 export class PlatformError extends Error { constructor(public code:string, message:string, public status=400){super(message);this.name='PlatformError';} }
@@ -13,17 +12,17 @@ type Session={wallet:string;expiresAt:number};
 /** Atomic single-use challenges in one process. Deliberately unsupported on serverless/multi-instance deployments. */
 export function createWalletAuth(options:WalletAuthOptions){
  const origin=canonicalOrigin(options.origin),clock=options.now??Date.now,capacity=options.capacity??1024,challengeTtl=options.challengeTtlMs??120000,sessionTtl=options.sessionTtlMs??900000;
- if(!Number.isInteger(capacity)||capacity<1||capacity>10000||!Number.isFinite(challengeTtl)||challengeTtl<1000||challengeTtl>300000||!Number.isFinite(sessionTtl)||sessionTtl<1000||sessionTtl>3600000)throw new PlatformError('INVALID_INPUT','Invalid authentication bounds.');
+ if(!Number.isInteger(capacity)||capacity<1||capacity>10000||!Number.isSafeInteger(challengeTtl)||challengeTtl<1000||challengeTtl>300000||!Number.isSafeInteger(sessionTtl)||sessionTtl<1000||sessionTtl>3600000)throw new PlatformError('INVALID_INPUT','Invalid authentication bounds.');
  if(options.authMode!==undefined&&!['single-process','disabled'].includes(options.authMode))throw new PlatformError('INVALID_INPUT','Unsupported authentication topology.');
- const forbidden=['VERCEL','AWS_LAMBDA_FUNCTION_NAME','AWS_EXECUTION_ENV','FUNCTIONS_WORKER_RUNTIME','AZURE_FUNCTIONS_ENVIRONMENT','K_SERVICE','NETLIFY','NODE_UNIQUE_ID'];
- const enabled=options.authMode==='single-process'&&isMainThread&&!cluster.isWorker&&!forbidden.some(k=>Boolean(process.env[k]))&&(process.env.WEB_CONCURRENCY===undefined||process.env.WEB_CONCURRENCY==='1');let previous=-Infinity;
+ const enabled=options.authMode==='single-process'&&supportsSingleProcessAuth();let previous=-Infinity;
  const challenges=new Map<string,Challenge>(),sessions=new Map<string,Session>();
  const id=()=>randomBytes(32).toString('base64url');
- function time(){const t=clock();if(!Number.isFinite(t)||t<previous)throw new PlatformError('AUTH_UNAVAILABLE','Authentication clock is unavailable.',503);previous=t;return t;}
+ const validBinding=(value:string|undefined):value is string=>typeof value==='string'&&/^[A-Za-z0-9_-]{43}$/.test(value)&&Buffer.from(value,'base64url').length===32&&Buffer.from(value,'base64url').toString('base64url')===value;
+ function time(){const t=clock();if(!Number.isSafeInteger(t)||t<0||t>Number.MAX_SAFE_INTEGER-Math.max(challengeTtl,sessionTtl)||t<previous)throw new PlatformError('AUTH_UNAVAILABLE','Authentication clock is unavailable.',503);previous=t;return t;}
  function ready(){if(!enabled)throw new PlatformError('AUTH_UNAVAILABLE','Wallet authentication requires an explicitly configured single-process server.',503);}
  function sweep(t:number){for(const[k,v]of challenges)if(v.expiresAt<=t)challenges.delete(k);for(const[k,v]of sessions)if(v.expiresAt<=t)sessions.delete(k);}
  return {
-  challenge(walletInput:string,bindingInput?:string){ready();const wallet=canonicalAddress(walletInput),t=time();sweep(t);if(challenges.size>=capacity)throw new PlatformError('RATE_LIMITED','Authentication capacity reached.',429);const binding=bindingInput&&/^[A-Za-z0-9_-]{43}$/.test(bindingInput)?bindingInput:id(),challengeId=id(),expiresAt=t+challengeTtl;
+  challenge(walletInput:string,bindingInput?:string){ready();const wallet=canonicalAddress(walletInput),t=time();sweep(t);if(challenges.size>=capacity)throw new PlatformError('RATE_LIMITED','Authentication capacity reached.',429);const binding=validBinding(bindingInput)?bindingInput:id(),challengeId=id(),expiresAt=t+challengeTtl;
    const message=['PACT wallet authentication v1',`Origin: ${origin}`,`Network: solana-devnet`,`Genesis: ${DEVNET_GENESIS}`,`Program: ${PACT_PROGRAM_ID}`,`Wallet: ${wallet}`,`Challenge: ${challengeId}`,`Session binding: ${binding}`,`Issued at: ${t}`,`Expires at: ${expiresAt}`,'Purpose: prove wallet control; no transaction or license purchase.'].join('\n');
    challenges.set(challengeId,{wallet,binding,message,expiresAt});return{challengeId,message,expiresAt,binding};
   },
@@ -33,6 +32,8 @@ export function createWalletAuth(options:WalletAuthOptions){
    if(!valid)throw new PlatformError('AUTH_INVALID','Wallet signature verification failed.',401);sweep(t);if(sessions.size>=capacity)throw new PlatformError('RATE_LIMITED','Session capacity reached.',429);const sessionId=id(),expiresAt=t+sessionTtl;sessions.set(sessionId,{wallet:c.wallet,expiresAt});return{sessionId,walletAddress:c.wallet,authenticated:true as const,expiresAt};
   },
   session(sessionId:string|undefined){ready();const t=time();sweep(t);const s=sessionId?sessions.get(sessionId):undefined;return s?{authenticated:true as const,walletAddress:s.wallet,expiresAt:s.expiresAt}:{authenticated:false as const};},
-  logout(sessionId:string|undefined){ready();if(sessionId)sessions.delete(sessionId);return{authenticated:false as const};}
+  logout(sessionId:string|undefined){ready();if(sessionId)sessions.delete(sessionId);return{authenticated:false as const};},
+  /** Storage gauges only. Expired entries may remain until the next ordinary sweep. */
+  diagnostics(){return Object.freeze({enabled,storedChallenges:challenges.size,storedSessions:sessions.size,capacity});}
  };
 }
