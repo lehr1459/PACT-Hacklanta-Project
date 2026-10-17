@@ -2,6 +2,8 @@
 solana/src/lib.rs text eol=lf
 solana/Cargo.lock text eol=lf
 solana/wire-spec.json text eol=lf
+solana/scripts/build.ps1 text eol=lf
+solana/toolchain.json text eol=lf
 contracts/src/PactLicensing.sol text eol=lf
 contracts/abi/PactLicensing.json text eol=crlf
 solana/artifacts/*.so binary

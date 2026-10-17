@@ -9,5 +9,6 @@
   "python":"3.13.5 (host py launcher)",
   "target":"sbpf-solana-solana",
   "rustc":"1.95.0-dev (ae660768a 2026-08-17)",
-  "buildPolicy":"direct Cargo only; never cargo-build-sbf/anchor build or keypair-generating postprocessing"
+  "buildPolicy":"direct pinned Cargo; stable virtual source paths; never cargo-build-sbf/anchor build or keypair-generating postprocessing",
+  "pathRemapping":{"workspace":"/pact/solana","cargoHome":"/pact/cargo","encoding":"CARGO_ENCODED_RUSTFLAGS (ASCII 31)"}
 }

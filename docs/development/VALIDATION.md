@@ -27,6 +27,8 @@ node scripts/validation/run.mjs all-chain
 
 Base's historical compiler evidence includes the nested dependency checkouts' CRLF source bytes. The Foundry setup subprocess explicitly supplies `core.autocrlf=true` for its Git operations so a fresh Windows runner reproduces those bytes. This does not change global Git configuration or rewrite approved evidence. Root `.gitattributes` separately fixes the tracked program/source/ABI byte conventions.
 
+Solana compilation maps checkout and Cargo source paths to stable virtual prefixes using [Rust's source-path remapping](https://doc.rust-lang.org/rustc/remap-source-paths.html). Whole arguments use ASCII-31 encoded Cargo flags so paths containing spaces remain safe. The build checks installed tool hashes and refuses ambient compiler/profile overrides. Candidate builds may use fresh `-TargetDirectory target/<name>` and `-ArtifactDirectory target/<name>/evidence` outputs without replacing approved artifacts. Historical `8e259de` local binary SHA-256 was `d13828b060327ef9f702b076b8681e4b9e1e8c04f961191d1df17b2babf52a62`; its three embedded absolute Cargo paths made fresh-path builds differ. An isolated historical-prefix remap reproduced that entire binary exactly. Approval of a portable replacement requires two fresh target builds in different checkout locations, matching bytes, runtime tests and independent review. A replacement local artifact is not evidence of a Devnet deployment.
+
 Individual lanes are listed by:
 
 ```text
