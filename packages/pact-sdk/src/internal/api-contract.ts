@@ -46,7 +46,10 @@ export function signature(value: unknown): string {
   return value;
 }
 export function token(value: unknown): value is string {
-  return typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value) && Buffer.from(value,'base64url').toString('base64url') === value;
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(value)) return false;
+  // The published browser Buffer supports base64, but not Node's base64url encoding.
+  const bytes=Buffer.from(value.replace(/-/g,'+').replace(/_/g,'/')+'=','base64');
+  return bytes.length===32 && bytes.toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')===value;
 }
 export function metadata(value: unknown, code = 'INVALID_INPUT') {
   if (typeof value !== 'string' || value.length > 65536 || Buffer.byteLength(value) > 65536 || Buffer.from(value,'utf8').toString('utf8') !== value) invalid(code);

@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import vm from 'node:vm';
+import {build} from 'esbuild';
 import {PactClient,PactApiError} from '../dist/v1.js';
 import {preparedCheckout,preparedOffer} from '../dist/internal/api-contract.js';
 import {isTransactionError} from '../dist/internal/transaction-error.js';
@@ -18,6 +20,44 @@ function quote(now=Date.now()) {
     contextSlot:100,chainTimestamp:String(Math.floor(now/1000)),startedAtMs:now,receivedAtMs:now};
 }
 const rejected=code=>error=>error instanceof PactApiError&&error.code===code;
+
+test('browser-resolved HTTP client accepts canonical wallet challenges with the published Buffer polyfill',async()=>{
+  const result=await build({entryPoints:[fileURLToPath(new URL('../dist/v1.js',import.meta.url))],bundle:true,platform:'browser',format:'iife',globalName:'PactBrowser',write:false});
+  const sandbox={URL,TextEncoder,TextDecoder,Uint8Array,ArrayBuffer,Response,AbortController,setTimeout,clearTimeout,performance,console};
+  vm.runInNewContext(result.outputFiles[0].text,sandbox);
+  const now=Date.now(),id=Buffer.alloc(32,255).toString('base64url'),binding=Buffer.alloc(32,254).toString('base64url');
+  const challenge={challengeId:id,expiresAt:now+120000,message:[
+    'PACT wallet authentication v1','Origin: http://localhost:4567','Network: solana-devnet',
+    'Genesis: EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG',`Program: ${golden.program}`,`Wallet: ${golden.buyer}`,
+    `Challenge: ${id}`,`Session binding: ${binding}`,`Issued at: ${now}`,`Expires at: ${now+120000}`,
+    'Purpose: prove wallet control; no transaction or license purchase.',
+  ].join('\n')};
+  let calls=0;
+  const c=new sandbox.PactBrowser.PactClient({network:'devnet',apiUrl:origin,fetch:async()=>{calls++;return Response.json(challenge);}});
+  assert.equal((await c.auth.challenge(golden.buyer)).challengeId,id);
+  // These variants decode to the same 32 bytes but have nonzero unused bits.
+  for(const key of ['challengeId','binding']) {
+    const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    const changed={...challenge},value=key==='binding'?binding:id,noncanonical=value.slice(0,-1)+alphabet[alphabet.indexOf(value.at(-1))+1];
+    changed.message=challenge.message.replace(value,noncanonical);
+    if(key==='challengeId')changed.challengeId=noncanonical;
+    const invalid=new sandbox.PactBrowser.PactClient({network:'devnet',apiUrl:origin,fetch:async()=>Response.json(changed)});
+    await assert.rejects(invalid.auth.challenge(golden.buyer),error=>error.code==='AUTH_INVALID');
+  }
+  const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  for(let index=0;index<alphabet.length;index++) {
+    const value='A'.repeat(42)+alphabet[index],changed={...challenge,challengeId:value,message:challenge.message.replace(id,value)};
+    const candidate=new sandbox.PactBrowser.PactClient({network:'devnet',apiUrl:origin,fetch:async()=>Response.json(changed)});
+    if(index%4===0)assert.equal((await candidate.auth.challenge(golden.buyer)).challengeId,value);
+    else await assert.rejects(candidate.auth.challenge(golden.buyer),error=>error.code==='AUTH_INVALID');
+  }
+  for(const value of ['A'.repeat(42),'A'.repeat(44),'A'.repeat(42)+'=','+'.repeat(43),'/'.repeat(43)]) {
+    const changed={...challenge,challengeId:value,message:challenge.message.replace(id,value)};
+    const candidate=new sandbox.PactBrowser.PactClient({network:'devnet',apiUrl:origin,fetch:async()=>Response.json(changed)});
+    await assert.rejects(candidate.auth.challenge(golden.buyer),error=>error.code==='AUTH_INVALID');
+  }
+  assert.equal(calls,1);
+});
 
 test('HTTP semantic validation accepts independently compiled Rust messages despite different static key ordering',()=>{
   const now=1000000,q={...quote(now),chainTimestamp:'1000'};
