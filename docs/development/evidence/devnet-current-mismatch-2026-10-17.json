@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kind": "deployment-identity-command-outcome",
+  "producer": "Root read-only CLI validation harness; not a successful deployment identity receipt",
+  "sampledAt": "2026-10-17T04:44:27.299Z",
+  "inspectionToolRevision": "bdaee6ff0e5b396610afe35317d318d1386dadd7",
+  "expectedArtifact": "current",
+  "exitCode": 1,
+  "category": "DEPLOYED_ARTIFACT_MISMATCH",
+  "networkTransactions": 0
+}

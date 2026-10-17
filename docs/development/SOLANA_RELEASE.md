@@ -31,6 +31,10 @@ node scripts/solana/deployment-identity.mjs --authority CVN3suQneZtAb1RMuHf3BVYY
 
 Use `--artifact current` (the default) to verify the new local artifact after a separately authorized deployment. A historical match does not satisfy that current-artifact check. There is no silent fallback. `--authority none` only verifies an explicitly expected immutable program; it does not change authority and must never be used to normalize an unexpected authority disappearance.
 
+### Observed Devnet identity
+
+The reviewed tool at clean commit `bdaee6ff0e5b396610afe35317d318d1386dadd7` sampled finalized slot `511956601` at `2026-10-17T04:44:26.776Z`. The [public historical-artifact receipt](evidence/devnet-historical-2026-10-17.json) records the complete deployed 35,784-byte historical ELF, zero allocation padding, last-modified slot `509663811`, and the expected public authority. Its `artifactMatches.current` is false. A separate [current-artifact command outcome](evidence/devnet-current-mismatch-2026-10-17.json) correctly failed with `DEPLOYED_ARTIFACT_MISMATCH`; it is a harness summary of expected failure, not a successful deployment identity receipt. These dated observations establish historical correspondence only, without modifying chain state. Repeat inspection before release; no current-artifact deployment or signer custody is established.
+
 The loader layout and canonical ProgramData derivation follow the pinned official Anza SDK [state implementation](https://github.com/anza-xyz/solana-sdk/blob/1f665ea0e85fbc26b52b68c6bce9939f8d9a9cbc/loader-v3-interface/src/state.rs) and [address derivation](https://github.com/anza-xyz/solana-sdk/blob/1f665ea0e85fbc26b52b68c6bce9939f8d9a9cbc/loader-v3-interface/src/lib.rs). Program metadata is 36 bytes; ProgramData reserves 45 bytes before the ELF, including when its authority option is absent.
 
 ## Governance and compatibility
