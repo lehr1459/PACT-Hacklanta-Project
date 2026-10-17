@@ -14,7 +14,9 @@ Setup downloads official Windows platform-tools v1.57, verifies release SHA256/e
 
 Tests use fixed public byte-array addresses, separate synthetic fee payer, all-zero signatures, and LiteSVM `with_sigverify(False)`. They exercise real program instructions, CPI and runtime rollback but **do not test cryptographic wallet signing**. No keypair is generated/read and no RPC is used.
 
-Runtime program ID is dynamic. The public local fixture ID is only for local tests; deployed program ID and signature remain PENDING. Never put the local fixture into deployed-address configuration or claim it was deployed. Any future CLI deployment/signing is outside this local implementation scope and needs explicit user approval.
+Runtime program ID is dynamic. The public fixture ID is only for local tests. Local artifact evidence deliberately has null deployment fields. The application uses a previously deployed Devnet program; historical deployment evidence refers to the earlier binary, not automatically to a new local build. Verify current genesis, ProgramData, authority and deployed bytes independently before release. Any deployment/signing needs explicit user authorization.
+
+Builds use stable virtual source paths, pinned executable checks and encoded compiler arguments. Two checkout locations with fresh target directories produced the identical approved local artifact; see `artifacts/reproducibility.json` and the [current validation guide](../docs/development/VALIDATION.md). The historical binary remains recoverable at `8e259de`; source/lock/wire behavior did not change. No Devnet upgrade was performed to adopt this local artifact.
 
 Price transfers directly from buyer to recorded seller atomically with entitlement creation; account rent and transaction fees are extra. There is no escrow or withdrawal. Offers are immutable except seller deactivation; buyer licenses expire using cluster Clock timestamps. Deactivation leaves existing entitlement data intact. No NFT, transfer, legal ownership or production security claim.
 

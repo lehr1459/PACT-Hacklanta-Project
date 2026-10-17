@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-build-path-reproducibility",
+  "sourceCommit": "670859bbe11038d0880a3575893b653d6ffc41a6",
+  "inputs": {
+    "solana/src/lib.rs": "3903e615d457960d4e1f6fea2d3273054ff26a3c04d5b2e2fd8ff17ce584fae9",
+    "solana/Cargo.toml": "9e9f4d972c561057b316d8e1155d8eb72cf5501721c6dff94182e1603ce86a6c",
+    "solana/Cargo.lock": "9ca0be783265af17f5c5334b288e95ebf4a1fa1fa9b202cd339950e70fd3c348",
+    "solana/wire-spec.json": "60067d4ffd3f2132912675c569acd3f38b924e280f76b045d053e8d216a622ba",
+    "solana/scripts/build.ps1": "60ea36625fc63fd0e9d7a415a03329cb14f46fa59f9c837be9701a78070187b9",
+    "solana/toolchain.json": "cda2c1f684694173d869bb25967c86fea126b656792288c71285741a425b51b9"
+  },
+  "builds": [
+    {
+      "location": "short checkout",
+      "artifact": "solana/target/phase1-repro-short/evidence/pact_licensing.so",
+      "sha256": "408580c1ffd3068da9d66c2f7c3e1db5814ea15e4146c6f864eb4c271842c5c5",
+      "sizeBytes": 35704
+    },
+    {
+      "location": "long checkout with exact LF manifest",
+      "artifact": "solana/target/phase1-repro-long-lf/evidence/pact_licensing.so",
+      "sha256": "408580c1ffd3068da9d66c2f7c3e1db5814ea15e4146c6f864eb4c271842c5c5",
+      "sizeBytes": 35704
+    },
+    {
+      "location": "approved default output",
+      "artifact": "solana/artifacts/pact_licensing.so",
+      "sha256": "408580c1ffd3068da9d66c2f7c3e1db5814ea15e4146c6f864eb4c271842c5c5",
+      "sizeBytes": 35704
+    }
+  ],
+  "toolchain": "anza platform-tools v1.57; pinned executable hashes in solana/toolchain.json",
+  "pathPolicy": {
+    "workspace": "/pact/solana",
+    "cargoHome": "/pact/cargo"
+  },
+  "historical": {
+    "commit": "8e259de1bc046d460a62bf6cc8102c6e64552d02",
+    "sha256": "d13828b060327ef9f702b076b8681e4b9e1e8c04f961191d1df17b2babf52a62",
+    "sizeBytes": 35784,
+    "cause": "Three absolute Cargo dependency source paths were embedded in Rust diagnostic records.",
+    "exactHistoricalPrefixReproduction": true
+  },
+  "validation": {
+    "compiledRuntimeTests": {
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0
+    },
+    "independentReview": "Approved local replacement after full-byte equality, exact input checks, runtime tests and ELF diagnostic/relocation comparison."
+  },
+  "deploymentVerified": false,
+  "chainTransactionsBroadcast": false
+}

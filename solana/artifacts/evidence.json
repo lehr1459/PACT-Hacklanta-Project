@@ -1,13 +1,18 @@
 {
     "artifact":  "artifacts/pact_licensing.so",
     "format":  "ELF64 Solana Bytecode Format shared object",
-    "sha256":  "d13828b060327ef9f702b076b8681e4b9e1e8c04f961191d1df17b2babf52a62",
-    "sizeBytes":  35784,
+    "sha256":  "408580c1ffd3068da9d66c2f7c3e1db5814ea15e4146c6f864eb4c271842c5c5",
+    "sizeBytes":  35704,
     "sourceSha256":  "3903e615d457960d4e1f6fea2d3273054ff26a3c04d5b2e2fd8ff17ce584fae9",
     "cargoLockSha256":  "9ca0be783265af17f5c5334b288e95ebf4a1fa1fa9b202cd339950e70fd3c348",
     "wireSpecSha256":  "60067d4ffd3f2132912675c569acd3f38b924e280f76b045d053e8d216a622ba",
     "toolchain":  "anza platform-tools v1.57",
     "target":  "sbpf-solana-solana",
+    "pathRemapping":  {
+                          "workspace":  "/pact/solana",
+                          "cargoHome":  "/pact/cargo",
+                          "encoding":  "CARGO_ENCODED_RUSTFLAGS (ASCII 31)"
+                      },
     "runtimeProgramId":  "dynamic",
     "deploymentProgramId":  null,
     "deploymentSignature":  null,

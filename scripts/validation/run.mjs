@@ -51,6 +51,7 @@ async function lane(name) {
     await command('sdk-tests',['--test',...tests],{cwd:sdk});
     await command('platform-tests',['--test','web/tests/platform/auth.test.mjs','web/tests/platform/api.test.mjs']);
     await command('dependency-policy-tests',['--test','scripts/validation/dependencies.test.mjs']);
+    await command('artifact-policy-tests',['--test','scripts/validation/artifacts.test.mjs']);
   } else if(name==='build') {
     for(const project of ['web','examples/pact-demo-app','examples/pact-platform-app']) {
       const cwd=path.join(root,project),id=project.replaceAll('/','-');

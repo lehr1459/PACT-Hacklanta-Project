@@ -1,6 +1,7 @@
 # Preserve the exact bytes covered by committed artifact evidence.
 solana/src/lib.rs text eol=lf
 solana/Cargo.lock text eol=lf
+solana/Cargo.toml text eol=lf
 solana/wire-spec.json text eol=lf
 solana/scripts/build.ps1 text eol=lf
 solana/toolchain.json text eol=lf
