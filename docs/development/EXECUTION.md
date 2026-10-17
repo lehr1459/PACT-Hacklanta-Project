@@ -72,3 +72,31 @@ Independent QA verified all candidate bytes, unchanged instruction/control-flow/
 Clean committed `ff7ace7` checkout passed the complete `all-node --clean` lane: isolated installs, SDK/API tests, types, three production builds and route checks, marketplace mock/setup browser suites, generated consumers, checkout, Prism, platform and ten packed-consumer checks. App/SDK/example sources did not change between that revision and `bea32f3`; a fast-forward clean checkout separately passed the latest `node --clean` and `artifacts --clean` lanes at `bea32f3`. The fresh chain checkout at `bea32f3` passed `all-chain --clean`: 23 compiled Solana tests, 23 Base tests, and all exact artifact checks. Independent reviews approved protocol, dependency, CI and reproducible artifact changes. No deployment was performed.
 
 Phase 1 engineering gate: **PASS**. Prepared GitHub/Linux lanes require an authorized push/run before claiming hosted CI success; local Windows execution does not establish that result. Optional external Saturday checkout and live RPC modes were intentionally excluded from the deterministic gate. Receipt logs are retained under ignored `web/test-results/full-development/phase1-clean/`. Phase commits: `6e3ed1d`, `ff7ace7`, `20afb23`, `670859b`, `bea32f3`.
+
+### Phase 1 committed-checkout matrix
+
+| Suite | Passed | Intentional skips |
+| --- | ---: | ---: |
+| SDK | 128 | 0 |
+| API/auth | 29 | 0 |
+| Dependency policy | 1 | 0 |
+| Solana mock / setup | 208 / 10 | 6 / 204 |
+| Base mock / setup | 48 / 2 | 2 / 48 |
+| Integration wizard | 8 | 2 |
+| Generated consumers | 44 | 0 |
+| Checkout | 26 | 4 |
+| Prism example | 22 | 2 |
+| Platform example | 14 | 0 |
+| Isolated packed consumers | 10 checks | 0 |
+| Compiled Solana runtime | 23 | 0 |
+| Base Foundry | 23 | 0 |
+
+Setup/mock skip counts reflect mutually exclusive modes and intentional live-wallet tests. Four clean installs, SDK build/typecheck, three Next production builds/typechecks, three production routes, static-server safety and four advisory policies passed. Latest node-delta at `bea32f3` also passed the new artifact-policy mutation test (1) and dependency-policy test (1). No live RPC/browser wallet approval was performed by these deterministic lanes.
+
+## Phase 2 candidate
+
+Implemented a pure validated SDK snapshot engine and bounded server pools, shared endpoint slot/Clock history, five-second queue-inclusive cancellation and transport quarantine. Public exports and browser single-read behavior are preserved. API public/protected pools reserve separate capacity with shared history; public/auth/protected HTTP budgets are independent. Single-process auth now refuses detected serverless, workers and clustered execution. Server-owned resource policies perform pre-work and final entitlement/session-incarnation checks and bound/copy private results. The platform example now serves a real private asset and bounded server calculation through this guard.
+
+Marketplace purchases now capture exact initialized/missing entitlement baselines inside the shared purchase lock and persist SDK-compatible primary journals with unchanged strict mirrors. Recovery requires finality/history/lifetime evidence and an unchanged finalized baseline at the status context watermark. Full incarnation checks preserve changed attempts; legacy attempts retain conservative expiry behavior. Independent review caught two sticky-confirmation races during partial clear/store; both were corrected with mutation regressions. No automatic retry, metadata registry or distributed auth infrastructure was added.
+
+Targeted results: SDK build/typecheck and **211/211** tests; independent auth/resource **62/62** (included in SDK count); pool/core **21/21** (included); marketplace protocol/state/recovery helpers **34/34** and web TypeScript passed. Independent auth/resource/core source reviews found no remaining blocker; final recovery review and clean committed broader regression remain gate requirements. Root reviewed actual combined source/diff and strengthened typed/redacted RPC errors and per-class clock regression checks. No program/wire/dependency/lock changes.

@@ -1,9 +1,11 @@
 import { randomBytes, createPublicKey, verify as verifySignature } from 'node:crypto';
 import { PublicKey } from '@solana/web3.js';
+import cluster from 'node:cluster';
+import { isMainThread } from 'node:worker_threads';
 import { PACT_PROGRAM_ID, DEVNET_GENESIS } from './index.js';
 
 export class PlatformError extends Error { constructor(public code:string, message:string, public status=400){super(message);this.name='PlatformError';} }
-export function canonicalAddress(value:unknown):string {try{if(typeof value!=='string')throw Error();const p=new PublicKey(value);if(p.toBase58()!==value)throw Error();return value;}catch{throw new PlatformError('INVALID_INPUT','Expected a canonical Solana public address.');}}
+export function canonicalAddress(value:unknown):string {try{if(typeof value!=='string'||value.length<32||value.length>44)throw Error();const p=new PublicKey(value);if(p.toBase58()!==value)throw Error();return value;}catch{throw new PlatformError('INVALID_INPUT','Expected a canonical Solana public address.');}}
 export function canonicalOrigin(value:string){try{const u=new URL(value);if(u.username||u.password||u.origin!==value||!(u.protocol==='https:'||u.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(u.hostname)))throw Error();return u.origin;}catch{throw new PlatformError('INVALID_INPUT','Configure one canonical HTTPS or loopback origin.');}}
 export type WalletAuthOptions={origin:string;now?:()=>number;authMode?:'single-process'|'disabled';challengeTtlMs?:number;sessionTtlMs?:number;capacity?:number};
 type Challenge={wallet:string;binding:string;message:string;expiresAt:number};
@@ -12,7 +14,9 @@ type Session={wallet:string;expiresAt:number};
 export function createWalletAuth(options:WalletAuthOptions){
  const origin=canonicalOrigin(options.origin),clock=options.now??Date.now,capacity=options.capacity??1024,challengeTtl=options.challengeTtlMs??120000,sessionTtl=options.sessionTtlMs??900000;
  if(!Number.isInteger(capacity)||capacity<1||capacity>10000||!Number.isFinite(challengeTtl)||challengeTtl<1000||challengeTtl>300000||!Number.isFinite(sessionTtl)||sessionTtl<1000||sessionTtl>3600000)throw new PlatformError('INVALID_INPUT','Invalid authentication bounds.');
- const enabled=options.authMode==='single-process'&&!process.env.VERCEL&&!process.env.AWS_LAMBDA_FUNCTION_NAME;let previous=-Infinity;
+ if(options.authMode!==undefined&&!['single-process','disabled'].includes(options.authMode))throw new PlatformError('INVALID_INPUT','Unsupported authentication topology.');
+ const forbidden=['VERCEL','AWS_LAMBDA_FUNCTION_NAME','AWS_EXECUTION_ENV','FUNCTIONS_WORKER_RUNTIME','AZURE_FUNCTIONS_ENVIRONMENT','K_SERVICE','NETLIFY','NODE_UNIQUE_ID'];
+ const enabled=options.authMode==='single-process'&&isMainThread&&!cluster.isWorker&&!forbidden.some(k=>Boolean(process.env[k]))&&(process.env.WEB_CONCURRENCY===undefined||process.env.WEB_CONCURRENCY==='1');let previous=-Infinity;
  const challenges=new Map<string,Challenge>(),sessions=new Map<string,Session>();
  const id=()=>randomBytes(32).toString('base64url');
  function time(){const t=clock();if(!Number.isFinite(t)||t<previous)throw new PlatformError('AUTH_UNAVAILABLE','Authentication clock is unavailable.',503);previous=t;return t;}

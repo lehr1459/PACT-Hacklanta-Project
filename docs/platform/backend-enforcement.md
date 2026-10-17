@@ -32,3 +32,5 @@ $env:PACT_PROTECTED_OFFER = '7EdfowQEZyVyyp7bYdQyzmprZtVU9mVba8cysHm2Ardh'
 ```
 
 No signing secrets are needed. Authentication remains disabled on Vercel/detected serverless runtimes. This local implementation must not be represented as a production distributed access service.
+
+For actual customer assets and actions, configure server-owned `resources` policies instead of relying on the demonstration payload. See [the supported authorization contract](../development/AUTHORIZATION.md) and the executable platform route for private asset retrieval, bounded operation preparation, final session/entitlement checks and synchronous commit constraints.

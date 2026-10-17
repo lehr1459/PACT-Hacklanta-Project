@@ -1,6 +1,6 @@
 import {VersionedTransaction} from '@solana/web3.js';
 import {test,expect,type Page} from '@playwright/test';
-import {accounts,program,buyer,seller,offer,metadata,license} from './fixtures';
+import {accounts,program,buyer,seller,offer,metadata,license,licenseBytes} from './fixtures';
 import {DEVNET_GENESIS,metadataHash} from '../../lib/solana/protocol';
 import {Buffer} from 'buffer';
 test.skip(()=>process.env.PACT_SOLANA_QA_MODE==='setup'||process.env.PACT_SOLANA_QA_MODE==='live','Synthetic browser acceptance runs separately');
@@ -8,9 +8,9 @@ const pageErrors=new WeakMap<Page,string[]>();
 test.beforeEach(async({page})=>{const errors:string[]=[];pageErrors.set(page,errors);page.on('pageerror',error=>errors.push(error.message));});
 test.afterEach(async({page})=>{expect(pageErrors.get(page),'No unhandled page or hydration errors').toEqual([]);});
 
-type State={genesis:string;slot:number;licensed:boolean;badOwner:boolean;hang:boolean;simulationError:boolean;delaySimulation:boolean;confirm:boolean;confirmationStatus:string;hangSend:boolean;sent:number;calls:string[];terms:string;sendError:boolean;abortSend:boolean;blockHeight:number;pollErrors:number;statusCalls:number};
+type State={genesis:string;slot:number;licensed:boolean;expiry:bigint;snapshots:Record<string,unknown>[];badOwner:boolean;hang:boolean;simulationError:boolean;delaySimulation:boolean;confirm:boolean;confirmationStatus:string;hangSend:boolean;sent:number;calls:string[];terms:string;sendError:boolean;abortSend:boolean;blockHeight:number;pollErrors:number;statusCalls:number};
 async function fixture(page:Page,installed=true){
-  const state:State={genesis:DEVNET_GENESIS,slot:100,licensed:true,badOwner:false,hang:false,simulationError:false,delaySimulation:false,confirm:true,confirmationStatus:'finalized',hangSend:false,sent:0,calls:[],terms:metadata,sendError:false,abortSend:false,blockHeight:100,pollErrors:0,statusCalls:0};
+  const state:State={genesis:DEVNET_GENESIS,slot:100,licensed:true,expiry:1060n,snapshots:[],badOwner:false,hang:false,simulationError:false,delaySimulation:false,confirm:true,confirmationStatus:'finalized',hangSend:false,sent:0,calls:[],terms:metadata,sendError:false,abortSend:false,blockHeight:100,pollErrors:0,statusCalls:0};
   await page.route('**/*',async route=>{
     const request=route.request();if(request.method()!=='POST'){await route.continue();return;}
     if(!request.url().startsWith('http://127.0.0.1:8548'))throw new Error(`Unexpected external POST ${request.url()}`);
@@ -18,7 +18,7 @@ async function fixture(page:Page,installed=true){
     if(state.delaySimulation&&body.method==='simulateTransaction')await new Promise(resolve=>setTimeout(resolve,1500));
     let result:unknown;
     if(body.method==='getGenesisHash'){await new Promise(resolve=>setTimeout(resolve,50));result=state.genesis;}
-    else if(body.method==='getMultipleAccounts'){const value=accounts();const bytes=Buffer.from(value[0].data[0],'base64');Buffer.from(metadataHash(state.terms).slice(2),'hex').copy(bytes,64);value[0].data[0]=bytes.toString('base64');if(!state.licensed||body.params[0][1]!==license.toBase58())value[1]=null as never;if(state.badOwner)value[0].owner=seller.toBase58();result={context:{slot:state.slot},value};}
+    else if(body.method==='getMultipleAccounts'){state.snapshots.push(body.params[1]);const value=accounts();const bytes=Buffer.from(value[0].data[0],'base64');Buffer.from(metadataHash(state.terms).slice(2),'hex').copy(bytes,64);value[0].data[0]=bytes.toString('base64');value[1].data[0]=licenseBytes(state.expiry).toString('base64');const clock=Buffer.from(value[2].data[0],'base64');clock.writeBigUInt64LE(BigInt(state.slot));value[2].data[0]=clock.toString('base64');if(!state.licensed||body.params[0][1]!==license.toBase58())value[1]=null as never;if(state.badOwner)value[0].owner=seller.toBase58();result={context:{slot:state.slot},value};}
     else if(body.method==='getAccountInfo')result={context:{slot:state.slot},value:accounts()[3]};
     else if(body.method==='getLatestBlockhash')result={context:{slot:state.slot},value:{blockhash:program.toBase58(),lastValidBlockHeight:9999}};
     else if(body.method==='simulateTransaction')result={context:{slot:state.slot},value:{err:state.simulationError?{InstructionError:[0,{Custom:6004}]}:null,logs:[],accounts:null,unitsConsumed:10000,returnData:null}};
@@ -41,6 +41,46 @@ async function fixture(page:Page,installed=true){
 async function connect(page:Page){await page.getByRole('button',{name:'Connect wallet'}).click();await expect(page.getByRole('button',{name:/Disconnect/})).toBeVisible();await expect(page.getByRole('button',{name:/Disconnect/})).toHaveAttribute('title',buyer.toBase58());}
 async function load(page:Page){await page.getByLabel('Offer address',{exact:true}).fill(offer.toBase58());}
 async function buyReady(page:Page){await page.getByLabel('Seller metadata JSON').fill(metadata);await page.getByRole('checkbox',{name:'I reviewed and approve these matching license terms.'}).check();}
+
+const recoveryId=`${program.toBase58()}:${buyer.toBase58()}:${offer.toBase58()}`;
+const recoveryPrimary=`pact.solana.checkout.v1:${recoveryId}`,recoveryMirror=`pact.solana.pending.v1:${recoveryId}`;
+function recoveryRecord(){return{version:1,network:'devnet',program:program.toBase58(),buyer:buyer.toBase58(),offer:offer.toBase58(),action:'Purchase license',signature:'2AXDGYSE4f2sz7tvMMzyHvUfcoJmxudvdhBcmiUSo6ijwfYmfZYsKRxboQMPh3R4kUhXRVdtSXFXMheka4Rc4P2',blockhash:program.toBase58(),lastValidBlockHeight:9999,state:'unknown',baseline:{kind:'initialized',expiry:'900',data:licenseBytes(900n).toString('base64')}};}
+async function recoveryPair(page:Page){return page.evaluate(keys=>keys.map(key=>localStorage.getItem(key)),[recoveryPrimary,recoveryMirror]);}
+
+for(const changed of [false,true])test(`expired repurchase ${changed?'retains changed entitlement protection':'releases unchanged baseline only after finalized proof'}`,async({page})=>{
+  const state=await fixture(page);state.expiry=900n;state.confirm=false;await page.goto('/');await connect(page);await load(page);await buyReady(page);
+  await page.getByRole('button',{name:'Purchase license'}).click();await expect.poll(()=>state.sent).toBe(1);
+  const before=await recoveryPair(page);expect(JSON.parse(before[0]!).baseline).toEqual(recoveryRecord().baseline);expect(JSON.parse(before[1]!)).not.toHaveProperty('baseline');
+  if(changed)state.expiry=950n;state.slot=105;state.blockHeight=10000;
+  await expect(page.locator('.notice.error[role=alert]')).toContainText(changed?'entitlement changed':'Transaction expired');
+  expect(state.snapshots.some(config=>config.commitment==='finalized'&&config.minContextSlot===105)).toBe(true);
+  const after=await recoveryPair(page);if(changed){expect(after.every(Boolean)).toBe(true);}else expect(after).toEqual([null,null]);
+  expect(state.sent).toBe(1);expect(await page.evaluate(()=>(window as any).qaPhantom.signCalls)).toBe(1);
+  if(!changed){state.blockHeight=100;state.confirm=true;await page.getByRole('button',{name:'Purchase license'}).click();await expect(page.getByText(/Purchase license finalized/i)).toBeVisible();expect(state.sent).toBe(2);expect(await page.evaluate(()=>(window as any).qaPhantom.signCalls)).toBe(2);}
+});
+
+for(const definitive of [false,true])test(`legacy-only journal ${definitive?'clears on definitive finalization':'cannot release using expiration'}`,async({page})=>{
+  const state=await fixture(page);state.expiry=900n;state.confirm=definitive;state.blockHeight=10000;
+  const {version:_,baseline:__,...record}=recoveryRecord();await page.addInitScript(({key,record})=>localStorage.setItem(key,JSON.stringify(record)),{key:recoveryMirror,record});
+  await page.goto('/');await connect(page);await load(page);await buyReady(page);await page.getByRole('button',{name:'Purchase license'}).click();
+  if(definitive){await expect(page.getByText(/Purchase license finalized/i)).toBeVisible();expect(await recoveryPair(page)).toEqual([null,null]);}
+  else{await expect(page.locator('.notice.error[role=alert]')).toContainText('no recorded entitlement baseline');expect((await recoveryPair(page))[1]).toBeTruthy();}
+  expect(state.sent).toBe(0);expect(await page.evaluate(()=>(window as any).qaPhantom.signCalls)).toBe(0);
+});
+
+test('SDK-compatible primary-only journal reconciles without new wallet approval',async({page})=>{
+  const state=await fixture(page);state.expiry=900n;state.confirm=false;state.blockHeight=10000;
+  await page.addInitScript(({key,record})=>localStorage.setItem(key,JSON.stringify(record)),{key:recoveryPrimary,record:recoveryRecord()});
+  await page.goto('/');await connect(page);await load(page);await buyReady(page);await page.getByRole('button',{name:'Purchase license'}).click();
+  await expect(page.locator('.notice.error[role=alert]')).toContainText('Transaction expired');expect(await recoveryPair(page)).toEqual([null,null]);expect(state.sent).toBe(0);expect(await page.evaluate(()=>(window as any).qaPhantom.signCalls)).toBe(0);
+});
+
+test('conflicting paired lifetimes remain protected before any new signing',async({page})=>{
+  const state=await fixture(page);state.expiry=900n;
+  await page.addInitScript(({primary,mirror,record})=>{localStorage.setItem(primary,JSON.stringify(record));const{version:_,baseline:__,...legacy}=record;localStorage.setItem(mirror,JSON.stringify({...legacy,lastValidBlockHeight:9998}));},{primary:recoveryPrimary,mirror:recoveryMirror,record:recoveryRecord()});
+  await page.goto('/');await connect(page);await load(page);await buyReady(page);await page.getByRole('button',{name:'Purchase license'}).click();
+  await expect(page.locator('.notice.error[role=alert]')).toContainText('journals disagree');expect((await recoveryPair(page)).every(Boolean)).toBe(true);expect(state.sent).toBe(0);expect(await page.evaluate(()=>(window as any).qaPhantom.signCalls)).toBe(0);
+});
 
 test('missing extension is explicit and no connection opens automatically',async({page})=>{await fixture(page,false);await page.goto('/');await expect(page.getByText('Phantom extension not installed.')).toBeVisible();await expect(page.getByRole('button',{name:'Connect wallet'})).toBeDisabled();});
 test('Phantom connect rejection, retry, address, disconnect and responsive keyboard controls',async({page},info)=>{

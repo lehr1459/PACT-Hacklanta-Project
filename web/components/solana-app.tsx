@@ -8,10 +8,10 @@ import { MetadataCopy, PurchaseLinkSharing } from './purchase-link-share';
 import { parsePurchaseLink, type ParsedPurchaseLink } from '../lib/solana/purchase-link';
 import { VersionedTransaction,type TransactionInstruction } from '@solana/web3.js';
 import { createOfferInstruction,buyLicenseInstruction,deactivateInstruction,deriveOffer,formatExpiry,formatSol,MAX_DURATION,METADATA_MAX_BYTES,metadataHash,metadataMatches,metadataWithinLimit,parseLamports,parseMetadata,parsePublicKey } from '../lib/solana/protocol';
-import { acquireSolanaSnapshot,assertDevnet,assertProgram,errorText,explorerAddress,explorerTransaction,programId,rpc,RPC_URL,shortKey } from '../lib/solana/rpc';
+import { acquireSolanaSnapshot,assertDevnet,assertProgram,errorText,explorerAddress,explorerTransaction,programId,rpc,RPC_URL,shortKey,type LicenseBaseline } from '../lib/solana/rpc';
 import { useSolanaSnapshot } from '../lib/solana/use-snapshot';
 import { captureReviewedTransaction,createReviewedTransaction } from '../lib/solana/transaction';
-import { attemptKey,clearPendingAttempt,isDefiniteRpcRejection,readPendingAttempt,reconcileAttempt,storePendingAttempt,transactionDiagnostic,type PendingAttempt } from '../lib/solana/transaction-state';
+import { attemptKey,clearPendingAttempt,expiredAttemptMatchesSnapshot,isDefiniteRpcRejection,readPendingAttempt,reconcileAttempt,storePendingAttempt,transactionDiagnostic,type PendingAttempt } from '../lib/solana/transaction-state';
 type Section='Buy a license'|'Seller studio'|'Verify access';
 const sections:Section[]=['Buy a license','Seller studio','Verify access'];
 export function SolanaApp(){
@@ -56,23 +56,25 @@ export function SolanaApp(){
       }});
       if(result.state==='finalized'){
         setFailure('');setMessage(`${record.action} finalized on Solana Devnet for ${shortKey(record.buyer)}.${identityMatches()?'':' Your connected wallet changed; this confirmation belongs to the displayed sender.'}`);
-        try{clearPendingAttempt(key,record.signature);}catch(error){setFailure(`Transaction finalized; storage cleanup failed and retry protection remains active. ${transactionDiagnostic(error)}`);}
+        try{clearPendingAttempt(key,record);}catch(error){setFailure(`Transaction finalized; storage cleanup failed and retry protection remains active. ${transactionDiagnostic(error)}`);}
         if(record.createdOffer&&identityMatches()&&currentIdentity.current.offerAddress===initialOffer)changeOffer(record.createdOffer);
         try{await queries.invalidateQueries();}catch(error){setFailure(`Transaction finalized; account refresh failed. ${transactionDiagnostic(error)}`);}return;
       }
       if(result.state==='failed'){
         setMessage('');let diagnostic=result.diagnostic??'Transaction failed on Solana Devnet.';
-        try{clearPendingAttempt(key,record.signature);}catch(error){diagnostic+=` Storage cleanup failed; retry protection remains active. ${transactionDiagnostic(error)}`;}setFailure(diagnostic);return;
+        try{clearPendingAttempt(key,record);}catch(error){diagnostic+=` Storage cleanup failed; retry protection remains active. ${transactionDiagnostic(error)}`;}setFailure(diagnostic);return;
       }
       if(result.state==='expired'){
-        // A buyer attempt is released only after a fresh canonical absent-license
-        // snapshot corroborates expiration. Never initiate another write here.
+        // An expired blockhash alone cannot release a purchase. Compare the exact
+        // pre-signing entitlement with a finalized snapshot after status history.
         if(record.action==='Purchase license'){
-          const snapshot=await acquireSolanaSnapshot({program:currentProgram,offerAddress:record.offer,holder:record.buyer,session:0,clock:()=>performance.now()});
-          if(snapshot.expiry!==0n){setFailure('Blockhash expired, but this wallet has an on-chain entitlement. The prior purchase remains protected; inspect its explorer link.');return;}
+          if(!record.baseline){setMessage('');setFailure('This older purchase has no recorded entitlement baseline. Its signature remains protected; inspect its explorer link. No new approval or submission occurred.');return;}
+          const snapshot=await acquireSolanaSnapshot({program:currentProgram,offerAddress:record.offer,holder:record.buyer,session:0,clock:()=>performance.now(),commitment:'finalized',minContextSlot:result.statusContextSlot});
+          if(!expiredAttemptMatchesSnapshot(record,snapshot,result.statusContextSlot,performance.now())){setMessage('');setFailure('The finalized entitlement changed or could not corroborate the original purchase baseline. The prior signature remains protected; inspect its explorer link.');return;}
         }
-        setMessage('');let diagnostic='Transaction expired with no observed confirmation. No automatic retry occurred. Review the offer before a separate manual attempt.';
-        try{clearPendingAttempt(key,record.signature);}catch(error){diagnostic+=` Storage cleanup failed; retry protection remains active. ${transactionDiagnostic(error)}`;}setFailure(diagnostic);return;
+        setMessage('');
+        try{clearPendingAttempt(key,record,{allowConfirmed:false});setFailure('Transaction expired with no observed confirmation. No automatic retry occurred. Review the offer before a separate manual attempt.');}
+        catch(error){setFailure(`The prior signature remains protected because its pending state could not be safely cleared. No new approval or submission occurred. ${transactionDiagnostic(error)}`);}return;
       }
       let diagnostic=`${result.state==='confirmed-pending'?'Transaction confirmed; finalization is still pending.':'Confirmation unknown. The transaction may still confirm.'} Inspect the Devnet explorer link; no automatic retry will occur.${result.diagnostic?' '+result.diagnostic:''}`;
       try{storePendingAttempt(key,{...record,state:result.state==='confirmed-pending'?'confirmed':'unknown'});}catch(error){diagnostic+=` Storage update failed; retry protection remains active. ${transactionDiagnostic(error)}`;}
@@ -83,7 +85,15 @@ export function SolanaApp(){
       if(pending){setMessage('An unresolved attempt is protected. Checking its existing signature only; no new wallet approval or transaction will occur.');await assertDevnet();await reconcile(pending);return;}
       setSignature('');setActor(sender);let record:PendingAttempt|undefined;let attemptedSend=false;
       try{
-        await assertProgram();const latest=await connection.getLatestBlockhash('confirmed');
+        await assertProgram();
+        let baseline:LicenseBaseline|undefined;
+        if(action==='Purchase license'){
+          const snapshot=await acquireSolanaSnapshot({program:currentProgram,offerAddress:initialOffer,holder:sender,session:0,clock:()=>performance.now()});
+          if(!identityMatches()||currentIdentity.current.offerAddress!==initialOffer)throw new Error('Wallet or selected offer changed during preparation. Nothing was signed.');
+          if(snapshot.valid||!snapshot.offer.active||!buyerApproved||!metadataMatches(buyerMetadata,snapshot.offer))throw new Error('Review a currently available offer with matching approved metadata and no active license. Nothing was signed.');
+          baseline=snapshot.licenseBaseline;
+        }
+        const latest=await connection.getLatestBlockhash('confirmed');
         if(!Number.isSafeInteger(latest.lastValidBlockHeight)||latest.lastValidBlockHeight<0)throw new Error('Invalid last valid block height. Nothing was submitted.');
         const {transaction,messageBytes}=createReviewedTransaction(publicKey,latest.blockhash,instruction);
         setMessage(`Constructed ${action} for ${shortKey(sender)} on Solana Devnet. Simulating before wallet approval.`);
@@ -96,7 +106,7 @@ export function SolanaApp(){
         const {wireBytes,signature:hash}=captureReviewedTransaction(messageBytes,signed);
         setSignature(hash);setMessage(`Wallet signed ${action} for ${shortKey(sender)}. Not broadcast; checking Devnet and blockhash validity.`);
         if(!identityMatches()||currentIdentity.current.offerAddress!==initialOffer)throw new Error('Wallet or selected offer changed during approval. The signed transaction was not submitted.');
-        record={network:'devnet',program:currentProgram.toBase58(),buyer:sender,offer:createdAddress??initialOffer,action,signature:hash,blockhash:latest.blockhash,lastValidBlockHeight:latest.lastValidBlockHeight,state:'wallet-signed',...(createdAddress?{createdOffer:createdAddress}:{})};
+        record={network:'devnet',program:currentProgram.toBase58(),buyer:sender,offer:createdAddress??initialOffer,action,signature:hash,blockhash:latest.blockhash,lastValidBlockHeight:latest.lastValidBlockHeight,state:'wallet-signed',...(createdAddress?{createdOffer:createdAddress}:{}),...(baseline?{version:1,baseline}:{})};
         storePendingAttempt(key,record); // Persist public recovery data before further awaits.
         await assertDevnet();
         const height=await rpc('getBlockHeight',[{commitment:'confirmed'}]);
@@ -115,7 +125,7 @@ export function SolanaApp(){
           const diagnostic=transactionDiagnostic(error);
           if(isDefiniteRpcRejection(error)){
             let rejected=`RPC rejected the transaction before acceptance. ${diagnostic}`;
-            try{clearPendingAttempt(key,record.signature);}catch(storageError){rejected+=` Storage cleanup failed; retry protection remains active. ${transactionDiagnostic(storageError)}`;}record=undefined;setMessage('');setFailure(rejected);return;
+            try{clearPendingAttempt(key,record,{allowConfirmed:false});}catch(storageError){rejected+=` Storage cleanup failed; retry protection remains active. ${transactionDiagnostic(storageError)}`;}record=undefined;setMessage('');setFailure(rejected);return;
           }
           record={...record,state:'unknown'};
           let uncertain=`RPC acceptance unknown. ${diagnostic}`;
