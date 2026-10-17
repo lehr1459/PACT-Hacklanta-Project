@@ -1,4 +1,16 @@
 $ErrorActionPreference = 'Stop'
+
+# Stream literal file bytes using .NET on Windows PowerShell 5.1 and PowerShell 7.
+# Do not depend on Get-FileHash module discovery across the pwsh -> powershell boundary.
+function Get-PactFileSha256([string]$LiteralPath) {
+    $stream = [IO.File]::OpenRead($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LiteralPath))
+    try {
+        $sha256 = [Security.Cryptography.SHA256]::Create()
+        try { return [BitConverter]::ToString($sha256.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+        finally { $sha256.Dispose() }
+    } finally { $stream.Dispose() }
+}
+
 $contractRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $pins = Get-Content (Join-Path $contractRoot 'dependencies.json') -Raw | ConvertFrom-Json
 $toolDir = Join-Path $contractRoot '.tools/foundry-v1.8.5'
@@ -6,12 +18,12 @@ New-Item -ItemType Directory -Force $toolDir | Out-Null
 if (!(Test-Path (Join-Path $toolDir 'forge.exe'))) {
     $archive = Join-Path $contractRoot '.tools/foundry-v1.8.5.zip'
     Invoke-WebRequest -UseBasicParsing 'https://github.com/foundry-rs/foundry/releases/download/v1.8.5/foundry_v1.8.5_win32_amd64.zip' -OutFile $archive
-    if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() -ne $pins.foundry.windowsZipSha256) { throw 'Foundry checksum mismatch' }
+    if ((Get-PactFileSha256 $archive) -ne $pins.foundry.windowsZipSha256) { throw 'Foundry checksum mismatch' }
     Expand-Archive $archive $toolDir -Force
 }
 foreach ($pin in $pins.foundry.windowsExeSha256.PSObject.Properties) {
     $executable = Join-Path $toolDir $pin.Name
-    if (!(Test-Path $executable) -or (Get-FileHash $executable -Algorithm SHA256).Hash.ToLower() -ne $pin.Value) {
+    if (!(Test-Path $executable) -or (Get-PactFileSha256 $executable) -ne $pin.Value) {
         throw "Foundry executable checksum mismatch: $($pin.Name)"
     }
     Write-Output "$($pin.Name) checksum verified"

@@ -1,5 +1,17 @@
 param([string]$CastPath = (Join-Path $PSScriptRoot '../.tools/foundry-v1.8.5/cast.exe'))
 $ErrorActionPreference = 'Stop'
+
+# Stream literal file bytes using .NET on Windows PowerShell 5.1 and PowerShell 7.
+# Do not depend on Get-FileHash module discovery across the pwsh -> powershell boundary.
+function Get-PactFileSha256([string]$LiteralPath) {
+    $stream = [IO.File]::OpenRead($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LiteralPath))
+    try {
+        $sha256 = [Security.Cryptography.SHA256]::Create()
+        try { return [BitConverter]::ToString($sha256.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+        finally { $sha256.Dispose() }
+    } finally { $stream.Dispose() }
+}
+
 $contractRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $artifactPath = Join-Path $contractRoot 'out/PactLicensing.sol/PactLicensing.json'
 $abiPath = Join-Path $contractRoot 'abi/PactLicensing.json'
@@ -25,8 +37,8 @@ $evidence = [ordered]@{
     settings = $artifact.metadata.settings
     creationBytecode = Get-BytecodeEvidence $artifact.bytecode.object
     runtimeBytecode = Get-BytecodeEvidence $artifact.deployedBytecode.object
-    sourceSha256 = (Get-FileHash (Join-Path $contractRoot 'src/PactLicensing.sol') -Algorithm SHA256).Hash.ToLower()
-    abiSha256 = (Get-FileHash $abiPath -Algorithm SHA256).Hash.ToLower()
+    sourceSha256 = (Get-PactFileSha256 (Join-Path $contractRoot 'src/PactLicensing.sol'))
+    abiSha256 = (Get-PactFileSha256 $abiPath)
     abiEntries = @($abi).Count
     abiMatchesArtifact = $true
     address = $null

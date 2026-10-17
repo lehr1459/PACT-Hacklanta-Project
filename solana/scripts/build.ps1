@@ -4,6 +4,18 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Stream literal file bytes using .NET on Windows PowerShell 5.1 and PowerShell 7.
+# Do not depend on Get-FileHash module discovery across the pwsh -> powershell boundary.
+function Get-PactFileSha256([string]$LiteralPath) {
+    $stream = [IO.File]::OpenRead($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LiteralPath))
+    try {
+        $sha256 = [Security.Cryptography.SHA256]::Create()
+        try { return [BitConverter]::ToString($sha256.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+        finally { $sha256.Dispose() }
+    } finally { $stream.Dispose() }
+}
+
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $tools = Join-Path $root '.tools'
 $pins = Get-Content -LiteralPath (Join-Path $root 'toolchain.json') -Raw | ConvertFrom-Json
@@ -35,7 +47,7 @@ foreach ($name in $unsupported) {
 foreach ($pin in $pins.executables.PSObject.Properties) {
     $executable = [IO.Path]::GetFullPath((Join-Path $tools $pin.Name))
     if (!$executable.StartsWith($tools + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or $pin.Value -notmatch '^[0-9a-f]{64}$') { throw 'Invalid pinned tool declaration.' }
-    if (!(Test-Path -LiteralPath $executable -PathType Leaf) -or (Get-FileHash -LiteralPath $executable -Algorithm SHA256).Hash.ToLower() -ne $pin.Value) { throw "Tool executable checksum mismatch: $($pin.Name). Run the reviewed setup separately." }
+    if (!(Test-Path -LiteralPath $executable -PathType Leaf) -or (Get-PactFileSha256 $executable) -ne $pin.Value) { throw "Tool executable checksum mismatch: $($pin.Name). Run the reviewed setup separately." }
     Write-Output "Verified $($pin.Name)"
 }
 
@@ -68,11 +80,11 @@ try {
     $relativeArtifact = $output.Substring($root.Length + 1).Replace('\', '/')
     $evidence = [ordered]@{
         artifact = $relativeArtifact; format = 'ELF64 Solana Bytecode Format shared object'
-        sha256 = (Get-FileHash -LiteralPath $output -Algorithm SHA256).Hash.ToLower()
+        sha256 = (Get-PactFileSha256 $output)
         sizeBytes = (Get-Item -LiteralPath $output).Length
-        sourceSha256 = (Get-FileHash -LiteralPath 'src/lib.rs' -Algorithm SHA256).Hash.ToLower()
-        cargoLockSha256 = (Get-FileHash -LiteralPath 'Cargo.lock' -Algorithm SHA256).Hash.ToLower()
-        wireSpecSha256 = (Get-FileHash -LiteralPath 'wire-spec.json' -Algorithm SHA256).Hash.ToLower()
+        sourceSha256 = (Get-PactFileSha256 'src/lib.rs')
+        cargoLockSha256 = (Get-PactFileSha256 'Cargo.lock')
+        wireSpecSha256 = (Get-PactFileSha256 'wire-spec.json')
         toolchain = 'anza platform-tools v1.57'; target = 'sbpf-solana-solana'
         pathRemapping = [ordered]@{workspace = '/pact/solana'; cargoHome = '/pact/cargo'; encoding = 'CARGO_ENCODED_RUSTFLAGS (ASCII 31)'}
         runtimeProgramId = 'dynamic'; deploymentProgramId = $null; deploymentSignature = $null
