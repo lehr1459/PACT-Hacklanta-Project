@@ -12,7 +12,7 @@ Windows PowerShell; Node 24.11.1; npm 11.6.2; Git 2.52.0.windows.1; pinned Solan
 | Phase | Acceptance | State |
 | --- | --- | --- |
 | 0 | Supported product matrix and precise licensing contract independently reviewed | PASS |
-| 1 | Clean-checkout CI, isolated packaged consumers, dependency triage and independent protocol/recovery fixtures | Pending |
+| 1 | Clean-checkout CI, isolated packaged consumers, dependency triage and independent protocol/recovery fixtures | In progress; reviewed candidate awaiting committed-checkout replay |
 | 2 | Bounded concurrent reads, enforced supported auth topology, real resource authorization, independent abuse budgets and correct recovery | Pending |
 | 3 | Reproducible program provenance, deployment verification tooling/governance and adversarial signed runtime tests | Pending |
 | 4 | Runtime-validated compatible API, versioned package artifact, portable docs and executable integration examples | Pending |
@@ -41,10 +41,22 @@ Fresh baseline on the unchanged application at `8e259de`:
 | Prism example browser/typecheck/build/start | PASS, 22 tests, two intentional live-mode skips |
 | Platform example browser/typecheck/build/start | PASS, 14 tests |
 | Solana marketplace browser | PASS, 200 tests, six intentional separate setup/live-mode skips |
-| Base marketplace browser | Running against unchanged baseline application; completion recorded in Phase 1 before its gate |
+| Base marketplace browser | PASS, 48 tests, two intentional separate setup-mode skips |
 
-No initial code/build/test failure has been observed. Full browser checks run against baseline application code and production builds. Prior cleanup results are historical, not substituted for these runs.
+All recorded baseline checks passed. Full browser checks ran against baseline application code and production builds. Prior cleanup results are historical, not substituted for these runs.
 
 ## Phase 0 review
 
-Independent QA checked the full master request against the release contract. Corrections incorporated: explicitly preserve Base Sepolia in the network matrix and label later-phase capabilities as implementation targets rather than current claims. Product matrix and licensing semantics meet the Phase 0 exit gate. The remaining Base browser baseline continues against unchanged application sources while Phase 1 tooling is prepared; no competing web build may run until it completes.
+Independent QA checked the full master request against the release contract. Corrections incorporated: explicitly preserve Base Sepolia in the network matrix and label later-phase capabilities as implementation targets rather than current claims. Product matrix and licensing semantics meet the Phase 0 exit gate. Commit: `c0c85fa`. The remaining Base browser baseline completed successfully against unchanged application sources during Phase 1 tooling preparation; no competing web build ran.
+
+## Phase 1 candidate review and validation
+
+Implemented portable SDK-first CI orchestration, platform-specific chain lane, exact artifact-byte checkout rules, isolated packed and generated consumers, independent protocol/recovery vectors, dependency advisory triage and a graph-bound expiring-exception gate. Historical Saturday compatibility is explicitly optional with a caller-provided read-only checkout; no external repository was modified. Required setup/mock lanes and optional public reads remain distinct.
+
+Observed before the committed-checkout replay: SDK build/tests **128 passed** (36 independent protocol and 12 independent recovery cases added); API/auth **29 passed**; dependency-policy **1 passed**; direct marketplace independent vectors **4 passed** and web typecheck passed; packed consumers **10 checks passed**; chain **23 Solana + 23 Base passed**, including compiled artifact/settings/hash checks; three app production builds/typechecks and three production route checks passed. Record clean-replay counts separately, including intentional skips.
+
+Independent QA approved the candidate after correcting the Prism CLI instance, preserving compiler/settings/Keccak assertions, moving generated consumers outside the repository, making startup cleanup bounded and asserting forbidden RPC/sign attempts outside catchable SDK paths. SDK specialist independently reviewed the dependency gate: added graph and affected-install binding, valid ISO-date expiry, and unresolved-cycle rejection.
+
+One temporary root-authored protocol test configuration accidentally used Playwright's default output directory, deleting ignored receipts and active generated-consumer traces. It was corrected to a dedicated directory; affected evidence was regenerated. The contaminated generated run had 39 passes and five infrastructure failures; it remains archived and is not accepted as a pass. A later OS-temp generator harness installation-order failure was corrected without changing application assertions. Final generated-consumer and clean committed-checkout replay remain gate requirements.
+
+This candidate commit makes inputs available for reproducible replay; it does not declare Phase 1 complete. Hosted Linux/GitHub execution has not been performed and must not be inferred from the prepared workflow or local Windows results.

@@ -1,0 +1,116 @@
+name: Repository validation
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      live_read_only:
+        description: Also run public Devnet reads (RPC availability required; no signing or submissions)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node-and-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.11.1
+          cache: npm
+          cache-dependency-path: |
+            packages/pact-sdk/package-lock.json
+            web/package-lock.json
+            examples/pact-demo-app/package-lock.json
+            examples/pact-platform-app/package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@11.6.2
+      - name: Check runtime and install SDK first
+        run: |
+          node scripts/validation/run.mjs environment
+          node scripts/validation/run.mjs install
+      - name: Install Chromium and Linux browser dependencies
+        run: node web/node_modules/@playwright/test/cli.js install --with-deps chromium
+      - name: Node tests, production builds and package contracts
+        run: |
+          node scripts/validation/run.mjs node
+          node scripts/validation/run.mjs build
+          node scripts/validation/run.mjs packed
+          node scripts/validation/run.mjs dependencies
+          node scripts/validation/run.mjs artifacts
+      - name: Synthetic browser regressions, sequential shared build directory
+        run: |
+          node scripts/validation/run.mjs browser-solana
+          node scripts/validation/run.mjs browser-base
+          node scripts/validation/run.mjs browser-integration
+          node scripts/validation/run.mjs browser-checkout
+          node scripts/validation/run.mjs browser-examples
+          node scripts/validation/run.mjs external-saturday
+      - name: Validation reports and browser failure evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: node-browser-validation
+          path: |
+            web/test-results/
+            web/playwright-report/
+          retention-days: 14
+
+  pinned-chain:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.11.1
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: 3.13.5
+      - name: Pin npm
+        run: npm install --global npm@11.6.2
+      - name: Check runtime and committed evidence
+        run: |
+          node scripts/validation/run.mjs environment
+          node scripts/validation/run.mjs artifacts
+      - name: Verify pinned tools and execute chain suites
+        run: node scripts/validation/run.mjs all-chain
+      - name: Chain validation command receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pinned-chain-validation
+          path: web/test-results/validation/
+          retention-days: 14
+
+  optional-public-reads:
+    if: github.event_name == 'workflow_dispatch' && inputs.live_read_only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.11.1
+      - run: npm install --global npm@11.6.2
+      - run: node scripts/validation/run.mjs environment
+      - run: node scripts/validation/run.mjs install
+      - run: node web/node_modules/@playwright/test/cli.js install --with-deps chromium
+      - name: Existing RPC allowlists forbid transaction methods
+        run: node scripts/validation/run.mjs live-read
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: optional-public-read-validation
+          path: |
+            web/test-results/
+            web/playwright-report/
+          retention-days: 14

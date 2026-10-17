@@ -6,6 +6,9 @@ Use the root [README](../README.md) for current startup and repository boundarie
 | --- | --- |
 | [Architecture and cleanup audit](POST_MVP_CLEANUP.md) | Subsystem map, preservation decisions, baseline and validation |
 | [Technical debt](TECHNICAL_DEBT.md) | Prioritized follow-up work |
+| [Initial release contract](product/RELEASE_CONTRACT.md) | Supported hosting model, licensing semantics and exclusions |
+| [Current validation](development/VALIDATION.md) / [execution record](development/EXECUTION.md) | Portable phase gates, exact commands and observed results |
+| [Dependency security triage](security/dependencies.md) | Advisory reachability, scoped exceptions and review deadlines |
 | [Developer Platform](platform/README.md) / [quickstart](platform/quickstart.md) | SDK v1, REST and backend integration |
 | [SDK API](../packages/pact-sdk/README.md) | Public exports and consumer examples |
 | [Web guide](../web/README.md) | Configuration, chain behavior and manual wallet testing |

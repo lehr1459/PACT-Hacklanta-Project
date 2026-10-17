@@ -1,0 +1,30 @@
+# Marketplace and SDK recovery parity
+
+Phase 1 comparison at the full-development baseline. This records current behavior and required Phase 2 corrections; it does not merge the two implementations or authorize automatic resubmission.
+
+Sources: `web/lib/solana/transaction-state.ts`, `web/components/solana-app.tsx`, and `packages/pact-sdk/src/checkout.ts`. Existing SDK/marketplace recovery tests remain required; independent protocol fixtures add account bytes and baseline identities without replacing those state-machine tests.
+
+## Shared safety model
+
+Both paths persist public attempt identity, signature, original blockhash/lifetime and state; no signed transaction bytes or credentials belong in journals. Both distinguish RPC acceptance, observed confirmation and finalization. Confirmation remains sticky. An elapsed polling deadline means unknown or finalization pending, not expiration. Expiration requires finalized height beyond lifetime, a second nonregressing history-status lookup, and an invalid finalized blockhash. Recovery reads do not sign or resubmit.
+
+| Case | Marketplace baseline | SDK baseline | Assessment / Phase 2 action |
+| --- | --- | --- | --- |
+| Valid current entitlement | Fresh account checks govern access; an unresolved attempt remains independently protected. | Fresh verification can report already licensed; pending attempt recovery stays signature-bound. | Preserve entitlement evidence separately from submission evidence. A valid license does not by itself prove which transaction created it. |
+| Expired historical entitlement / unsuccessful repurchase | Expired blockhash recovery additionally requires `snapshot.expiry === 0`; a historical expired nonzero entitlement therefore keeps the guard protected indefinitely. | Journal stores original initialized/missing entitlement bytes. An unchanged expired initialized baseline can safely release after all transaction-expiration proofs. | Confirmed correctness gap. Bring marketplace to validated baseline-aware recovery; do not treat an old entitlement as a new purchase. |
+| Successful repurchase / finalized success | Finalized status resolves the attempt; normal fresh account refresh controls access. | Finalized status requires a finalized entitlement snapshot at/after the transaction slot. A stale/missing/inactive entitlement result is `finalized-unverified`. | Keep finalization truthful while requiring fresh access proof. Compare account context/finalization identity explicitly. |
+| Finalized failure | Resolves/clears the matching failed attempt; never grants access from the failure. | Returns failed and clears the matching journal, or reports cleanup trouble while preserving protection. | Preserve failed-finalized versus unknown distinctions. |
+| Unchanged finalized baseline after blockhash expiry | Missing entitlement can release; expired initialized entitlement currently cannot. | Equality compares kind, expiry and exact initialized account bytes. Unchanged baseline can release. | Add marketplace snapshots of baseline at preparation; compare only validated final snapshots. |
+| Changed finalized baseline | Existing nonzero expiry prevents release, without knowing what changed. | Exact baseline inequality returns unknown and retains protection. | Preserve conservative changed-baseline handling, including same expiry with changed bytes. |
+| Ambiguous/lost RPC response | Stores unknown; next attempt recovers existing signature without new approval. | Same; mismatched RPC acknowledgment is ambiguous, never fabricated acceptance. | Preserve no blind retry/resign/resend. |
+| Reload | Public marketplace journal reloads, but lacks baseline fields at the baseline revision. | Own versioned baseline journal plus compatible marketplace mirror reload. | Version new fields compatibly. Old baseline-less records must remain protected and readable. |
+| Missing journal | Same-session memory can preserve known attempt; a new session with no persisted evidence cannot reconstruct a lost signature. | Same limitation; a missing mirror can coexist with a valid own journal and must not discard its baseline. | Do not promise recovery of evidence never persisted. Missing/partial persistence before sending must fail closed. |
+| Partial journal / malformed storage | Marketplace remembers an existing in-memory attempt on some storage failures; disk-only invalid input throws. | Validates own/mirror independently; malformed or contradictory records fail closed. | Test interruption at each write/read/cleanup boundary; retain public evidence and sticky observed progress. |
+| Conflicting signatures | Store/clear operations protect differing signatures; read chooses the persisted conflicting record rather than blindly overwriting it. | Rejects mismatched own/mirror or remembered/stored incarnation (signature, blockhash, lifetime). | Preserve the newer/different protected attempt. Never clear it while cleaning up an old attempt. |
+| Web ↔ SDK compatibility | Uses `pact.solana.pending.v1:<program>:<buyer>:<offer>` for purchases. | Mirrors that format while maintaining `pact.solana.checkout.v1:` with baseline. Legacy-only records cannot be automatically expired/cleared by SDK. | Retain backward reads and conservative legacy behavior; explicitly test migration and cross-surface partial writes. |
+
+## Required verification
+
+Cover active/expired/missing entitlements, unsuccessful and successful repurchase, finalized success/failure, unknown/confirmed-pending, reload, unchanged and changed baseline, missing/partial journals, conflicting signatures and web↔SDK compatibility. Assert signing/submission counts remain zero during recovery and no automatic retry occurs. Use fixed independent account bytes where possible, controlled RPC history/height/validity responses, and explicit storage faults. Do not use live Devnet account absence as a permanent fixture.
+
+The marketplace correction belongs in Phase 2 after these differences are independently reviewed. Keep tests that reveal the known baseline gap; do not weaken them to equate every closed/error state with correct recovery.
