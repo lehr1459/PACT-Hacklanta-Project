@@ -116,25 +116,27 @@ if($global:extractions -ne 0 -or $global:laterExecution -ne 0){throw 'Tampered i
   });
 }
 
-test('Solana setup extracts a verified archive with native Windows tar despite a shadowed PATH command',windows,t=>{
+test('Solana setup extracts a verified archive without external tar or bzip2',windows,t=>{
   const directory=temporary(t),workspace=path.join(directory,'solana'),tools=path.join(workspace,'.tools');
   fs.mkdirSync(path.join(workspace,'scripts'),{recursive:true});fs.mkdirSync(tools);
   fs.copyFileSync(path.join(repository,'solana/scripts/setup.ps1'),path.join(workspace,'scripts/setup.ps1'));
   const payload=Buffer.from('synthetic archive payload\n');fs.writeFileSync(path.join(directory,'payload.txt'),payload);
   const archive=path.join(tools,'platform-tools-windows-x86_64.tar.bz2');
-  const nativeTar=path.join(process.env.SystemRoot??'C:/Windows','System32/tar.exe');
-  execFileSync(nativeTar,['-cjf',archive,'-C',directory,'payload.txt'],{windowsHide:true,timeout:20000});
+  const localPython=path.join(repository,'solana/.tools/venv/Scripts/python.exe');
+  const python=fs.existsSync(localPython)?localPython:'python';
+  execFileSync(python,['-c','import sys; assert sys.version_info[:3] == (3,13,5)'],{windowsHide:true,timeout:20000});
+  execFileSync(python,['-m','venv','--without-pip',path.join(tools,'venv')],{windowsHide:true,timeout:20000});
+  execFileSync(python,['-c',"import sys,tarfile; archive=tarfile.open(sys.argv[1],'w:bz2'); archive.add(sys.argv[2],arcname='payload.txt'); archive.close()",archive,path.join(directory,'payload.txt')],{windowsHide:true,timeout:20000});
   // Only this synthetic fixture has a synthetic archive pin; repository pins are untouched.
   const pins=JSON.parse(fs.readFileSync(path.join(repository,'solana/toolchain.json')));
   pins.platformTools.sha256=createHash('sha256').update(fs.readFileSync(archive)).digest('hex');
   fs.writeFileSync(path.join(workspace,'toolchain.json'),JSON.stringify(pins));
   run(`
-[Console]::WriteLine('Native extraction fixture: loading setup cmdlets')
 Import-Module Microsoft.PowerShell.Management
 Import-Module Microsoft.PowerShell.Utility
 $PSModuleAutoLoadingPreference='None'
-[Console]::WriteLine('Native extraction fixture: invoking setup')
-function global:tar.exe {throw 'Unqualified PATH tar must never run'}
+function global:tar.exe {throw 'External tar must never run'}
+function global:bzip2.exe {throw 'External bzip2 must never run'}
 $message=$null
 try {& ${quote(path.join(workspace,'scripts/setup.ps1'))}}catch{$message=$_.Exception.Message}
 # Extraction succeeds; a deliberately absent compiler must still fail its unchanged pin gate.

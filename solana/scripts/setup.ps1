@@ -14,16 +14,25 @@ function Get-PactFileSha256([string]$LiteralPath) {
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $tools=Join-Path $root '.tools'
 $pins=Get-Content (Join-Path $root 'toolchain.json') -Raw | ConvertFrom-Json
+$python=Join-Path $tools 'venv/Scripts/python.exe'
+function Initialize-PactPython {
+    if (!(Test-Path $python)) { & py -m venv (Join-Path $tools 'venv'); if($LASTEXITCODE -ne 0){throw 'Python venv creation failed'} }
+}
 New-Item -ItemType Directory -Force $tools | Out-Null
 if (!(Test-Path (Join-Path $tools 'rust/bin/cargo.exe'))) {
     $archive=Join-Path $tools 'platform-tools-windows-x86_64.tar.bz2'
     if (!(Test-Path $archive)) { & curl.exe -fL $pins.platformTools.url -o $archive; if($LASTEXITCODE -ne 0){throw 'Tool download failed'} }
     if ((Get-PactFileSha256 $archive) -ne $pins.platformTools.sha256){throw 'Tool archive checksum mismatch'}
-    # PATH can select a tar that launches an external bzip2. Qualify Windows
-    # bsdtar to avoid PATH-dependent decompression; it handles bzip2 in-process.
-    $tar = Join-Path $env:SystemRoot 'System32/tar.exe'
-    Write-Output "Extracting verified compiler archive with $tar"
-    & $tar -xjf $archive -C $tools
+    # Windows Server tar can require an external bzip2 and hang in captured CI.
+    # Reuse the required Python standard library; no tar/bzip2 subprocess or package.
+    Initialize-PactPython
+    Write-Output 'Extracting verified compiler archive with Python tarfile/bz2'
+    $extract = @'
+import sys, tarfile
+with tarfile.open(sys.argv[1], mode='r|bz2') as archive:
+    archive.extractall(sys.argv[2], filter='data')
+'@
+    & $python -c $extract $archive $tools
     if($LASTEXITCODE -ne 0){throw 'Tool extraction failed'}
 }
 foreach($pin in $pins.executables.PSObject.Properties) {
@@ -31,8 +40,7 @@ foreach($pin in $pins.executables.PSObject.Properties) {
     if (!(Test-Path $path) -or (Get-PactFileSha256 $path) -ne $pin.Value){throw "Tool executable mismatch: $($pin.Name)"}
     Write-Output "Verified $($pin.Name)"
 }
-$python=Join-Path $tools 'venv/Scripts/python.exe'
-if (!(Test-Path $python)) { & py -m venv (Join-Path $tools 'venv'); if($LASTEXITCODE -ne 0){throw 'Python venv creation failed'} }
+Initialize-PactPython
 & $python -m pip install --require-hashes --only-binary=:all: -r (Join-Path $root 'requirements-lock.txt')
 if($LASTEXITCODE -ne 0){throw 'Python dependency setup failed'}
 Write-Output 'Local compiler and LiteSVM ready. No CLI, wallets or keypairs installed/generated.'
