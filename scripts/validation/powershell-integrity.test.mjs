@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 
 const repository=fileURLToPath(new URL('../../',import.meta.url));
 const windows={skip:process.platform!=='win32'};
@@ -20,10 +21,11 @@ function temporary(t){
 }
 function run(code,cwd){
   const environment={};
-  for(const name of ['SystemRoot','SYSTEMROOT','WINDIR','TEMP','TMP','USERPROFILE','APPDATA','LOCALAPPDATA'])if(process.env[name])environment[name]=process.env[name];
+  for(const name of ['SystemRoot','SYSTEMROOT','WINDIR','PATHEXT','ComSpec','TEMP','TMP','USERPROFILE','APPDATA','LOCALAPPDATA'])if(process.env[name])environment[name]=process.env[name];
   environment.PATH=path.dirname(powershell)+path.delimiter+path.join(environment.SystemRoot??environment.SYSTEMROOT??'C:/Windows','System32');
   const output=execFileSync(powershell,['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-EncodedCommand',Buffer.from(`
 $ErrorActionPreference='Stop'
+$ProgressPreference='SilentlyContinue'
 if($PSVersionTable.PSVersion.Major -ne 5 -or $PSVersionTable.PSVersion.Minor -ne 1){throw 'Windows PowerShell 5.1 required'}
 ${code}
 `,'utf16le').toString('base64')],{cwd,env:environment,windowsHide:true,timeout:20000,maxBuffer:200000,encoding:'utf8'});
@@ -113,3 +115,26 @@ if($global:extractions -ne 0 -or $global:laterExecution -ne 0){throw 'Tampered i
     assert.ok(fs.readFileSync(path.join(repository,kind,pinName)).equals(originalPins),'Repository pin bytes must remain unchanged');
   });
 }
+
+test('Solana setup extracts a verified archive with native Windows tar despite a shadowed PATH command',windows,t=>{
+  const directory=temporary(t),workspace=path.join(directory,'solana'),tools=path.join(workspace,'.tools');
+  fs.mkdirSync(path.join(workspace,'scripts'),{recursive:true});fs.mkdirSync(tools);
+  fs.copyFileSync(path.join(repository,'solana/scripts/setup.ps1'),path.join(workspace,'scripts/setup.ps1'));
+  const payload=Buffer.from('synthetic archive payload\n');fs.writeFileSync(path.join(directory,'payload.txt'),payload);
+  const archive=path.join(tools,'platform-tools-windows-x86_64.tar.bz2');
+  const nativeTar=path.join(process.env.SystemRoot??'C:/Windows','System32/tar.exe');
+  execFileSync(nativeTar,['-cjf',archive,'-C',directory,'payload.txt'],{windowsHide:true,timeout:20000});
+  // Only this synthetic fixture has a synthetic archive pin; repository pins are untouched.
+  const pins=JSON.parse(fs.readFileSync(path.join(repository,'solana/toolchain.json')));
+  pins.platformTools.sha256=createHash('sha256').update(fs.readFileSync(archive)).digest('hex');
+  fs.writeFileSync(path.join(workspace,'toolchain.json'),JSON.stringify(pins));
+  run(`
+function global:tar.exe {throw 'Unqualified PATH tar must never run'}
+$message=$null
+try {& ${quote(path.join(workspace,'scripts/setup.ps1'))}}catch{$message=$_.Exception.Message}
+# Extraction succeeds; a deliberately absent compiler must still fail its unchanged pin gate.
+if($message -cne 'Tool executable mismatch: rust/bin/cargo.exe'){throw ('Unexpected setup result: '+$message)}
+[Console]::WriteLine('PACT_INTEGRITY_PASS')
+`,directory);
+  assert.ok(fs.readFileSync(path.join(tools,'payload.txt')).equals(payload));
+});

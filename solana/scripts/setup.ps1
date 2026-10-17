@@ -19,7 +19,11 @@ if (!(Test-Path (Join-Path $tools 'rust/bin/cargo.exe'))) {
     $archive=Join-Path $tools 'platform-tools-windows-x86_64.tar.bz2'
     if (!(Test-Path $archive)) { & curl.exe -fL $pins.platformTools.url -o $archive; if($LASTEXITCODE -ne 0){throw 'Tool download failed'} }
     if ((Get-PactFileSha256 $archive) -ne $pins.platformTools.sha256){throw 'Tool archive checksum mismatch'}
-    & tar.exe -xjf $archive -C $tools
+    # PATH can select a tar that launches an external bzip2. Qualify Windows
+    # bsdtar to avoid PATH-dependent decompression; it handles bzip2 in-process.
+    $tar = Join-Path $env:SystemRoot 'System32/tar.exe'
+    Write-Output "Extracting verified compiler archive with $tar"
+    & $tar -xjf $archive -C $tools
     if($LASTEXITCODE -ne 0){throw 'Tool extraction failed'}
 }
 foreach($pin in $pins.executables.PSObject.Properties) {
