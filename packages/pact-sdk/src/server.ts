@@ -51,6 +51,19 @@ export function createPactApiHandler(options:PactApiOptions){
   return out;
  }
  function alive(signal:AbortSignal){if(signal.aborted)throw new PlatformError('TIMEOUT','Request was cancelled or timed out.',408);}
+ async function emptyBody(req:Request,signal:AbortSignal){
+  alive(signal);
+  const stated=req.headers.get('content-length');
+  if(stated!==null&&(!/^\d+$/.test(stated)||Number(stated)!==0)){void req.body?.cancel().catch(()=>{});throw new PlatformError('INVALID_INPUT','Resource requests do not accept input bytes.');}
+  if(req.body===null)return;
+  const stream=req.body.getReader(),cancel=()=>{void stream.cancel().catch(()=>{});};
+  signal.addEventListener('abort',cancel,{once:true});
+  try{
+   // Node/Next may expose an empty POST as a stream. Inspect bytes, not stream presence.
+   for(let reads=0;reads<32;reads++){const part=await stream.read();alive(signal);if(part.done)return;if(part.value.byteLength>0){cancel();throw new PlatformError('INVALID_INPUT','Resource requests do not accept caller-supplied policy or input.');}}
+   cancel();throw new PlatformError('INVALID_INPUT','Invalid empty request stream.');
+  }finally{signal.removeEventListener('abort',cancel);stream.releaseLock();}
+ }
  async function body(req:Request,keys:string[],signal:AbortSignal){
   alive(signal);const content=req.headers.get('content-type')??'';if(!/^application\/json(?:;|$)/i.test(content))throw new PlatformError('INVALID_INPUT','Use application/json.');
   const stated=req.headers.get('content-length');if(stated&&(!/^\d+$/.test(stated)||Number(stated)>131072))throw new PlatformError('BODY_TOO_LARGE','Request exceeds 128 KiB.',413);
@@ -106,8 +119,8 @@ export function createPactApiHandler(options:PactApiOptions){
     const resource=/^\/resources\/([A-Za-z0-9_-]{1,64})$/.exec(path);
     if(resource){
      const policy=policies.get(resource[1]);if(!policy||req.method!==policy.method)throw new PlatformError('NOT_FOUND','Unknown resource or method.',404);
-     if(req.body!==null)throw new PlatformError('INVALID_INPUT','Resource requests do not accept caller-supplied policy or input.');
      const token=cookies(req).pact_session,s=session(token);
+     await emptyBody(req,signal);
      await entitlement(token,policy.offer,s.walletAddress,signal);
      const prepared=await policy.prepare(Object.freeze({walletAddress:s.walletAddress,offerAddress:policy.offer,signal}));
      alive(signal);

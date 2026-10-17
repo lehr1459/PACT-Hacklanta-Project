@@ -213,18 +213,44 @@ test('query identity/offer injection, unknown IDs, wrong methods, duplicate cook
   zero(e);
 });
 
-test('configured POST operation requires same origin and rejects every request body before prepare', bounds, async t => {
+test('configured POST operation accepts zero input bytes and rejects nonempty or contradictory transport bodies before prepare', bounds, async t => {
   let prepared = 0, committed = 0;
   const e = environment(t, { resources: { operation: { offer: address, method: 'POST', prepare() {
     prepared++; return { body: PRIVATE, contentType: 'text/plain', commit() { committed++; } };
   } } } }), session = await authenticate(e);
-  for (const body of ['', '{}', JSON.stringify({ walletAddress: e.identity.wallet, offerAddress: address }), 'x'.repeat(131073)])
+  for (const body of [' ', '{}', JSON.stringify({ walletAddress: e.identity.wallet, offerAddress: address }), 'x'.repeat(131073)])
     denied(await call(e, '/resources/operation', { ...session, method: 'POST', body }));
   denied(await call(e, '/resources/operation', { ...session, method: 'POST', origin: null }));
+  denied(await call(e, '/resources/operation', { ...session, method: 'POST', headers: { 'content-length': '1' } }));
+  const transport = async (body, headers = {}, signal) => {
+    const response = await e.handler(new Request(ORIGIN + '/api/v1/resources/operation', {
+      method: 'POST', headers: { origin: ORIGIN, cookie: session.cookie, ...headers }, body, duplex: 'half', signal,
+    }));
+    return { response, status: response.status, text: await response.text() };
+  };
+  for (const headers of [{}, { 'content-length': '0' }]) {
+    let cancelled = false;
+    const stream = new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array([123])); }, cancel() { cancelled = true; } });
+    denied(await transport(stream, headers));
+    assert.equal(cancelled, true, 'First nonempty input must cancel the remainder even when Content-Length claims zero');
+  }
+  let cancelled = false;
+  const controller = new AbortController(), reading = Promise.withResolvers();
+  const stalled = new ReadableStream({ pull() { reading.resolve(); }, cancel() { cancelled = true; } });
+  const pending = transport(stalled, {}, controller.signal);
+  await reading.promise; controller.abort(); denied(await pending);
+  assert.equal(cancelled, true, 'Cancellation must close a transport waiting for empty-body EOF');
   assert.equal(prepared, 0); assert.equal(committed, 0);
-  const result = await call(e, '/resources/operation', { ...session, method: 'POST' });
-  assert.equal(result.status, 200, result.text); assert.equal(result.text, PRIVATE);
-  assert.equal(prepared, 1); assert.equal(committed, 1);
+  for (const send of [
+    () => call(e, '/resources/operation', { ...session, method: 'POST' }),
+    () => call(e, '/resources/operation', { ...session, method: 'POST', body: '' }),
+    () => transport(new ReadableStream({ start(controller) { controller.close(); } })),
+    () => transport(new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array(0)); controller.close(); } }), { 'content-length': '0' }),
+  ]) {
+    const result = await send();
+    assert.equal(result.status, 200, result.text); assert.equal(result.text, PRIVATE);
+  }
+  assert.equal(prepared, 4); assert.equal(committed, 4);
 });
 
 test('logout while prepare is suspended invalidates resource and never commits prepared bytes', bounds, async t => {
