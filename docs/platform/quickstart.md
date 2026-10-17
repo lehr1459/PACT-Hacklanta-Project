@@ -23,7 +23,9 @@ Supply canonical public addresses for your offer and wallet. This is a network r
 
 From your checkout root:
 
-```sh
+```powershell
+$env:PACT_ENV_PROFILE='local'
+$env:PACT_APP_ORIGIN='http://localhost:3008'
 npm --prefix packages/pact-sdk ci
 npm --prefix packages/pact-sdk run build
 npm --prefix examples/pact-platform-app ci
@@ -31,6 +33,6 @@ npm --prefix examples/pact-platform-app run build
 npm --prefix examples/pact-platform-app run start
 ```
 
-Open `http://localhost:3008` exactly. Canvas Lab hosts its own same-origin `/api/pact` handler; a separate PACT marketplace process is unnecessary. Its source dependency is for repository development; third-party consumers use the tarball above.
+Open `http://localhost:3008` exactly. Keep the same explicit local profile and public/origin/policy settings at build and start. Canvas Lab hosts its own same-origin `/api/pact` handler; a separate PACT marketplace process is unnecessary. Its source dependency is for repository development; third-party consumers use the tarball above. This local demo is not approved hosted configuration; see [environment profiles](../operations/ENVIRONMENTS.md).
 
 Next, follow [embedded checkout](embedded-checkout.md), [wallet proof](wallet-authentication.md) and [backend enforcement](backend-enforcement.md). Copying a checkout button does not protect confidential data. Preserve exact seller metadata and never put wallet secrets in application configuration.

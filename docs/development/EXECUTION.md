@@ -206,3 +206,52 @@ Operations documents define roles, incidents/restore/rollback, available diagnos
 ### Phase 5 clean-start harness correction
 
 Initial clean `3b0bdbd` passed four installs, SDK625/API29, all policy tests and the marketplace production build, then failed route smoke with ECONNRESET. Captured owned-server diagnostics independently confirmed `BUILD_ENVIRONMENT_MISMATCH`: the build explicitly selected the real Devnet program, while the route harness inherited the empty setup-program default. Next reported ready before its first request loaded the guarded config. This is a genuine validation-harness integration defect, not grounds to weaken the build/start binding. The runner now passes the same explicit production environment to build and route smoke; failure diagnostics retain bounded server output with URL redaction. Original failed receipts remain separate. A corrected committed full replay is required.
+
+### Phase 5 final committed-checkout evidence
+
+Corrective implementation candidate `defec7181cc5c8e14b43f4e81eb90783349b5a99` passed the entire `all-node --clean` run in a fresh environment-file-free Windows checkout, 2026-10-17T06:16:32.423Z through 06:41:20.913Z (24m48s). All 40 executed required commands exited zero, both environment records passed, and the optional external Saturday repository was explicitly unconfigured/skipped: 43 unique receipt rows, no hidden failed or incomplete command. Initial failed `3b0bdbd` receipts and server diagnostics are preserved separately. The configuration guard was retained, not weakened.
+
+| Final suite / evidence | Passed | Intentional skips / scope |
+| --- | ---: | --- |
+| SDK automated tests | 625 | 0; includes RPC32, diagnostics34, auth5 and independent callback17 regressions |
+| API/auth | 29 | 0; synthetic RPC and disposable local message proofs |
+| Dependency / artifact policy tests | 1 / 1 | 0 |
+| Deployment identity / provenance tests | 32 / 5 | 0; local fixtures and negative cases |
+| SDK-release / runtime policy tests | 3 / 1 | 0 |
+| Environment / actual Next configuration tests | 12 / 4 | 0; actual TS-loader positive plus reproduced former failure |
+| Archive policy tests | 8 | 0; mutation/path/hash/evidence coverage |
+| Solana mock / setup browsers | 252 / 10 | 6 / 248 mode skips |
+| Base mock / setup browsers | 50 / 2 | 2 / 50 mode skips |
+| Integration wizard | 10 | 2 mode/live skips |
+| Actual generated Next/React consumers | 44 | 0 |
+| Standalone checkout/widget | 32 | 4 mode/live skips |
+| Prism | 22 | 2 mode/live skips |
+| Platform production browser | 16 | 0; desktop8/mobile8, actual private GET and empty POST enforcement |
+| Isolated packed consumers | 12 checks | 0; includes executable documentation3/3, React18/19 and negative Node-server import in a browser build |
+| Four locked installs / SDK build and typecheck | 4 / 2 commands | 0 |
+| App route generation / TypeScript / production builds | 3 / 3 / 3 commands | 0 |
+| Production HTTP routes / static-server safety | 3 routes / 1 command | 0; owned port collision and allowlist cases retained |
+| Final dependency / artifact integrity gates | 1 / 1 commands | 0; scoped advisory exceptions remain, not zero vulnerabilities |
+| Repeated compiled Solana / Base runtime | 43 / 23 | 0; local actual SBF execution,20 signature-enabled fixtures included; four Base properties at256 fuzz runs each |
+| Focused Next / widget accessibility | 8 / 6 | 0; targeted dirty candidate, also discovered in final full suites; synthetic providers/device emulation |
+| Local snapshot create / verify / relocation | 2 encodings / 1 verify / 6 smoke checks | 0; fresh runtime installs and actual extracted Next startup |
+| Optional external Saturday checkout | Not run | Explicit unconfigured skip; unrelated repository untouched |
+| Optional full live-read browser lane | Not run | Actual read-only deployment and readiness evidence are separate below |
+| Hosted GitHub/Linux/Windows CI | Not executed | Prepared workflows require authorized remote execution |
+| Actual wallet/device, screen reader and native zoom | Not executed | Exact human checklist remains pending |
+
+The compiled program/contract tests were repeated at `3b0bdbd`; the corrective revision changes only the validation harness and documentation. All six Solana build inputs and Base source/artifact bytes remain identical. The current artifact gate independently verifies those hashes. The observed Phase3 clean rebuild remains applicable through actual ancestor/input verification; it was not relabeled a new Phase5 rebuild.
+
+Independent SDK/package reconciliation recomputed all 25 SDK source/build inputs from actual `defec71` Git blobs, both pack records, the actual tarball SHA256/SHA512, all 42 package files, exact consumer receipt hash and twelve required checks. Current private SDK0.2.0: **360347 bytes**, SHA256 `8f12e076244da107ad2d305ff974e062f9c53d1995c3b0c7866d317b8fad50b4`, integrity `sha512-rKVwVD2YQ76IrQDNDhx7bX8EhkyDkw0gF+h/bm97YmVRZ+mXr54GP3uShBdfUoctXh1X25I8Ac/V495+FzsbhQ==`. Two independent source exports/builds produced identical tarballs, matching the actual isolated consumer artifact. Consumer report SHA256: `677833358ae8b7d6e565c9d342f9e52f9c341c2e75bafe77c464fbd19cbd04a5`. Publication and distribution approval remain false.
+
+Actual local marketplace archive: **7457175 bytes,324 entries**, SHA256 `9757e263dabe4a7215c5cbf2a895f6787f3d1b93191ab88c0e88a0253232e0d6`. Two encodings of one captured Next snapshot were byte-identical; this is not a claim of two independent reproducible Next builds. The manifest binds `defec71`, SDK8f12, approved local SBF4085, actual observed rebuild, historical deployed d138/current:false, saved clean local environment and all 40 current validation commands. Migrations are empty. No environment files, dependency trees, wallet material or arbitrary logs were included.
+
+Fresh OS-temp extraction installed SDK57 and web438 locked production packages with install scripts disabled. The extracted minimal Next config started on owned loopback port 3397. Six actual smoke checks passed: SDK install, web install, page200, live200, official public Devnet readiness200 (169.858ms), protected503 NOT_CONFIGURED. Smoke records `relocationObserved:true`, `deployable:false`, `networkTransactions:0`; the creation receipt correctly retains relocation false because creation itself did not observe it. The same outer ZIP hash was recomputed after smoke. The owned process ended, port 3397 was released, and the clone remained Git-clean.
+
+Separate public read-only readiness preflight returned200 at slot511979063; readiness does not inspect ELF bytes or grant entitlement. Phase3's dated finalized historical identity receipt remains the actual deployment evidence. Current local SBF was not deployed; authority custody was not inferred. Local signature-enabled runtime fixtures are distinct from network signing or wallet approvals.
+
+Final receipts are retained under ignored `web/test-results/phase5-clean/`: full all-node logs, failed3b receipts, targeted original/corrected browser traces, callback/auth/logger failures and corrections, dependency policy, exact SDK tar/release, archive/inputs/smoke and repeated chain/readiness checks. Immutable implementation/archive source is `defec71`; the subsequent completion commit changes documentation only. Root environment files were preserved and their contents were not inspected. No push, publication, public deployment, network transaction signing/broadcast, Mainnet interaction, wallet approval or authority action occurred.
+
+Independent final QA recomputed the raw ZIP SHA, all 323 manifest-listed file hashes/sizes, all 25 SDK Git inputs and six SBF inputs, exact SDK/consumer bindings and all 43 validation rows. All nine retained archive/smoke/input copies matched the original bytes. Architecture confirmed actual clean build/create/verify/relocation and owned cleanup; QA found no remaining implementation blocker against master5.1-5.8. Gate: **PASS WITH HUMAN ACTION REMAINING**.
+
+All six phases are implemented and locally validated under the documented release contract: Phase0 PASS, Phase1 PASS, Phase2 PASS, Phase3 PASS WITH HUMAN ACTION REMAINING, Phase4 PASS WITH HUMAN ACTION REMAINING, Phase5 PASS WITH HUMAN ACTION REMAINING. The foundation supports continued UI/product development. External developer/API pilots, distribution and public Devnet hosting remain conditional on owner licensing/configuration, actual wallet/accessibility acceptance, hosted CI, assigned support/security roles and current runtime/dependency review. Production hosting is not cleared by local evidence; Mainnet/commercial release remains a separate explicit decision. No unverified external gate is presented as completed.

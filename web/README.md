@@ -2,6 +2,8 @@
 
 For current repository startup and validation order, see the [root README](../README.md) and [post-MVP audit](../docs/POST_MVP_CLEANUP.md). Run from your actual checkout; historical absolute Windows paths in older evidence are not prerequisites.
 
+Keep local startup configuration separate from fixture validation. Browser/test/CI profiles refuse active environment files by filename metadata, including `.env.local`; use a separate clean checkout for those commands and preserve your existing files. See [current validation](../docs/development/VALIDATION.md).
+
 ## Low-code developer integration
 
 Open `/integrate` from **Integrate your app** in the marketplace. Next.js App Router and React TSX developers can name their app, validate an existing Devnet offer, and copy a local SDK install command, configuration, wallet-connected gate and self-contained AI coding prompt. Creating an offer uses the existing Seller studio and requires separate operator transaction authorization.
@@ -16,7 +18,7 @@ The primary route `/` is **Solana Devnet**. The original Base Sepolia applicatio
 
 Set `NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID` to the operator-approved deployed program address and `NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com` in `.env.local`, then restart/rebuild. Leave the program ID empty until deployment; the app displays setup pending and never substitutes a fixture address. The native Rust manual wire specification is `../solana/wire-spec.json`, not an Anchor-generated IDL.
 
-The reviewed Devnet deployment is `EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy`. This workstation's ignored `.env.local` is configured with that public address and `https://api.devnet.solana.com`. `.env.example` deliberately keeps the address empty so new checkouts cannot silently substitute a deployment. Public configuration is embedded at build time; rebuild or restart after changes.
+The reviewed Devnet program address is `EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy`; [dated deployment evidence](../docs/development/SOLANA_RELEASE.md) distinguishes the historical deployed ELF from the current local artifact. `.env.example` deliberately keeps the address empty so new checkouts cannot silently substitute a deployment. Existing local environment contents were not inspected by this implementation. Public configuration is embedded at build time; rebuild or restart after changes.
 
 The client uses official Phantom and Solflare wallet adapters. Choose a wallet provider, connect, and disconnect through the header. Missing Phantom is displayed with a manual installation link; there is no automatic redirect or reconnection. Client providers build safely under SSR; no wallet access occurs during server rendering. Rejected connections and approvals show errors. Wallet changes require a new identity-bound license snapshot.
 
@@ -56,6 +58,8 @@ Base Sepolia only (chain ID 84532). This app uses injected browser wallets throu
 cd web # from the repository root
 npm ci
 if (!(Test-Path .env.local)) { Copy-Item .env.example .env.local }
+$env:PACT_ENV_PROFILE='local'
+$env:PACT_APP_ORIGIN='http://localhost:3003'
 # Primary / route: set NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID after approved Devnet deployment.
 # Preserved /base route: set NEXT_PUBLIC_PACT_CONTRACT_ADDRESS after approved Base deployment.
 npm run dev -- --hostname 127.0.0.1 --port 3003
@@ -63,7 +67,7 @@ npm run dev -- --hostname 127.0.0.1 --port 3003
 
 Open http://localhost:3003 for the primary Solana Devnet interface, or http://localhost:3003/base for the preserved Base Sepolia interface. Without its respective program/contract address, each route renders a truthful setup state and disables on-chain actions. No program or contract is deployed by any web command. Restart after changing public configuration; production builds embed it.
 
-`npm run typecheck` checks TypeScript; `npm run build` creates the production app; `npm start` serves it. ABI is imported directly from `../contracts/abi/PactLicensing.json`, generated from the Foundry artifact. Run the Backend-owned `contracts/scripts/export-abi.ps1` after contract changes before building web.
+`npm run typecheck` checks TypeScript; with the same explicit local environment, `npm run build` creates the local production app and `npm start -- --port 3003` serves it. Build/start reject missing profiles and mismatched public/origin/policy settings. See [environment profiles](../docs/operations/ENVIRONMENTS.md) before preparing hosted configuration; a local build does not establish hosting approval. ABI is imported directly from `../contracts/abi/PactLicensing.json`, generated from the Foundry artifact. Run the Backend-owned `contracts/scripts/export-abi.ps1` after contract changes before building web.
 
 ## Operator-guided Solana Devnet demo
 

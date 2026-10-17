@@ -4,7 +4,9 @@
 
 From your PACT checkout root:
 
-```sh
+```powershell
+$env:PACT_ENV_PROFILE='local'
+$env:PACT_APP_ORIGIN='http://localhost:3008'
 npm --prefix packages/pact-sdk ci
 npm --prefix packages/pact-sdk run build
 npm --prefix examples/pact-platform-app ci
@@ -12,7 +14,7 @@ npm --prefix examples/pact-platform-app run build
 npm --prefix examples/pact-platform-app run start
 ```
 
-Open `http://localhost:3008` exactly. Changing the hostname/port requires changing the launch configuration and `PACT_APP_ORIGIN` together. Public offer, exact metadata and Devnet RPC are configuration; wallet secrets are not. No separate marketplace server is required. Repository source-copy installation serves development; use the tarball workflow for your own app.
+Open `http://localhost:3008` exactly. Keep the same profile/public/origin/policy settings at build and start. This explicit local profile retains synthetic demo defaults; it is not approved hosted configuration. Changing the hostname/port requires changing the launch configuration and `PACT_APP_ORIGIN` together. Public offer, exact metadata and Devnet RPC are configuration; wallet secrets are not. No separate marketplace server is required. Repository source-copy installation serves development; use the tarball workflow for your own app. See [environment profiles](../operations/ENVIRONMENTS.md) before changing topology or preparing an external host.
 
 The default public TEST offer is mutable external demo state, not deployment discovery or proof of an entitlement. Its exact default metadata is:
 

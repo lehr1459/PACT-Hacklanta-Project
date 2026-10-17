@@ -1,5 +1,13 @@
 # Agent handoff
 
+## Full development foundation - 2026-10-17
+
+Start with [execution evidence](development/EXECUTION.md), the [release contract](product/RELEASE_CONTRACT.md), [developer guide](development/DEVELOPER_GUIDE.md), [environment profiles](operations/ENVIRONMENTS.md) and [remaining debt](TECHNICAL_DEBT.md). All six phases are implemented; the final clean implementation/artifact revision is `defec7181cc5c8e14b43f4e81eb90783349b5a99`. Later completion edits are documentation only. Full all-node, exact two-build SDK/consumer binding and actual archive relocation pass independently. Retained raw evidence is ignored under `web/test-results/phase5-clean/`; do not publish it or rerun historical source-patching tools as current validation.
+
+Use a clean committed clone with the pinned Node/npm for release validation; preserve local environment files without reading or copying them. Fixture profiles refuse active environment files. Build/start require matching profile/public/origin/policy settings; private server RPC may rotate after validation. Serialize Next builds. One persistent same-origin Node process is the only supported authenticated topology; hidden replicas remain an operator responsibility, and restart invalidates sessions. Buyer links/manual exact JSON and baseline-aware uncertain-purchase recovery remain supported. No registry, distributed store or new protocol features were introduced.
+
+Current local SBF4085 and historical deployed d138 are distinct; do not infer an upgrade from artifact packaging or readiness. The deployment receipt is dated historical evidence; custody/roles require independent operator confirmation before any upgrade. Archives remain local/nondeployable and SDK0.2.0 private/unpublished. Remaining owner actions: actual wallet/assistive-technology acceptance, authorized hosted CI, approved hosting/configuration/roles, licensing/distribution and any separately approved chain/publication action. Recheck Node by October21 and dependency exceptions by November15. No live owned validation server is left running.
+
 ## Post-MVP cleanup — 2026-10-16
 
 Use [the cleanup audit](POST_MVP_CLEANUP.md), [documentation index](README.md) and [debt register](TECHNICAL_DEBT.md) before following older instructions below. Cleanup baseline `b05f89b` preserves the user's SDK/branding changes. Build the SDK before consumers, and serialize web browser builds. The local Windows checkout uses a junction for `contracts/`; conditional Next additional-root configuration supports it without changing chain code. Old preview PIDs, candidate paths and deployment permissions below are historical and must be re-established independently.
