@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24.11.1
@@ -71,6 +73,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24.11.1
@@ -85,12 +89,17 @@ jobs:
           node scripts/validation/run.mjs artifacts
       - name: Verify pinned tools and execute chain suites
         run: node scripts/validation/run.mjs all-chain
+      - name: Rebuild local provenance from clean committed source (no deployment)
+        run: node scripts/solana/provenance.mjs --rebuild
       - name: Chain validation command receipts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: pinned-chain-validation
-          path: web/test-results/validation/
+          path: |
+            web/test-results/validation/
+            solana/target/provenance-*/provenance.json
+            solana/target/provenance-*/build.log
           retention-days: 14
 
   optional-public-reads:

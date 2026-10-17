@@ -13,6 +13,7 @@ Use the root [README](../README.md) for current startup and repository boundarie
 | [SDK API](../packages/pact-sdk/README.md) | Public exports and consumer examples |
 | [Web guide](../web/README.md) | Configuration, chain behavior and manual wallet testing |
 | [Solana wire specification](../solana/wire-spec.json) / [program guide](../solana/README.md) | Binary interface, pinned build and local program tests |
+| [Solana release assurance](development/SOLANA_RELEASE.md) | Source/artifact provenance, read-only deployment identity and upgrade governance |
 | [Base setup](../contracts/SETUP.md) | Preserved fallback tooling and artifact verification |
 | [One-link purchasing](ONE_LINK_PURCHASING.md) | Exact metadata buyer links |
 | [Embedded checkout](EMBEDDED_CHECKOUT.md) | Purchase lifecycle and recovery |

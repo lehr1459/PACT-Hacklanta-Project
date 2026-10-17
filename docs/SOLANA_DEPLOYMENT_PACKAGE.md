@@ -1,5 +1,7 @@
 # PACT Solana Devnet deployment package — authorization pending
 
+Historical migration package. For current artifact hashes, independent read-only deployed identity checks and governance, use [Solana release assurance](development/SOLANA_RELEASE.md). The original signature-disabled 23-test evidence below remains historical; later signed local-runtime tests are recorded in the current execution record.
+
 No live deployment, wallet signing, wallet approval or transaction broadcast is authorized. No agents create or inspect wallet/program keypairs. Program tests load compiled SBF into an in-memory SVM with signature verification disabled and zero signatures; those are local execution evidence only.
 
 ## Preserved baseline and candidate

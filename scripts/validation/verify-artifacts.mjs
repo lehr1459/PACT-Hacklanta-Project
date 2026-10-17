@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {root} from './common.mjs';
+import {verifySourceRelationship} from '../solana/provenance.mjs';
 
 const read=relative=>readFile(path.join(root,relative));
 const json=async relative=>JSON.parse(await read(relative));
@@ -24,6 +25,7 @@ assert.deepEqual(Object.keys(reproducibility.inputs).sort(),inputFiles.sort(),'R
 for(const file of inputFiles)assert.equal(sha(await read(file)),reproducibility.inputs[file],`Reproducibility input mismatch: ${file}`);
 assert.ok(reproducibility.builds.length>=2,'Independent checkout build records required');
 for(const build of reproducibility.builds){assert.equal(build.sha256,solana.sha256);assert.equal(build.sizeBytes,solana.sizeBytes);}
+verifySourceRelationship(root,reproducibility,solana);
 assert.deepEqual(solana.pathRemapping,{workspace:'/pact/solana',cargoHome:'/pact/cargo',encoding:'CARGO_ENCODED_RUSTFLAGS (ASCII 31)'});
 const evidence=await json('contracts/abi/PactLicensing.evidence.json');
 assert.equal(sha(await read('contracts/src/PactLicensing.sol')),evidence.sourceSha256,'Base source evidence mismatch');
@@ -44,4 +46,4 @@ if(process.argv.includes('--compiled-base')) {
 }
 assert.equal(evidence.address,null,'Local artifact evidence must not invent a deployment address');
 assert.equal(evidence.deploymentTransaction,null,'Local artifact evidence must not invent a deployment transaction');
-console.log(JSON.stringify({status:'passed',checks:['Solana artifact/source/lock/wire hashes','Six reproducible build input hashes and matching build records','Base source and exact ABI hashes',...(process.argv.includes('--compiled-base')?['Base compiled ABI and creation/runtime bytecode']:[])],deploymentChecked:false}));
+console.log(JSON.stringify({status:'passed',checks:['Solana artifact/source/lock/wire hashes','Six reproducible build input hashes, historical/current Git blobs and distinct build records','Base source and exact ABI hashes',...(process.argv.includes('--compiled-base')?['Base compiled ABI and creation/runtime bytecode']:[])],deploymentChecked:false}));

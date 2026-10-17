@@ -10,9 +10,12 @@ test('artifact gate rejects changed build inputs and invented deployment claims'
   const fixture = await mkdtemp(path.join(os.tmpdir(), 'pact-artifact-gate-'));
   try {
     const files = ['scripts/validation/common.mjs', 'scripts/validation/verify-artifacts.mjs',
+      'scripts/solana/provenance.mjs',
       'solana/artifacts/pact_licensing.so', 'solana/artifacts/evidence.json', 'solana/artifacts/reproducibility.json',
       'solana/src/lib.rs', 'solana/Cargo.toml', 'solana/Cargo.lock', 'solana/wire-spec.json', 'solana/scripts/build.ps1', 'solana/toolchain.json',
       'contracts/src/PactLicensing.sol', 'contracts/abi/PactLicensing.json', 'contracts/abi/PactLicensing.evidence.json'];
+    const cloned=spawnSync('git',['clone','--quiet','--shared','--no-checkout',root,fixture],{encoding:'utf8',windowsHide:true});
+    assert.equal(cloned.status,0,cloned.stderr);
     for (const file of files) {
       await mkdir(path.dirname(path.join(fixture, file)), { recursive: true });
       await copyFile(path.join(root, file), path.join(fixture, file));
@@ -29,6 +32,12 @@ test('artifact gate rejects changed build inputs and invented deployment claims'
     }
     const proofPath = path.join(fixture, 'solana/artifacts/reproducibility.json');
     const originalProof = await readFile(proofPath, 'utf8');
+    for(const mutate of [proof=>{proof.sourceCommit='0'.repeat(40);},proof=>{proof.sourceCommit='8e259de1bc046d460a62bf6cc8102c6e64552d02';},proof=>{proof.builds=[proof.builds[0],proof.builds[0]];}]){
+      const changedProof=JSON.parse(originalProof);mutate(changedProof);await writeFile(proofPath,JSON.stringify(changedProof));
+      const changed=run();assert.notEqual(changed.status,0,'Invented commit or duplicate build proof must fail');
+      assert.match(changed.stderr,/source commit|Git blob mismatch|Duplicate checkout build record/);
+      await writeFile(proofPath,originalProof);
+    }
     const proof = JSON.parse(originalProof);
     proof.deploymentVerified = true;
     await writeFile(proofPath, JSON.stringify(proof));
