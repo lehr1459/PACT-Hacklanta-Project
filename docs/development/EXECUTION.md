@@ -13,7 +13,7 @@ Windows PowerShell; Node 24.11.1; npm 11.6.2; Git 2.52.0.windows.1; pinned Solan
 | --- | --- | --- |
 | 0 | Supported product matrix and precise licensing contract independently reviewed | PASS |
 | 1 | Clean-checkout CI, isolated packaged consumers, dependency triage and independent protocol/recovery fixtures | PASS; committed clean Windows replay; hosted Linux execution remains external |
-| 2 | Bounded concurrent reads, enforced supported auth topology, real resource authorization, independent abuse budgets and correct recovery | Pending |
+| 2 | Bounded concurrent reads, enforced supported auth topology, real resource authorization, independent abuse budgets and correct recovery | PASS |
 | 3 | Reproducible program provenance, deployment verification tooling/governance and adversarial signed runtime tests | Pending |
 | 4 | Runtime-validated compatible API, versioned package artifact, portable docs and executable integration examples | Pending |
 | 5 | Validated environments, deterministic release package, RPC resilience, observability, runbooks, accessibility and rollout gates | Pending |
@@ -107,7 +107,7 @@ Root independently reproduced a consequential initial-history gap: a new server 
 
 Actual corrected reproduction: HTTP503/STALE, authorized=false. Independent QA84/84 tests pass, including exact skew boundaries, within-skew already-expired licenses, poisoning/recovery and expiry during final response construction. Full SDK241/241 and platform API/auth29/29 pass; final typecheck/build, updated resource/auth84/84 and packed consumers10/10 pass. A packed negative-build assertion initially recognized only older Node imports; real client build correctly rejected the new node:cluster import. The harness now recognizes the exact new cluster/worker_threads diagnostics and also forbids those imports in real browser assets; the nonzero build assertion remains mandatory. The prior9/10 report is preserved. Resource content types now reject non-string values before commit.
 
-Broader clean committed replay of `56a9282` is still running. The final server-only safety delta and exact packed harness correction are recorded separately; do not infer that this delta ran in that earlier checkout. No wallet/network transaction signing, broadcast or deployment occurred. A separate public read sampled Clock skew of one second at slot511948115; that sample is not deployment/authority verification evidence.
+Broader clean committed replay of `56a9282` completed with the native empty-POST integration defect described below. The final server-only safety delta and exact packed harness correction are recorded separately; do not infer that this delta ran in that earlier checkout. No wallet/network transaction signing, broadcast or deployment occurred. A separate public read sampled Clock skew of one second at slot511948115; that sample is not deployment/authority verification evidence.
 
 ### Phase 2 native HTTP integration correction
 
@@ -116,3 +116,23 @@ Inspection of the installed Next request adapter showed that a real empty POST c
 ### Phase 2 callback failure redaction
 
 Independent reproduction found that customer callbacks throwing the exported PlatformError/PactError could reflect private exception messages through the adapter's outer typed-error handling. Preparation rejection and synchronous commit exceptions now become generic500 INTERNAL_ERROR; framework authentication/chain errors keep their typed behavior. Prepared body/type/commit are captured once inside the same safe boundary. Independent QA reran all six original typed/plain callback failures plus three prepared-field getter failures and confirmed no private marker in responses; the selected regression test passed1/1. Commit failure does not claim rollback of a host side effect already performed; the synchronous nonthrowing atomic host contract remains explicit.
+
+## Phase 2 final gate
+
+The broad clean committed `56a9282` replay passed SDK211, API/auth29, production builds/types/routes for all three apps and all earlier browser lanes. Its final platform lane passed14 and failed2 on the same newly introduced empty-POST defect; that failed receipt is preserved. Correction `e2b667b` passed clean install, node, build, packed10, dependency and artifact lanes. Final redaction revision `c4fb444` passed clean node (SDK241/API29/dependency-policy1/artifact-policy1) and the full actual production platform browser suite16/16, desktop8/mobile8. The copied installed SDK was independently hash-matched to seven current built modules; the checkout remained tracked-clean.
+
+| Phase 2 suite | Passed | Intentional skips | Revision/evidence |
+| --- | ---: | ---: | --- |
+| SDK / API-auth | 241 / 29 | 0 | final clean `c4fb444` |
+| Dependency / artifact policy | 1 / 1 | 0 | final clean `c4fb444` |
+| Solana mock / setup | 248 / 10 | 6 / 244 | broad clean `56a9282`; no later marketplace change |
+| Base mock / setup | 48 / 2 | 2 / 48 | broad clean `56a9282` |
+| Integration wizard / generated consumers | 8 / 44 | 2 / 0 | broad clean `56a9282` |
+| Checkout / Prism | 26 / 22 | 4 / 2 | broad clean `56a9282` |
+| Platform production browser | 16 | 0 | final clean `c4fb444`, supersedes failed POST receipt |
+| Isolated packed consumers | 10 checks | 0 | clean `e2b667b` |
+| Marketplace independent protocol/state/recovery helpers | 34 | 0 | targeted review; not added to browser counts |
+
+Four clean installs, three production builds/types/routes, SDK typecheck/build, four advisory policies and exact artifact gates passed in the recorded delta lanes. Program/wire/toolchain/locks were unchanged; Phase 1 chain results remain the applicable program baseline. Independent reviews approved reader/history/cancellation, auth/resource security, recovery races and integration corrections. Gate: **PASS**. Receipts retained under ignored `web/test-results/full-development/phase2-clean/`; broad and final-delta evidence are distinct, not combined into a fictional single all-node run. Phase commits: `56a9282`, `4e7d6a5`, `e2b667b`, `c4fb444`.
+
+Security reconnaissance separately found published Node24 fixes newer than pinned24.11.1. Phase1 proves reproduction, not runtime security clearance. Phase4 must trial and pin a patched same-major runtime; the announced October21 security update remains a dated release follow-up. No security or deployment readiness claim is inferred from this phase gate.
