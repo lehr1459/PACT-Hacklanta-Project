@@ -6,9 +6,10 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createDatabase,migrate} from '../../../services/pact-api/src/database.mjs';
 import {createService} from '../../../services/pact-api/src/service.mjs';
-import {prepareDatabase,nonce} from '../../../scripts/hosted-qa/helpers.mjs';
+import {prepareDatabase,nonce,wallet as disposableWallet} from '../../../scripts/hosted-qa/helpers.mjs';
 import {Browser} from '../../../scripts/hosted-qa/browser.mjs';
 import {validationEnv} from '../../../scripts/validation/common.mjs';
+import {rpcFixture} from '../../../scripts/hosted-qa/rpc-fixture.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
 if(process.env.PACT_HOSTED_QA_CLEAN!=='1')throw Error('Run only in an explicitly approved isolated clean test checkout');
@@ -21,7 +22,8 @@ const ORIGIN='http://127.0.0.1:3112',CONSUMER='http://127.0.0.1:3113',CALLBACK=C
 const random=()=>randomBytes(32).toString('base64url');
 const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.length===b.length&&timingSafeEqual(Buffer.from(a),Buffer.from(b));
 const db=await createDatabase({connectionString:await prepareDatabase(),profile:'test'});await migrate(db);
-const service=await createService({database:db,origin:ORIGIN,pepper:random(),profile:'test',rateLimit:1000});
+const rpc=await rpcFixture();
+const service=await createService({database:db,origin:ORIGIN,pepper:random(),profile:'test',rateLimit:1000,readerOptions:{rpcUrl:rpc.url}});
 const upstream=await service.server.listen({port:0,host:'127.0.0.1'}),admin=new Browser(upstream,ORIGIN);await admin.login();
 let r=await admin.request('POST','/v1/developer/apps',{name:`Independent browser consumer ${nonce()}`,framework:'rest'});
 if(r.status!==200)throw Error('App fixture failed');const appId=r.data.app.id;
@@ -44,6 +46,44 @@ const consumer=createServer(async(req,res)=>{
  try{
   const url=new URL(req.url,CONSUMER);
   if(url.pathname==='/qa/ready')return json(res,{ready},ready?200:503);
+  if(req.method==='POST'&&['/qa/seller-offer','/qa/rpc-state','/qa/expire-admin','/qa/validate-key','/qa/exercise-access'].includes(url.pathname)){
+   let bytes='';for await(const chunk of req){bytes+=chunk;if(bytes.length>4096)throw Error('Fixture request too large');}
+   const body=JSON.parse(bytes);
+   if(url.pathname==='/qa/seller-offer'){
+    const publicKeyBytes=Buffer.from(body.publicKeyBase64??'','base64');if(publicKeyBytes.length!==32)throw Error('Invalid fixture public key');
+    const offer=rpc.addOffer({seller:{address:body.walletAddress,publicKeyBytes},nonce:1n});
+    return json(res,{offerAddress:offer.address});
+   }
+   if(url.pathname==='/qa/rpc-state'){
+    if(typeof body.fail!=='boolean')throw Error('Invalid fixture RPC state');rpc.state.fail=body.fail;return json(res,{updated:true});
+   }
+   if(url.pathname==='/qa/expire-admin'){
+    if(typeof body.walletAddress!=='string'||!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(body.walletAddress))throw Error('Invalid fixture wallet');
+    await db.query(`UPDATE admin_sessions SET expires_at=$1 WHERE account_id IN(SELECT id FROM developer_accounts WHERE wallet=$2)`,[Date.now()-1,body.walletAddress]);
+    return json(res,{updated:true});
+   }
+   if(typeof body.secret!=='string'||body.secret.length>200)throw Error('Invalid fixture credential');
+   if(url.pathname==='/qa/exercise-access'){
+    const api=new Browser(upstream,ORIGIN),identity=disposableWallet(),verifier=random(),state=random();
+    let answer=await api.backend('/v1/connect/transactions',body.secret,{redirectUri:CALLBACK,state,
+     codeChallenge:createHash('sha256').update(verifier).digest('base64url'),codeChallengeMethod:'S256',purpose:'Independent console monitoring fixture'});
+    if(answer.status!==200)throw Error('Fixture transaction denied');const transactionId=answer.data.transactionId,buyer=new Browser(upstream,ORIGIN);
+    answer=await buyer.request('GET',`/v1/connect/transactions/${transactionId}`);buyer.csrf=answer.data.csrfToken;
+    answer=await buyer.request('POST','/v1/connect/challenge',{transactionId,walletAddress:identity.address});
+    answer=await buyer.request('POST','/v1/connect/verify',{transactionId,challengeId:answer.data.challengeId,signatureBase64:identity.sign(answer.data.message)});
+    if(answer.status!==200)throw Error('Fixture proof denied');
+    answer=await api.backend('/v1/connect/token',body.secret,{code:new URL(answer.data.callbackUrl).searchParams.get('code'),redirectUri:CALLBACK,state,codeVerifier:verifier,issuer:ORIGIN});
+    if(answer.status!==200)throw Error('Fixture grant denied');const walletGrant=answer.data.walletGrant;
+    const denied=await api.backend('/v1/access/check',body.secret,{walletGrant,resourceKey:body.resourceKey});
+    const offer=rpc.offers.get(body.offerAddress);if(!offer)throw Error('Missing fixture offer');
+    rpc.addLicense({offer,buyer:identity,expirySeconds:BigInt(Math.floor(Date.now()/1000)+60)});
+    const allowed=await api.backend('/v1/access/check',body.secret,{walletGrant,resourceKey:body.resourceKey});
+    await service.flushTelemetry();
+    return json(res,{denyStatus:denied.status,allowStatus:allowed.status,appId:allowed.data.appId??null});
+   }
+   const checked=await fetch(upstream+'/v1/credentials/validate',{method:'POST',headers:{authorization:`Bearer ${body.secret}`,'content-type':'application/json'},body:'{}'});
+   const metadata=await checked.json();return json(res,{valid:checked.ok,status:checked.status,appId:metadata.appId??null,credentialId:metadata.credentialId??null});
+  }
   if(url.pathname==='/start'){
    const sid=random(),state=random(),verifier=random(),codeChallenge=createHash('sha256').update(verifier).digest('base64url');
    const tx=await backend('/v1/connect/transactions',{redirectUri:CALLBACK,state,codeChallenge,codeChallengeMethod:'S256',purpose:'Sign in to the independent browser consumer'});
@@ -80,7 +120,7 @@ const next=spawn(process.execPath,[path.join(root,'web/node_modules/next/dist/bi
   NEXT_PUBLIC_SOLANA_RPC_URL:'https://api.devnet.solana.com',NEXT_PUBLIC_PACT_CONTRACT_ADDRESS:'',PACT_HOSTED_API_INTERNAL_URL:upstream}),
 });
 let stopping=false;
-async function stop(){if(stopping)return;stopping=true;next.kill();await new Promise(resolve=>consumer.close(resolve));await service.close();await db.close();}
+async function stop(){if(stopping)return;stopping=true;next.kill();await new Promise(resolve=>consumer.close(resolve));await service.close();await db.close();await rpc.close();}
 for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>{void stop().finally(()=>process.exit());});
 next.once('exit',code=>{void stop().finally(()=>process.exit(code??1));});
 for(let i=0;i<120;i++){

@@ -11,13 +11,17 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** Browser control/connect requests only. Backend keys and grants never belong here. */
-export async function browserRequest(path: string, {body, csrf, signal}: {
-  body?: Record<string, unknown>; csrf?: string; signal: AbortSignal;
+export async function browserRequest(path: string, {body, csrf, signal, method}: {
+  body?: Record<string, unknown>; csrf?: string; signal: AbortSignal; method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
 }): Promise<HostedEnvelope> {
-  if (!/^\/v1\/(?:connect|developer)\/[A-Za-z0-9_/-]+$/.test(path)) throw new HostedError('INVALID_RESPONSE');
+  if (!/^\/v1\/developer\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(path)
+    && !/^\/v1\/connect\/(?:transactions\/con_[a-f0-9]{32}|challenge|verify)$/.test(path)
+    && path !== '/v1/health/ready') throw new HostedError('INVALID_RESPONSE');
+  const verb = method ?? (body ? 'POST' : 'GET');
+  if ((verb === 'GET') === Boolean(body) || verb !== 'GET' && !csrf) throw new HostedError('INVALID_RESPONSE');
   let response: Response;
   try {
-    response = await fetch(path, {method: body ? 'POST' : 'GET', credentials: 'same-origin',
+    response = await fetch(path, {method: verb, credentials: 'same-origin',
       cache: 'no-store', redirect: 'error', signal,
       headers: {accept: 'application/json', ...(body ? {'content-type': 'application/json'} : {}),
         ...(csrf ? {'x-pact-csrf': csrf} : {})}, ...(body ? {body: JSON.stringify(body)} : {})});

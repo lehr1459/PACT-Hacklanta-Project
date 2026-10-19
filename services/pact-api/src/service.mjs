@@ -146,7 +146,19 @@ export async function createService(options) {
       JOIN developer_accounts a ON a.id=s.account_id WHERE s.token_hash=$1 AND s.binding_hash=$2
       AND s.revoked_at IS NULL AND s.expires_at>$3 AND a.status='active'`,[sessionHash,hash('browser',binding),now()]);
     if (!result.rows[0]) fail('AUTH_REQUIRED',401);
+    adminLease(result.rows[0]);
     return result.rows[0];
+  }
+  function adminLease(principal) {
+    const expiresAt=Number(principal.expires_at);
+    if(!Number.isSafeInteger(expiresAt)||expiresAt<=now())fail('AUTH_REQUIRED',401);
+  }
+  async function lockSession(tx,principal) {
+    const row=(await tx.query(`SELECT s.token_hash,s.expires_at FROM admin_sessions s JOIN developer_accounts a ON a.id=s.account_id
+      WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>$2 AND a.status='active' FOR UPDATE OF s,a`,
+      [principal.token_hash,now()])).rows[0];
+    if(!row)fail('AUTH_REQUIRED',401);
+    adminLease(row);return row;
   }
   async function owned(tx, appId, principal, lock = false) {
     text(appId,64);
@@ -220,15 +232,15 @@ export async function createService(options) {
     }
     const prepared = prepare ? await prepare(principal,req.body.payload) : undefined;
     return db.transaction(async tx => {
-      const validSession = (await tx.query(`SELECT s.token_hash FROM admin_sessions s JOIN developer_accounts a ON a.id=s.account_id
-        WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>$2 AND a.status='active' FOR UPDATE OF s,a`,[principal.token_hash,now()])).rows[0];
-      if (!validSession) fail('AUTH_REQUIRED',401);
+      const validSession = await lockSession(tx,principal);
       const app = await owned(tx,appId,principal,true);
       const consumed = await tx.query(`UPDATE action_challenges SET consumed_at=$1 WHERE id=$2
         AND consumed_at IS NULL AND expires_at>$1 RETURNING id`,[now(),challenge.id]);
       if (!consumed.rows[0]) fail('ACTION_PROOF_INVALID',401);
       const result = await work(tx,principal,app,req.body.payload,prepared);
       await audit(tx,req,principal,app.id,action);
+      adminLease(validSession);
+      if(now()>=Number(challenge.expires_at))fail('ACTION_PROOF_INVALID',401);
       if(finalCheck)finalCheck(prepared,principal,req.body.payload);
       return result;
     });
@@ -277,6 +289,7 @@ export async function createService(options) {
       if(token(oldToken)) await tx.query('UPDATE admin_sessions SET revoked_at=$1 WHERE token_hash=$2',[issuedAt,hash('admin-session',oldToken)]);
       await tx.query('INSERT INTO admin_sessions(token_hash,account_id,binding_hash,created_at,expires_at) VALUES($1,$2,$3,$4,$5)',
         [hash('admin-session',sessionToken),account.id,hash('browser',binding),issuedAt,expiresAt]);
+      if(now()>=Number(proof.expires_at)||now()>=expiresAt)fail('AUTH_INVALID',401);
       return account;
     });
     setCookie(reply,cookieNames.session,sessionToken,900);
@@ -294,12 +307,13 @@ export async function createService(options) {
     text(req.body.description ?? '',500,0);
     if(!FRAMEWORKS.includes(req.body.framework)) fail('INVALID_INPUT');
     return db.transaction(async tx => {
-      await tx.query('SELECT id FROM developer_accounts WHERE id=$1 FOR UPDATE',[principal.account_id]);
+      const validSession=await lockSession(tx,principal);
       const count=(await tx.query('SELECT COUNT(*) AS count FROM developer_applications WHERE owner_id=$1',[principal.account_id])).rows[0];
       if(Number(count.count)>=20) fail('APP_QUOTA',429);
       const app=(await tx.query(`INSERT INTO developer_applications(id,owner_id,name,description,framework,created_at,updated_at)
         VALUES($1,$2,$3,$4,$5,$6,$6) RETURNING *`,[id('app'),principal.account_id,req.body.name,req.body.description ?? '',req.body.framework,now()])).rows[0];
-      await audit(tx,req,principal,app.id,'app.create'); return {app:appView(app)};
+      await audit(tx,req,principal,app.id,'app.create');
+      adminLease(validSession);return {app:appView(app)};
     });
   });
   route('GET','/v1/developer/apps',async req => {
@@ -380,7 +394,9 @@ export async function createService(options) {
   }
   route('GET','/v1/developer/apps/:appId/credentials',async req=>{
     await owned(db,req.params.appId,await session(req));
-    return {credentials:(await db.query('SELECT * FROM api_credentials WHERE app_id=$1 ORDER BY created_at DESC,id DESC LIMIT 50',[req.params.appId])).rows.map(keyView)};
+    return {credentials:(await db.query(`SELECT * FROM api_credentials WHERE app_id=$1
+      ORDER BY CASE WHEN revoked_at IS NULL AND expires_at>$2 THEN 0 ELSE 1 END,created_at DESC,id DESC LIMIT 50`,
+      [req.params.appId,now()])).rows.map(keyView)};
   });
   route('POST','/v1/developer/apps/:appId/credentials',req=>mutate(req,'credential.create',async(tx,principal,app,payload)=>{
     if(Number((await tx.query('SELECT COUNT(*) AS count FROM api_credentials WHERE app_id=$1 AND revoked_at IS NULL AND expires_at>$2',[app.id,now()])).rows[0].count)>=10)fail('CREDENTIAL_QUOTA',429);
