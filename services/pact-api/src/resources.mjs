@@ -33,7 +33,7 @@ export function registerResources(service){
   }
   async function verifiedOffer(offerAddress,principal){
     let quote;
-    try{quote=await reader.getOffer({offer:offerAddress});}
+    try{quote=await service.chainRead('control',null,()=>reader.getOffer({offer:offerAddress}));}
     catch(error){if(error instanceof ApiError)throw error;fail('CHAIN_UNAVAILABLE',503);}
     return checkedQuote(quote,offerAddress,principal);
   }

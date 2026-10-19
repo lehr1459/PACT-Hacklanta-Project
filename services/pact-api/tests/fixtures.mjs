@@ -14,7 +14,11 @@ export async function fixture(options={}){
   await migrate(database);
   const clock={value:Date.now()},pepper=options.pepper??randomBytes(32).toString('base64url');
   const service=await createService({database,profile:'test',origin:'http://localhost:3000',pepper,
-    now:()=>clock.value,rateLimit:10000,...options});
+    now:()=>clock.value,rateLimit:10000,
+    ...(!options.reader&&!options.readerOptions?{reader:{
+      async readiness(){return{ready:true,network:'devnet',programId:'EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy',
+        contextSlot:100,startedAtMs:clock.value,receivedAtMs:clock.value,chainTimestamp:String(Math.floor(clock.value/1000))};},
+    }}:{}),...options});
   await service.server.ready();
   return{...service,clock,pepper,async cleanup(){await service.close();if(!options.database)await database.close();}};
 }

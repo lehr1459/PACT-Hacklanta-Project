@@ -1,6 +1,6 @@
 # Hosted API runtime contract
 
-Phases 1–3 contract, 2026-10-19. New `/v1` only; existing `/api/v1` and customer-hosted SDK are unchanged. This is a private custom wallet proof service, not OAuth/OIDC/SIWS conformance.
+Phases 1–4 contract, 2026-10-19. New `/v1` only; existing `/api/v1` and customer-hosted SDK are unchanged. This is a private custom wallet proof service, not OAuth/OIDC/SIWS conformance.
 
 ## Factory and topology
 
@@ -12,7 +12,17 @@ PGlite is local/test-only real SQL execution with single-process semantics. Prod
 
 ## Common envelope and safety
 
-Every JSON response has `{schemaVersion:1,requestId,...}` and `x-pact-request-id`; caller IDs are ignored. Errors are `{schemaVersion:1,requestId,error:{code,message}}` with fixed safe strings. No raw SQL/provider exceptions, URLs, wallet proofs or secret values are logged. All responses are `no-store`, `no-referrer`, frame denied and nosniff. Body16KiB; URL4096characters; headers use bounded native Node parser; application32active and database24pending operations by default. DB pool4, statement2.5s/query3s/connect1.5s bounds. Per-IP/route120requests/minute (durable budget) is a pilot default, not a distributed capacity promise. Operator ingress needs its own trusted-client/IP bounds.
+Every JSON response has `{schemaVersion:1,requestId,...}` and `x-pact-request-id`; caller IDs are ignored. Errors are `{schemaVersion:1,requestId,error:{code,message}}` with fixed safe strings. No raw SQL/provider exceptions, URLs, wallet proofs or secret values are logged. All responses are `no-store`, `no-referrer`, frame denied and nosniff. Body limit is 16 KiB; URL limit is 4,096 characters; headers use the bounded native Node parser. PostgreSQL statements have 2.5-second execution, 3-second query and 1.5-second connection-acquisition bounds. These pilot limits do not establish distributed availability or an SLA. Operator ingress needs its own trusted-client/IP bounds.
+
+| Admission layer | Default reservation and behavior |
+| --- | --- |
+| HTTP | 16 access, 8 authentication and 8 control requests; global 32. Cheap liveness bypasses those lanes. Aborted bodies release admission exactly once. Already-running handler work retains its lease until settlement; aborted requests cannot reenter a handler after release. |
+| Access principals | At most 4 in-flight access handlers per app and key. Durable limits are 60 access requests/key/minute and 120/app/minute, plus the existing 120/IP/route/minute ingress budget. No unbounded waiting queue. |
+| Native PostgreSQL | Two physical control connections and two physical protected connections, with at most 12 pending operations per lane. Access authentication, budgets and final revalidation use the protected lane. Total connection capacity remains 4. A failed rollback destroys the uncertain connection. |
+| Chain | One lifetime SDK reader/history. Host admission permits at most 2 non-access and 6 access chain operations, with at most 2 access reads/app. New non-access reads are rejected while the SDK reports quarantined transport work, preventing repeated timed-out control reads from consuming the reserved protected capacity. |
+| Telemetry | At most 8 asynchronous jobs, using the control database lane. Errors/drops are counted in private diagnostics. Collection is never awaited before returning an authorization result. |
+
+PGlite provides logical admission lanes over one local SQL engine; it does not establish physical PostgreSQL reservation or distributed replay behavior. An uncooperative protected RPC provider can still reduce shared capacity until transport settlement; access fails closed. No positive stale fallback is permitted.
 
 Bodies reject missing/unknown fields and inappropriate types; queries are not accepted. IDs are opaque strings. Times in this control-plane contract are integer Unix **milliseconds**, except future on-chain decimal-string seconds. Input text is trimmed and control-free. Framework enum: `rest`, `express`, `nextjs`, `react-backend`. Scope enum: `access:check`, `connect:write`.
 
@@ -89,8 +99,52 @@ All keyed verifiers are additionally namespaced by the exact canonical PACT issu
 
 The `/connect` HTML uses a fresh per-request nonce with strict-dynamic CSP, no-store/no-referrer and frame denial. Production does not permit inline/eval scripts. Existing PACT font families are hosted locally with upstream licenses; hosted branding avoids injected image style attributes. Development alone permits eval for Next debugging. Browser and actual Phantom/device acceptance are separate evidence.
 
+## Fresh server-to-server access decisions
+
+`POST /v1/access/check` requires an API key with `access:check`, rejects every Origin header, and accepts **exactly** `{walletGrant,resourceKey}`. Caller wallet, app, offer, program and network overrides are invalid input. The key selects the app, the opaque grant selects its proven wallet and current policy epoch, and the registered resource selects the required offer. Every enabled check reads a new bounded hardened SDK snapshot; no positive entitlement cache exists.
+
+After RPC, a protected database transaction locks and revalidates active owner/app, key scope/revocation/expiry, grant app/environment/wallet/revocation/expiry/epoch, and exact current resource version/binding/enabled state. After commit, the service synchronously rechecks the original snapshot freshness, chain and wall-clock license expiry, and earliest key/grant expiry. No awaited telemetry or other work follows that authority/freshness check before the result is returned. The remote decision cannot make the customer's own database transaction atomic; recheck at durable commit boundaries and enforce every access path.
+
+An HTTP 200 success includes the common `schemaVersion` and `requestId`, plus:
+
+```json
+{
+  "decision": "ALLOW",
+  "reason": "ACTIVE_LICENSE",
+  "appId": "app_example",
+  "resourceKey": "premium",
+  "resourceVersion": 1,
+  "policyEpoch": "1",
+  "offerAddress": "canonical registered offer",
+  "walletAddress": "wallet proven by the app grant",
+  "network": "solana-devnet",
+  "programId": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy",
+  "expiresAt": "decimal Unix seconds",
+  "verifiedAt": "ISO decision timestamp",
+  "contextSlot": 123,
+  "chainTimestamp": "decimal chain Unix seconds",
+  "freshness": {
+    "readStartedAtMs": 1000,
+    "receivedAtMs": 1100,
+    "lastProgressAtMs": 1100,
+    "verifiedAtMs": 1200,
+    "maxAgeMs": 8000,
+    "maxProgressAgeMs": 12000,
+    "validUntilMs": 9000
+  }
+}
+```
+
+These example timestamp values illustrate field units, not a real authorization receipt. `validUntilMs` is bounded by original read start plus 8 seconds, endpoint progress plus 12 seconds, chain/wall license expiry, and key/grant expiry. `verifiedAt` does **not** reset the read budget. Consumers must validate the complete supported schema, expected app/resource/network/program, original freshness budget and remaining deadline, deny unknown or delayed responses, and obtain a new decision per protected action. This metadata does not authorize broad positive caching.
+
+Expected license/policy denials use HTTP 403 and `decision:'DENY'` with reason `LICENSE_REQUIRED`, `EXPIRED` or `RESOURCE_DISABLED`, retaining the same app/resource/wallet/program binding. A verified missing license has null `expiresAt` but retains verified snapshot context/freshness; unavailable chain snapshots have null context/freshness. Other known snapshots include decimal expiry. For a missing or expired license, `purchase` is `{url:'<configured issuer>/?offer=<canonical registered offer>',metadata:'SELLER_EXACT_BYTES_REQUIRED'}`. It points to the existing marketplace; the seller's exact buyer link/manual JSON is still required. A commitment cannot reconstruct legal terms, and a submitted checkout transaction never becomes access approval.
+
+Known-principal chain failures use HTTP 503 `decision:'DENY'` with reason `CHAIN_UNAVAILABLE`, `STALE_CHAIN` or `OVERLOADED`, and null unverified chain metadata. Unauthenticated/invalid keys or grants use HTTP 401 with the common **error envelope**, rather than a decision body. Other precondition failures also use the common error envelope: malformed override/input 400; disabled app or changed policy 403; unknown resource 404; quota 429; database/clock uncertainty 503. Consumers must deny both envelope categories and all unsupported statuses or fields. Offer deactivation preserves an already-issued unexpired entitlement; existing enabled resource checks do not reinterpret deactivation as revocation.
+
+Authorization observations are queued after the terminal outcome is known. Owner-scoped `/usage` now returns bounded `buckets` with requests/allowed/denied/errors plus `latencyTotalMs` and `latencyMaxMs`, and `reasons:[{bucket,reason,requests}]`. Redacted `/events` includes fixed `access.allow`, `access.deny` and `access.error` types with a safe reason and request ID; it omits wallet, grants, keys, signatures and raw RPC details. Observations may lag or be dropped during collector failure. `service.flushTelemetry()` is a bounded test/operator helper, not a public API or an authorization prerequisite.
+
 ## Health, errors and remaining phases
 
-`GET /v1/health/live` is cheap and DB-independent; readiness requires migrated database and currently explicitly reports`scope:'database-control-plane'`. It must expand to verified chain readiness when the reader is wired.400invalid input,401authentication/proof,403origin/CSRF/scope/app disabled,404unowned/missing object,409conflict/expired domain proof,429quota,503uncertainty/DB/clock/overload. No response from this phase asserts a license entitlement or actual wallet extension acceptance.
+`GET /v1/health/live` is cheap and DB-independent. `GET /v1/health/ready` checks every applied migration name/checksum against the service's exact checked-in schema and obtains fresh SDK Devnet genesis/Clock/executable-program readiness evidence. A success reports `{ready:true,scope:'database-and-chain',network:'solana-devnet',programId,contextSlot}`; SQL drift, outages, wrong chain/program and stale readiness deny. Readiness establishes neither an individual entitlement nor deployed program-byte/upgrade-authority custody. General errors use 400 invalid input, 401 authentication/proof, 403 origin/CSRF/scope/app disabled, 404 unowned/missing object, 409 conflict/expired domain proof, 429 quota, and 503 uncertainty/DB/clock/overload.
 
-Access checks and developer console UI are subsequent reviewed phases; no success stubs exist. Hosted DNS/TLS/provider/secret management, legal/privacy/account recovery/distribution decisions and operator capacities remain owner gates. No deployment, publication, wallet transaction or remote CI claim.
+Full developer-console integration is the next reviewed phase. Hosted DNS/TLS/provider/secret management, legal/privacy/account recovery/distribution decisions and operator capacities remain owner gates. Durable clock rollback protection across service restarts remains an explicit Phase 7 requirement; the current process rejects observed time regression. No deployment, publication, wallet transaction or remote CI claim.

@@ -4,6 +4,9 @@ import {randomUUID} from 'node:crypto';
 import {createPlatformReader} from '@pact/sdk/server';
 import {registerResources} from './resources.mjs';
 import {registerConnect} from './connect.mjs';
+import {registerAccess} from './access.mjs';
+import {verifySchema} from './database.mjs';
+import {createAccessTelemetry} from './telemetry.mjs';
 import {ApiError, fail, random, id, digest, keyed, equal, token, canonical, walletBytes,
   signatureValid, message, origin as validateOrigin, callback, strict, text, SCOPES} from './security.mjs';
 
@@ -36,6 +39,14 @@ export async function createService(options) {
     ajv: {customOptions: {removeAdditional: false, coerceTypes: false, useDefaults: false}},
     routerOptions: {maxParamLength: 128}});
   let active = 0;
+  const admitted={access:0,auth:0,control:0};
+  const maximum=options.activeLimit??32;
+  const caps={access:Math.max(1,Math.floor(maximum/2)),auth:Math.max(1,Math.floor(maximum/4)),control:Math.max(1,Math.floor(maximum/4))};
+  const protectedDb=db.protected??db;
+  function releaseAdmission(req){
+    if(!req.pactAdmitted||req.pactReleased||req.pactWorkPending||!req.pactAborted&&!req.pactResponded)return;
+    req.pactReleased=true;active--;admitted[req.pactLane]--;
+  }
   const dnsPending = new Set();
   async function domainRecords(hostname) {
     if (dnsPending.size >= 2) fail('DOMAIN_VERIFICATION_UNAVAILABLE',503);
@@ -84,7 +95,7 @@ export async function createService(options) {
     if (req.url === '/v1/health/live') return;
     const minute = Math.floor(now()/60000);
     const key = hash('budget',`${req.ip}\0${req.routeOptions.url ?? 'unknown'}\0${minute}`);
-    const result = await db.query(`INSERT INTO request_budgets(budget_key,window_start,hits) VALUES($1,$2,1)
+    const result = await (req.pactLane==='access'?protectedDb:db).query(`INSERT INTO request_budgets(budget_key,window_start,hits) VALUES($1,$2,1)
       ON CONFLICT(budget_key) DO UPDATE SET hits=LEAST(request_budgets.hits+1,10001) RETURNING hits`,[key,minute]);
     if (result.rows[0].hits > (options.rateLimit ?? 120)) fail('RATE_LIMITED',429);
   }
@@ -92,12 +103,22 @@ export async function createService(options) {
     reply.headers({'cache-control':'no-store','x-pact-request-id':req.id,
       'referrer-policy':'no-referrer','x-content-type-options':'nosniff','x-frame-options':'DENY',
       'content-security-policy':"default-src 'none'; frame-ancestors 'none'; base-uri 'none'"});
-    if (active >= (options.activeLimit ?? 32)) fail('OVERLOADED',503);
-    active++; req.pactAdmitted = true;
+    if(req.raw.url==='/v1/health/live')return;
+    const path=req.raw.url.split('?')[0];
+    const lane=path==='/v1/access/check'?'access':path.startsWith('/v1/connect/')||path.startsWith('/v1/developer/auth/')?'auth':'control';
+    if (active >= maximum || admitted[lane]>=caps[lane]) fail('OVERLOADED',503);
+    active++;admitted[lane]++;req.pactLane=lane;req.pactAdmitted = true;
+    req.pactAbortController=new AbortController();
+    const abort=()=>{req.pactAborted=true;req.pactAbortController.abort();releaseAdmission(req);};
+    req.raw.once('aborted',abort);
+    reply.raw.once('close',()=>{
+      if(reply.raw.writableFinished){req.pactResponded=true;releaseAdmission(req);}else abort();
+    });
     if (req.raw.url.length > 4096 || req.headers.authorization?.length > 512) fail('INVALID_INPUT');
-    await budget(req);
+    req.pactWorkPending=true;
+    try{await budget(req);}finally{req.pactWorkPending=false;releaseAdmission(req);}
   });
-  server.addHook('onResponse', async req => { if (req.pactAdmitted) active--; });
+  server.addHook('onResponse', async req => {req.pactResponded=true;releaseAdmission(req);});
   server.setErrorHandler((error, req, reply) => {
     const status = error instanceof ApiError ? error.status : error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 503;
     const code = error instanceof ApiError ? error.code : status === 413 ? 'BODY_TOO_LARGE' : status < 500 ? 'INVALID_INPUT' : 'SERVICE_UNAVAILABLE';
@@ -106,10 +127,14 @@ export async function createService(options) {
   server.setNotFoundHandler((req,reply) => reply.code(404).send(envelope(req,{error:{code:'NOT_FOUND',message:'NOT_FOUND'}})));
   function route(method,url,handler) {
     server.route({method,url,handler:async (req,reply) => {
-      if (Object.keys(req.query ?? {}).length) fail('INVALID_INPUT');
-      const result = await handler(req,reply);
-      if (reply.sent) return;
-      return envelope(req,result ?? {});
+      if(req.pactAborted)fail('REQUEST_ABORTED',503);
+      req.pactWorkPending=true;
+      try{
+        if (Object.keys(req.query ?? {}).length) fail('INVALID_INPUT');
+        const result = await handler(req,reply);
+        if (reply.sent) return;
+        return envelope(req,result ?? {});
+      }finally{req.pactWorkPending=false;releaseAdmission(req);}
     }});
   }
   async function session(req) {
@@ -211,8 +236,11 @@ export async function createService(options) {
 
   route('GET','/v1/health/live',async () => ({live:true}));
   route('GET','/v1/health/ready',async () => {
-    await db.query('SELECT 1 FROM platform_migrations LIMIT 1');
-    return {ready:true,scope:'database-control-plane',network:'solana-devnet'};
+    await verifySchema(db);
+    const status=await service.chainRead('control',null,()=>reader.readiness());
+    if(!status||status.ready!==true||status.network!=='devnet'||status.programId!=='EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy'
+      ||now()-status.startedAtMs<0||now()-status.startedAtMs>=8000)fail('CHAIN_UNAVAILABLE',503);
+    return {ready:true,scope:'database-and-chain',network:'solana-devnet',programId:status.programId,contextSlot:status.contextSlot};
   });
   route('GET','/v1/developer/auth/session',async (req,reply) => {
     browser(req);
@@ -380,7 +408,10 @@ export async function createService(options) {
   route('GET','/v1/developer/apps/:appId/usage',async req=>{
     await owned(db,req.params.appId,await session(req));
     return{buckets:(await db.query('SELECT * FROM usage_aggregates WHERE app_id=$1 AND bucket>$2 ORDER BY bucket DESC LIMIT 720',[req.params.appId,now()-30*DAY])).rows.map(row=>
-      ({bucket:Number(row.bucket),requests:Number(row.requests),allowed:Number(row.allowed),denied:Number(row.denied),errors:Number(row.errors)}))};
+      ({bucket:Number(row.bucket),requests:Number(row.requests),allowed:Number(row.allowed),denied:Number(row.denied),errors:Number(row.errors),
+        latencyTotalMs:Number(row.latency_total_ms),latencyMaxMs:Number(row.latency_max_ms)})),
+      reasons:(await db.query('SELECT bucket,reason,requests FROM usage_reasons WHERE app_id=$1 AND bucket>$2 ORDER BY bucket DESC,reason LIMIT 720',[req.params.appId,now()-30*DAY])).rows.map(row=>
+        ({bucket:Number(row.bucket),reason:row.reason,requests:Number(row.requests)}))};
   });
   async function authenticateKey(req,scope,tx=db,allowPaused=false) {
     if(req.headers.origin!==undefined)fail('BROWSER_API_KEY_DENIED',403);
@@ -401,11 +432,24 @@ export async function createService(options) {
     return{valid:true,appId:credential.app_id,credentialId:credential.id,environment:credential.environment,scopes:JSON.parse(credential.scopes)};
   });
   const reader=options.reader??createPlatformReader({...options.readerOptions,now});
-  const service={server,database:db,reader,authenticateKey,now,hash,options:{origin,profile},
+  const chainActive={access:0,control:0},chainApps=new Map();
+  async function chainRead(lane,appId,work){
+    if(!['access','control'].includes(lane))fail('OVERLOADED',503);
+    const diagnostics=reader.diagnostics?.();
+    if(chainActive[lane]>=(lane==='access'?6:2)||lane==='control'&&(diagnostics?.quarantined??0)>0
+      ||lane==='access'&&(chainApps.get(appId)??0)>=2)fail('OVERLOADED',503);
+    chainActive[lane]++;if(lane==='access')chainApps.set(appId,(chainApps.get(appId)??0)+1);
+    try{return await work();}
+    finally{chainActive[lane]--;if(lane==='access'){const count=chainApps.get(appId)-1;if(count)chainApps.set(appId,count);else chainApps.delete(appId);}}
+  }
+  const telemetry=createAccessTelemetry(db,now);
+  const service={server,database:db,reader,chainRead,authenticateKey,now,hash,options:{origin,profile},telemetry,
+    flushTelemetry:telemetry.flush,diagnostics:()=>({http:{active,...admitted},chain:{...chainActive},telemetry:telemetry.diagnostics(),database:db.diagnostics?.()}),
     internals:{route,envelope,session,owned,audit,mutate,browser,cookies,setCookie,cookieNames,domainRecords,validatePayload,appView,keyView,callbackView,
       registerAction(action,validator){if(ACTIONS.includes(action)||additionalActions.has(action))fail('DUPLICATE_ACTION',503);additionalActions.set(action,validator);}},
-    async close(){for(const entry of dnsPending)entry.resolver?.cancel();await server.close();}};
+    async close(){for(const entry of dnsPending)entry.resolver?.cancel();await server.close();await telemetry.flush();}};
   registerResources(service);
   registerConnect(service);
+  registerAccess(service);
   return service;
 }

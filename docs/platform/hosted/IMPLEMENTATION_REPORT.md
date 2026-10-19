@@ -10,8 +10,8 @@ This is a live engineering record, started 2026-10-19. Pending rows are not comp
 | 0: architecture/security | `37e0275` — PASS design | [ADR](ADR.md), [architecture review](ARCHITECTURE_REVIEW.md), [security review](SECURITY_REVIEW.md), [QA review](QA_REVIEW.md). Separate hosted model and custom protocol are explicit. |
 | 1: persistence/control plane | `6e02504` — PASS locally | PostgreSQL migration, durable wallet-admin sessions, exact transactional action proofs, owner-scoped apps, callback DNS renewal/revoke, server credentials and rotation/revoke. Service7/7, independent native-PG HTTP11/11, security9 checks plus callback lifecycle pass. |
 | 2: seller/resource policy | `816c167` — PASS locally | Actual hardened reader verifies active seller-owned offers; immutable resource keys, signed version preconditions, policy history/epochs and outage-safe disable. Service10/10; independent combined PG/HTTP/SDK18/18; security interleaving3/3. |
-| 3: hosted buyer identity | PASS locally; focused commit follows this record | Limited custom backend-initiated login, strict message proof, one-use codes/PKCE/issuer, grants/revoke, fixed Next gateway and actual connect page. Service16/16; combined native-PG/HTTP/gateway36/36; production browser12/12. |
-| 4: access decision engine | Pending | No completion claim. |
+| 3: hosted buyer identity | `cfb973c`, `e581819` — PASS locally | Limited custom backend-initiated login, strict message proof, one-use codes/PKCE/issuer, grants/revoke, fixed Next gateway and actual connect page. Service16/16; combined native-PG/HTTP/gateway36/36; production browser12/12. |
+| 4: access decision engine | PASS locally; focused commit follows this record | Backend-only key/grant/resource authorization through the unchanged hardened reader. Independent combined native PostgreSQL/HTTP/gateway/actual SDK55/55. Root post-fix service19/19; independent security3/3 and review PASS. |
 | 5: integration console | Pending | No completion claim. |
 | 6: contracts/docs/examples | Pending | No completion claim. |
 | 7: reliability/security/operations | Pending | No completion claim. |
@@ -66,6 +66,16 @@ Security review fixed wallet-switch code issuance while old verification awaited
 Strict CSP exposed the existing external font import and Next image inline styling. The same font families/weights are now self-hosted from pinned Google Fonts commits with verified SHA256 and adjacent OFL notices, and new hosted branding uses a plain image. Remaining marketplace tokens/layout and original brand component are unchanged. Full marketplace/font regressions remain in Phase8. No actual Phantom popup, assistive device, external DNS, hosting or remote CI was accepted.
 
 Phase7 must additionally harden durable authentication against host-clock rollback across process restarts; current time checks are monotonic within a process and hosting requires a synchronized trusted clock. This is an explicit reliability/security acceptance item before any pilot, not a claim of distributed clock safety.
+
+## Phase4 implementation and review
+
+`POST /v1/access/check` derives application, wallet and offer from the key, app-scoped grant and saved resource. The lifetime SDK reader supplies fresh account/Clock/provenance evidence. After RPC completes, a locked SQL transaction checks current owner, app, key, grant, policy epoch and resource version; a synchronous final guard preserves the original read age and hard credential/grant expiry. An ALLOW's advertised deadline also stops at the earliest key/grant, license, read-age or progress deadline. There is no positive authorization cache.
+
+Known missing/expired entitlements return typed DENY with an existing offer-only marketplace URL and an explicit requirement for the seller's exact metadata bytes. Resource disable, invalid authority, uncertain chain state and database failure deny. Offer deactivation preserves existing unexpired entitlements. Readiness now verifies every migration checksum and the actual chain reader. Redacted bounded asynchronous usage, reason counts, latency and audit collection cannot change an access result.
+
+Independent QA's combined native PostgreSQL/actual HTTP/gateway/SDK suite is **55/55 PASS**, including 19 new Phase4 checks. Root inspected the implementation, initially replayed 13 access checks, and ran the complete post-fix service suite: **19/19 PASS** (`phase4-service-root-final.log`). Reservation tests verify independent application admission, protected SQL capacity during control saturation, bounded key/app quotas, RPC timeouts and protected HTTP access during incomplete-body floods.
+
+Review found and fixed an aborted-request admission leak and a response freshness deadline that initially omitted key/grant expiry. The regression now confirms abandoned body slots release exactly once while unsettled handler work retains capacity; a disconnected request cannot later enter a new handler after its admission was released. Original read freshness cannot be reset by SQL or telemetry delays. Raw receipts, including the initial failure, remain under `web/test-results/hosted-qa-baseline`. Independent security executed all three access tests and inspected the final combined QA receipt: local Phase4 PASS. Phase7 still must verify durable clock rollback protection and total-handler/slow-body deadlines; bounded individual SQL/RPC work does not establish a universal ten-second handler limit.
 
 ## Evidence boundaries
 
