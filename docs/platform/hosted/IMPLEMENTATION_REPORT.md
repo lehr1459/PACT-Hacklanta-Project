@@ -8,8 +8,8 @@ This is a live engineering record, started 2026-10-19. Pending rows are not comp
 | --- | --- | --- |
 | Preservation | `9074ddd` | Preserves the sole pre-existing `web/next-env.d.ts` change on the dedicated feature branch. Foundation remains `57b425f`. |
 | 0: architecture/security | `37e0275` — PASS design | [ADR](ADR.md), [architecture review](ARCHITECTURE_REVIEW.md), [security review](SECURITY_REVIEW.md), [QA review](QA_REVIEW.md). Separate hosted model and custom protocol are explicit. |
-| 1: persistence/control plane | PASS locally; focused commit follows this record | PostgreSQL migration, durable wallet-admin sessions, exact transactional action proofs, owner-scoped apps, callback DNS renewal/revoke, server credentials and rotation/revoke. Service7/7, independent native-PG HTTP11/11, security9 checks plus callback lifecycle pass. |
-| 2: seller/resource policy | Pending | No completion claim. |
+| 1: persistence/control plane | `6e02504` — PASS locally | PostgreSQL migration, durable wallet-admin sessions, exact transactional action proofs, owner-scoped apps, callback DNS renewal/revoke, server credentials and rotation/revoke. Service7/7, independent native-PG HTTP11/11, security9 checks plus callback lifecycle pass. |
+| 2: seller/resource policy | PASS locally; focused commit follows this record | Actual hardened reader verifies active seller-owned offers; immutable resource keys, signed version preconditions, policy history/epochs and outage-safe disable. Service10/10; independent combined PG/HTTP/SDK18/18; security interleaving3/3. |
 | 3: hosted buyer identity | Pending | No completion claim. |
 | 4: access decision engine | Pending | No completion claim. |
 | 5: integration console | Pending | No completion claim. |
@@ -42,6 +42,14 @@ Independent QA installed disposable native PostgreSQL18.4 under ignored tooling,
 Root ran pinned `npm --prefix services/pact-api test`: **7/7 PASS**. QA ran `node --test scripts/hosted-qa/phase1.test.mjs` against native PostgreSQL and actual loopback HTTP: **11/11 PASS**. Coverage includes two tenants, wrong payload/session/wallet, signature replay/races, strict Origin/CSRF, callbacks and DNS fixtures, once-only keys, overlap/zero-overlap rotation, revoked/disabled/paused authority, quotas, restart and DB outage. Root inspected actual implementation and receipts. Independent security ran nine additional checks and the final callback lifecycle; its [Phase1 disposition](SECURITY_REVIEW.md) is PASS locally.
 
 Review defects were fixed before acceptance: stale partial app updates restoring old active status, concurrent/rotation quota bypass, unbounded unsettled DNS resolution, incomplete topology markers and disabled-account authority. The final service graph's initial audit returned zero vulnerabilities; SDK addition in Phase2 requires a new assessment. No license ALLOW, hosted buyer authentication or console completion is asserted by Phase1.
+
+## Phase2 implementation and review
+
+Migration002 adds server-owned resources and immutable version history. The persistent public SDK reader verifies Devnet genesis/program/PDA/owner/Clock, active offer and seller equal to proven admin before binding. Every binding/update has an exact action signature; `expectedVersion` prevents overwriting intervening policy changes. Epoch increments will invalidate existing grants when Phase3 implements them. Disable-only mutations remain available during RPC outage. Snapshot freshness is checked again after SQL history/audit work before transaction completion; stored verification time is the actual SDK snapshot time.
+
+Root's pinned service suite: **10/10 PASS**. Independent QA: **18/18 combined Phase1–2 PASS** against native PostgreSQL, actual HTTP and independent synthetic wire RPC passed through the real hardened reader. Wrong seller, missing/inactive offer, wrong genesis/program/Clock, RPC failure, malicious selectors, immutable-key/tenant attacks and concurrent version updates deny. Security separately tested account disable and proof expiry during the chain read with rollback/unchanged epoch, plus resource tests: PASS. Expirable action proofs do not constrain retention of policy history through a foreign key.
+
+The hosted service's local SDK file link is outside its own audit graph. Security explicitly reviewed **both** graphs: new service graph zero findings; linked SDK four existing moderate findings, zero high. Actual imported paths retain reviewed UUIDv4-only/no stream-json reachability; bounded exceptions still expire November15. This is not a zero-vulnerability claim. SDK source/exports, protocol/program and Base remain unchanged.
 
 ## Evidence boundaries
 

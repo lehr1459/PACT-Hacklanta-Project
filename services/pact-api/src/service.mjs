@@ -1,6 +1,8 @@
 import Fastify from 'fastify';
 import {Resolver} from 'node:dns/promises';
 import {randomUUID} from 'node:crypto';
+import {createPlatformReader} from '@pact/sdk/server';
+import {registerResources} from './resources.mjs';
 import {ApiError, fail, random, id, digest, keyed, equal, token, canonical, walletBytes,
   signatureValid, message, origin as validateOrigin, callback, strict, text, SCOPES} from './security.mjs';
 
@@ -19,6 +21,7 @@ export async function createService(options) {
   if (!local && !secure) fail('SERVICE_CONFIGURATION_REQUIRED', 503);
   if (!local && db.kind !== 'postgres') fail('DATABASE_CONFIGURATION_REQUIRED',503);
   let lastTime = -1;
+  const additionalActions = new Map();
   const now = () => {
     const value = (options.now ?? Date.now)();
     if (!Number.isSafeInteger(value) || value < lastTime || value < 0) fail('CLOCK_UNAVAILABLE', 503);
@@ -129,7 +132,7 @@ export async function createService(options) {
   }
   function appView(row) {
     return {id:row.id,name:row.name,description:row.description,framework:row.framework,
-      environment:row.environment,status:row.status,createdAt:Number(row.created_at),updatedAt:Number(row.updated_at)};
+      environment:row.environment,status:row.status,policyEpoch:Number(row.policy_epoch??0),createdAt:Number(row.created_at),updatedAt:Number(row.updated_at)};
   }
   function keyView(row) {
     return {id:row.id,appId:row.app_id,name:row.name,prefix:row.prefix,scopes:JSON.parse(row.scopes),
@@ -146,6 +149,10 @@ export async function createService(options) {
     if (!Number.isSafeInteger(value) || value < now()+60000 || value > now()+90*DAY) fail('INVALID_EXPIRY');
   }
   function validatePayload(action, payload) {
+    if (additionalActions.has(action)) {
+      additionalActions.get(action)(payload);
+      return digest(canonical(payload));
+    }
     if (!ACTIONS.includes(action)) fail('INVALID_ACTION');
     if (action === 'app.update') {
       strict(payload,[],['name','description','framework','status']);
@@ -170,7 +177,7 @@ export async function createService(options) {
     }
     return digest(canonical(payload));
   }
-  async function mutate(req, action, work, prepare) {
+  async function mutate(req, action, work, prepare, finalCheck) {
     browser(req,true);
     const principal = await session(req), appId = req.params.appId;
     strict(req.body,['payload','proof']); strict(req.body.proof,['challengeId','signatureBase64']);
@@ -194,6 +201,7 @@ export async function createService(options) {
       if (!consumed.rows[0]) fail('ACTION_PROOF_INVALID',401);
       const result = await work(tx,principal,app,req.body.payload,prepared);
       await audit(tx,req,principal,app.id,action);
+      if(finalCheck)finalCheck(prepared,principal,req.body.payload);
       return result;
     });
   }
@@ -389,7 +397,11 @@ export async function createService(options) {
     strict(req.body,[]);const credential=await authenticateKey(req,'access:check');
     return{valid:true,appId:credential.app_id,credentialId:credential.id,environment:credential.environment,scopes:JSON.parse(credential.scopes)};
   });
-  return {server,database:db,authenticateKey,now,hash,options:{origin,profile},
-    internals:{route,envelope,session,owned,audit,mutate,browser,validatePayload,appView,keyView,callbackView},
+  const reader=options.reader??createPlatformReader({...options.readerOptions,now});
+  const service={server,database:db,reader,authenticateKey,now,hash,options:{origin,profile},
+    internals:{route,envelope,session,owned,audit,mutate,browser,validatePayload,appView,keyView,callbackView,
+      registerAction(action,validator){if(ACTIONS.includes(action)||additionalActions.has(action))fail('DUPLICATE_ACTION',503);additionalActions.set(action,validator);}},
     async close(){for(const entry of dnsPending)entry.resolver?.cancel();await server.close();}};
+  registerResources(service);
+  return service;
 }

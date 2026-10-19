@@ -11,6 +11,6 @@
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "migrate": "node src/migrate.mjs"
   },
-  "dependencies": { "fastify": "5.12.7", "pg": "8.23.1" },
+  "dependencies": { "@pact/sdk": "file:../../packages/pact-sdk", "fastify": "5.12.7", "pg": "8.23.1" },
   "devDependencies": { "@electric-sql/pglite": "0.5.10" }
 }

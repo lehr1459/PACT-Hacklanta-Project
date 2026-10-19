@@ -17,7 +17,7 @@ function base58(bytes){
 export function wallet(){
  const {privateKey,publicKey}=generateKeyPairSync('ed25519');
  const bytes=publicKey.export({format:'der',type:'spki'}).subarray(-32);
- return {address:base58(bytes),sign:message=>sign(null,Buffer.from(message),privateKey).toString('base64')};
+ return {address:base58(bytes),publicKeyBytes:Buffer.from(bytes),sign:message=>sign(null,Buffer.from(message),privateKey).toString('base64')};
 }
 export const nonce=()=>randomBytes(12).toString('hex');
 export function cookies(response){
