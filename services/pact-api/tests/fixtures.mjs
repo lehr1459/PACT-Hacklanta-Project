@@ -21,7 +21,7 @@ export async function fixture(options={}){
 export async function client(service,identity=wallet()){
   const jar=new Map();let csrf;
   async function request(method,url,body,headers={}){
-    const response=await service.server.inject({method,url,payload:body,headers:{origin:'http://localhost:3000',
+    const response=await service.server.inject({method,url,payload:body,headers:{origin:service.options.origin,
       ...(csrf?{'x-pact-csrf':csrf}:{}),cookie:[...jar].map(([k,v])=>`${k}=${v}`).join('; '),...headers}});
     for(const c of response.cookies)jar.set(c.name,c.value);
     let json;try{json=response.json();}catch{}

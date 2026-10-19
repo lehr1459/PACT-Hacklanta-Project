@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import {wallet} from './helpers.mjs';
 export const ORIGIN='http://localhost:3000';
 export class Browser {
- constructor(base){this.base=base;this.jar=new Map();this.csrf=null;this.wallet=wallet();}
+ constructor(base,origin=ORIGIN){this.base=base;this.origin=origin;this.jar=new Map();this.csrf=null;this.wallet=wallet();}
  async request(method,path,body,overrides={}){
-  const headers={Origin:ORIGIN,...(body===undefined?{}:{'Content-Type':'application/json'})};
+  const headers={Origin:this.origin,...(body===undefined?{}:{'Content-Type':'application/json'})};
   if(this.jar.size)headers.Cookie=[...this.jar].map(([k,v])=>`${k}=${v}`).join('; ');
   if(this.csrf)headers['x-pact-csrf']=this.csrf;
   for(const [key,value]of Object.entries(overrides)){if(value===null)delete headers[key];else headers[key]=value;}
@@ -32,6 +32,7 @@ export class Browser {
   return {challengeId:r.data.challengeId,signatureBase64:this.wallet.sign(r.data.message)};
  }
  async mutate(method,path,appId,action,payload){return this.request(method,path,{payload,proof:await this.proof(appId,action,payload)});}
- async key(secret,payload={}){return this.request('POST','/v1/credentials/validate',payload,
+ async backend(path,secret,payload={}){return this.request('POST',path,payload,
   {Origin:null,Cookie:null,'x-pact-csrf':null,Authorization:`Bearer ${secret}`});}
+ async key(secret,payload={}){return this.backend('/v1/credentials/validate',secret,payload);}
 }

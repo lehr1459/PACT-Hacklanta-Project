@@ -3,6 +3,7 @@ import {Resolver} from 'node:dns/promises';
 import {randomUUID} from 'node:crypto';
 import {createPlatformReader} from '@pact/sdk/server';
 import {registerResources} from './resources.mjs';
+import {registerConnect} from './connect.mjs';
 import {ApiError, fail, random, id, digest, keyed, equal, token, canonical, walletBytes,
   signatureValid, message, origin as validateOrigin, callback, strict, text, SCOPES} from './security.mjs';
 
@@ -27,7 +28,8 @@ export async function createService(options) {
     if (!Number.isSafeInteger(value) || value < lastTime || value < 0) fail('CLOCK_UNAVAILABLE', 503);
     lastTime = value; return value;
   };
-  const hash = (purpose, value) => keyed(pepper, purpose, value);
+  // Origin changes are an authentication epoch change, even with the same SQL backup/pepper.
+  const hash = (purpose, value) => keyed(pepper, `${origin}\0${purpose}`, value);
   const server = Fastify({logger: false, bodyLimit: 16384,
     requestTimeout: 10000, connectionTimeout: 10000, keepAliveTimeout: 5000,
     maxRequestsPerSocket: 100, trustProxy: false, genReqId: () => randomUUID(),
@@ -50,6 +52,7 @@ export async function createService(options) {
   }
   const envelope = (req, value) => ({schemaVersion: 1, requestId: req.id, ...value});
   const cookieNames = {binding: secure ? '__Secure-pact_hosted_binding' : 'pact_hosted_binding',
+    connectBinding:secure?'__Secure-pact_connect_binding':'pact_connect_binding',
     session: secure ? '__Secure-pact_hosted_session' : 'pact_hosted_session'};
   function cookies(req) {
     const input = req.headers.cookie ?? '';
@@ -69,11 +72,11 @@ export async function createService(options) {
     const current = reply.getHeader('set-cookie');
     reply.header('set-cookie', [...(Array.isArray(current) ? current : current ? [current] : []),header]);
   }
-  function browser(req, mutate = false) {
+  function browser(req, mutate = false, bindingKind = 'binding') {
     if (req.headers.origin !== undefined && req.headers.origin !== origin) fail('ORIGIN_DENIED',403);
     if (!mutate) return;
     if (req.headers.origin !== origin) fail('ORIGIN_DENIED',403);
-    const binding = cookies(req)[cookieNames.binding];
+    const binding = cookies(req)[cookieNames[bindingKind]];
     if (!token(binding) || !equal(req.headers['x-pact-csrf'],binding)) fail('CSRF_DENIED',403);
     return binding;
   }
@@ -142,7 +145,7 @@ export async function createService(options) {
   }
   function callbackView(row) {
     return {id:row.id,uri:row.uri,websiteOrigin:row.website_origin,status:row.status,
-      local:row.local,verifiedUntil:row.verified_until === null ? null : Number(row.verified_until),
+      local:row.local,revision:Number(row.revision??0),verifiedUntil:row.verified_until === null ? null : Number(row.verified_until),
       dnsRecord:row.local ? null : `_pact.${row.hostname}`};
   }
   function validExpiry(value) {
@@ -307,7 +310,7 @@ export async function createService(options) {
   }));
   route('POST','/v1/developer/apps/:appId/callback-uris/:callbackId/revoke',req=>mutate(req,'callback.revoke',async(tx,_,app,payload)=>{
     if(payload.callbackId!==req.params.callbackId)fail('INVALID_INPUT');
-    const row=(await tx.query(`UPDATE callback_uris SET status='revoked',verified_until=NULL,proof_hash=NULL,proof_expires_at=NULL
+    const row=(await tx.query(`UPDATE callback_uris SET status='revoked',verified_until=NULL,proof_hash=NULL,proof_expires_at=NULL,revision=revision+1
       WHERE id=$1 AND app_id=$2 RETURNING *`,[payload.callbackId,app.id])).rows[0];
     if(!row)fail('NOT_FOUND',404);return{callback:callbackView(row)};
   }));
@@ -316,14 +319,14 @@ export async function createService(options) {
     const current=(await tx.query('SELECT * FROM callback_uris WHERE id=$1 AND app_id=$2',[payload.callbackId,app.id])).rows[0];
     if(!current)fail('NOT_FOUND',404);
     const dnsToken=random(),proofExpiresAt=now()+DAY;
-    const row=(await tx.query(`UPDATE callback_uris SET status=$1,proof_hash=$2,proof_expires_at=$3,verified_until=$4
+    const row=(await tx.query(`UPDATE callback_uris SET status=$1,proof_hash=$2,proof_expires_at=$3,verified_until=$4,revision=revision+1
       WHERE id=$5 AND app_id=$6 RETURNING *`,[current.local?'verified':'pending',current.local?null:hash('dns',dnsToken),
       current.local?null:proofExpiresAt,current.local?now()+30*DAY:null,current.id,app.id])).rows[0];
     return{callback:callbackView(row),...(current.local?{}:{dnsToken:`pact-domain-verification=${dnsToken}`,verificationExpiresAt:proofExpiresAt})};
   }));
   route('POST','/v1/developer/apps/:appId/callback-uris/verify',req =>
     mutate(req,'callback.verify',async(tx,_,app,payload,row)=>{
-      const updated=(await tx.query(`UPDATE callback_uris SET status='verified',verified_until=$1 WHERE app_id=$2 AND id=$3
+      const updated=(await tx.query(`UPDATE callback_uris SET status='verified',verified_until=$1,revision=revision+1 WHERE app_id=$2 AND id=$3
         AND proof_hash=$4 AND proof_expires_at>$5 RETURNING *`,[now()+DAY,app.id,row.id,row.proof_hash,now()])).rows[0];
       if(!updated)fail('DOMAIN_PROOF_EXPIRED',409);
       return {callback:callbackView(updated)};
@@ -379,7 +382,7 @@ export async function createService(options) {
     return{buckets:(await db.query('SELECT * FROM usage_aggregates WHERE app_id=$1 AND bucket>$2 ORDER BY bucket DESC LIMIT 720',[req.params.appId,now()-30*DAY])).rows.map(row=>
       ({bucket:Number(row.bucket),requests:Number(row.requests),allowed:Number(row.allowed),denied:Number(row.denied),errors:Number(row.errors)}))};
   });
-  async function authenticateKey(req,scope,tx=db) {
+  async function authenticateKey(req,scope,tx=db,allowPaused=false) {
     if(req.headers.origin!==undefined)fail('BROWSER_API_KEY_DENIED',403);
     const authorization=req.headers.authorization;
     if(typeof authorization!=='string'||!/^Bearer pact_sk_dev_key_[a-f0-9]{32}_[A-Za-z0-9_-]{43}$/.test(authorization))fail('API_KEY_INVALID',401);
@@ -388,7 +391,7 @@ export async function createService(options) {
       WHERE c.token_hash=$1 AND c.revoked_at IS NULL AND c.expires_at>$2 AND d.status='active'`,
       [hash('api-key',authorization.slice(7)),now()])).rows[0];
     if(!row)fail('API_KEY_INVALID',401);
-    if(row.app_status!=='active')fail('APP_DISABLED',403);
+    if(row.app_status!=='active'&&!(allowPaused&&row.app_status==='paused'))fail('APP_DISABLED',403);
     if(!JSON.parse(row.scopes).includes(scope))fail('API_KEY_SCOPE_DENIED',403);
     await tx.query('UPDATE api_credentials SET last_used_at=$1 WHERE id=$2 AND revoked_at IS NULL',[now(),row.id]);
     return row;
@@ -399,9 +402,10 @@ export async function createService(options) {
   });
   const reader=options.reader??createPlatformReader({...options.readerOptions,now});
   const service={server,database:db,reader,authenticateKey,now,hash,options:{origin,profile},
-    internals:{route,envelope,session,owned,audit,mutate,browser,validatePayload,appView,keyView,callbackView,
+    internals:{route,envelope,session,owned,audit,mutate,browser,cookies,setCookie,cookieNames,domainRecords,validatePayload,appView,keyView,callbackView,
       registerAction(action,validator){if(ACTIONS.includes(action)||additionalActions.has(action))fail('DUPLICATE_ACTION',503);additionalActions.set(action,validator);}},
     async close(){for(const entry of dnsPending)entry.resolver?.cancel();await server.close();}};
   registerResources(service);
+  registerConnect(service);
   return service;
 }

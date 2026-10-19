@@ -1,4 +1,11 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+﻿@font-face {
+  font-family: 'DM Sans'; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url('/fonts/pact-dm-sans-variable.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Manrope'; font-style: normal; font-weight: 400 800; font-display: swap;
+  src: url('/fonts/pact-manrope-variable.ttf') format('truetype');
+}
 
 /* PACT: shared presentation tokens. No runtime or chain state changes. */
 :root {
