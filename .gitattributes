@@ -14,3 +14,5 @@ packages/pact-sdk/package.json text eol=lf
 packages/pact-sdk/build.mjs text eol=lf
 packages/pact-sdk/tsconfig.json text eol=lf
 packages/pact-sdk/*.md text eol=lf
+# Durable migrations are checksum-bound across Windows and Linux checkouts.
+services/pact-api/migrations/*.sql text eol=lf

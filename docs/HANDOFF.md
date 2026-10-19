@@ -1,5 +1,11 @@
 # Agent handoff
 
+## API-first integrations — 2026-10-19
+
+Current feature branch `codex/api-first-integrations` starts at verified `57b425f` and preserves the existing Next generated-reference edit in `9074ddd`. Read [master specification](platform/hosted/MASTER_PLAN.md), [reviewed ADR](platform/hosted/ADR.md) and [implementation report](platform/hosted/IMPLEMENTATION_REPORT.md) first. Phase0 design and Phase1 implementation/security/QA gates pass locally; later gates pending. Older handoff milestone/topology exclusions apply to their historical/customer-hosted model, not as a prohibition on this explicitly requested separate hosted model.
+
+Root owns integration/commits/docs/gateway/CI; Backend owns `services/pact-api` and migrations; QA owns `scripts/hosted-qa` and independent native-PostgreSQL validation; Security owns the review record. Keep one SQL/schema writer. No program/SDK interface changes, public-site overwrite, unrelated repo edit, push/deploy/publish or wallet action. The pinned runtime is Node24.22.0/npm11.19.1, not the workstation global24.11.1. New remote CI cannot be claimed from the foundation's run. Review Node by October21 and dependency exceptions by November15. Staging/pilot owner checklist is [prepared only](platform/hosted/STAGING_AND_PILOT.md).
+
 ## Full development foundation - 2026-10-17
 
 Start with [execution evidence](development/EXECUTION.md), the [release contract](product/RELEASE_CONTRACT.md), [developer guide](development/DEVELOPER_GUIDE.md), [environment profiles](operations/ENVIRONMENTS.md) and [remaining debt](TECHNICAL_DEBT.md). All six phases are implemented; the final clean implementation/artifact revision is `defec7181cc5c8e14b43f4e81eb90783349b5a99`. Later completion edits are documentation only. Full all-node, exact two-build SDK/consumer binding and actual archive relocation pass independently. Retained raw evidence is ignored under `web/test-results/phase5-clean/`; do not publish it or rerun historical source-patching tools as current validation.

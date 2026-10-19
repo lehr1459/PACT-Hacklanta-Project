@@ -1,5 +1,11 @@
 # Status
 
+## API-first integrations — 2026-10-19
+
+Active work is the [API-first master specification](platform/hosted/MASTER_PLAN.md), on `codex/api-first-integrations` from verified foundation `57b425f`. Checkpoint `9074ddd` preserves the pre-existing generated Next type-reference change. [Architecture contract](platform/hosted/ADR.md) passed independent architecture/security/QA design review and is committed at `37e0275`. Phase1 persistence/control-plane passes local implementation/security/QA gates (service7, independent native-PG HTTP11 tests); subsequent gates are not yet accepted. [Implementation evidence](platform/hosted/IMPLEMENTATION_REPORT.md) records scope and corrected defects. Existing customer-hosted SDK, marketplace, checkout and isolated Base fallback remain supported.
+
+The foundation's remote run `39017755163` passed both required jobs at `57b425f`; it does not validate unpublished feature commits. Local pinned-runtime Node and compiled-chain baseline lanes pass. New branch remote CI, approved hosting, real-wallet and operator/device acceptance remain separate gates. No push, public deployment, infrastructure change, publication, wallet approval or transaction is authorized. Track Node security review on **October21** and dependency exceptions on **November15**. [Staging/pilot preparation](platform/hosted/STAGING_AND_PILOT.md) records owner decisions without executing external phases.
+
 ## Full development foundation - 2026-10-17
 
 Phases 0-5 are implemented and independently reviewed. Phases 0-2 pass; Phases 3-5 pass with explicit human actions remaining. The immutable validated implementation/package/archive candidate is `defec7181cc5c8e14b43f4e81eb90783349b5a99`; the subsequent close commit updates documentation only. [Execution evidence](development/EXECUTION.md) records exact results, corrected failures and provenance. The full clean gate passed all 40 required commands; SDK 625/API 29/policy 67 and every applicable browser/build/consumer lane passed. Actual extracted archive installs, startup, page/live/Devnet-readiness and denied protected access passed six checks. Local compiled Solana43 and Base23 tests pass; current local SBF has not been deployed.

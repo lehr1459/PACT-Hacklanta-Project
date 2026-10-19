@@ -48,4 +48,30 @@ The official [Node announcement](https://nodejs.org/en/blog/vulnerability/octobe
 
 Hosting/DNS/TLS, database/provider, encrypted secrets/pepper custody, RPC capacity, operator/contact, account recovery, privacy/terms/retention and SDK distribution rights require owner decisions before external pilot. No live infrastructure change, push, publication, wallet prompt approval or transaction was performed by this review. Backup restoration can resurrect revoked credentials; restore procedures must force rotation/re-authentication or preserve revocation watermarks before readmission. External staging and real Phantom/device acceptance remain separate gates.
 
+## Phase 0 ADR disposition
+
+Reviewed `ADR.md` on 2026-10-19. **PASS for Phase 0 architecture**: separate persistent service/SQL model, limited custom login, app-scoped opaque grants, exact callback and domain proof, owner tenancy, fresh reader reuse, post-read revocation validation and restore invalidation satisfy the design boundary. This approval authorizes proceeding to local implementation under the user's existing scope, not hosted rollout or authentication implementation signoff.
+
+Freeze these details before shared action-proof code: mutation body `{payload, proof: {challengeId, signatureBase64}}`; challenge body `{action, appId, payload}`; signed proof binds the exact admin session incarnation, wallet, action, app (or explicit no-app context), environment and canonical schema-validated payload digest. Mutation verifies that same binding and consumes the proof in its mutation transaction. Canonicalization must define absent/null, key ordering, array ordering and bounded numeric values consistently; either reject duplicate input members or operate exclusively on the same strict normalized payload used to generate the proof. Browser challenge/verify needs an explicit browser binding/CSRF mechanism alongside exact Origin; a generic admin login session alone is insufficient for action-proof replay separation.
+
 Implementation signoff: **pending**. This file records requirements and inspected evidence, not claims that new hosted behavior exists.
+
+## Phase 1 implementation review
+
+Independently inspected the initial `services/pact-api` migration, crypto/validation primitives, DB adapter, service routes, configuration and startup. On pinned Node **24.22.0** / npm **11.19.1**, read-only `npm audit --json --ignore-scripts` returned **zero findings** for the initial 62-node graph: Fastify **5.12.7**, pg **8.23.1**, development-only PGlite **0.5.10**. No installed lockfile node declares an install script. Initial lockfile SHA-256: `4a47e3108dfa2e0a37b3ba3c154a533c51e37094a4f3fded5c45823c237dbc0b`. Ignored raw evidence: `web/test-results/validation/hosted-security/dependencies.json` and `dependency-receipt.json`. This result applies only to that exact graph; subsequent SDK/database/auth additions need their own assessment.
+
+Concrete findings sent to the sole service writer, subsequently corrected and independently rechecked:
+
+- App mutation read precedes its row lock, so concurrent partial updates may use stale status and undo a pause. Fetch the owner-scoped current row with `FOR UPDATE` in one query.
+- Credential rotation initially bypasses the active-credential quota. Enforce quota across creation and overlapping rotation while holding the app lock.
+- DNS `Promise.race` initially leaves underlying timed-out resolution running; retain bounded resolver capacity until settlement or cancel a dedicated resolver.
+- Hosted topology guards should retain existing known worker/serverless checks, including `WEB_CONCURRENCY`, worker threads and cluster workers.
+- Key authentication and the final transactional admin-session recheck should reject a disabled owning developer account.
+
+**PASS — local Phase 1 security gate.** Re-read the corrected source: owner-scoped app reads lock and return the current row; active rotation quota is checked in the mutation transaction; admin session/account rows are locked and their active state rechecked; key validation joins the active developer owner; topology rejects known worker/serverless markers; DNS work has two retained capacity slots and a dedicated cancellable resolver, executes after action-signature validation and outside the mutation transaction. No unresolved consequential Phase 1 defect was found in the reviewed behavior.
+
+Executed the seven service control-plane tests on pinned Node: **7 passed**, including persistence/replay/outage checks. Executed an independent ignored harness, `web/test-results/validation/hosted-security/phase1-independent.mjs`: **9 adversarial checks passed** (quota bypass denial, zero-overlap rotation at quota, arbitrary wallet-field rejection, oversized body, duplicate cookies, disabled owner key/session denial, topology markers and retained capacity after unresolved DNS timeouts). Independently reran the final callback lifecycle test: **1 passed**, covering signed revoke, fresh proof renewal, rejection of old TXT token and acceptance of the replacement. Reviewed the implementation of those endpoints: revoke clears verification/proof state; renew generates a new random proof and restores pending status for nonlocal URLs.
+
+Independent QA additionally reports **11 native-PostgreSQL/loopback-HTTP tests passed**, including competing one-use action consumption, concurrent rename/pause preservation, key quota/rotation races, account disable, revocation/restart and callback lifecycle. These native-PG tests were authored/run by QA; this reviewer inspected its report and exercised separate PGlite security tests rather than relabeling the results as its own execution. See `QA_REVIEW.md` and `scripts/hosted-qa/phase1.test.mjs`.
+
+This gate covers the implemented local control plane only. No buyer login/grant, entitlement data-plane behavior, browser console, remote CI, hosting, live DNS control or real-wallet acceptance is approved by it. Rate/retention/operations hardening and exact new dependency additions remain subject to later phase gates.

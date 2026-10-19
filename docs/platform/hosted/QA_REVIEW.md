@@ -30,6 +30,20 @@ Executed with that pinned Node on the checkpointed feature branch:
 
 SDK logs: ignored `web/test-results/hosted-qa-baseline/sdk-typecheck.log` and `sdk-tests.log`. No shared web build or dependency install was performed by QA.
 
+## Local real-PostgreSQL tooling
+
+Prepared PostgreSQL **18.4** native Windows binaries in ignored `web/test-results/hosted-tools/postgres18/package/native/bin`, using the [embedded-postgres project](https://github.com/leinelissen/embedded-postgres) package `@embedded-postgres/windows-x64@18.4.0-beta.17`. Downloaded without lifecycle scripts and independently compared archive SHA-512 to registry integrity: `AwRerliA4IGWyW5jWBvHt5vidVUSB0QQW9Tt2y7ScnmifnCb/awfxZr4BkBSTv+gNt8Djcddqs+xSF5Z6/CkTg==`. Integrity establishes package identity, not a binary security audit.
+
+Initialized a disposable SCRAM-authenticated cluster with test-only credentials, listening only on `127.0.0.1:55439` with 30 connections and 32MB shared buffers. No machine service, firewall, global installation or external account changed. `pg_ctl` readiness/status and SQL version query passed. Created an empty `pact_hosted_test` database for platform tests and separate `pact_qa` for tooling probes. Root owns subsequent service lifecycle; stop using `pg_ctl -D web/test-results/hosted-tools/pg-data -m fast -w stop`.
+
+Independent native-PostgreSQL probes passed:
+
+- Two separate `pg` connections raced an atomic conditional consumption: exactly one success.
+- Clean shutdown/restart retained the consumed marker and denied replay.
+- A physical cold copy taken only after clean shutdown started on `127.0.0.1:55440`, retained the marker and denied replay; this restore clone was then stopped.
+
+Ignored reproducible scripts: `hosted-tools/probe-postgres.mjs` and `verify-postgres-restart-restore.mjs`; native logs are beside them. These verify SQL tooling, not yet the platform's schema, authenticated flow, migration or post-restore revocation epoch. Those acceptance tests remain required. This binary package omits `psql`/`pg_dump`; use the Node `pg` harness and clean-shutdown physical backup for local fixtures.
+
 ## Phase acceptance matrix
 
 | Phase | Independent evidence required before PASS |
@@ -48,3 +62,15 @@ SDK logs: ignored `web/test-results/hosted-qa-baseline/sdk-typecheck.log` and `s
 ## Evidence categories
 
 Track each result as implemented locally, locally verified, remotely CI verified, staging accepted, human action required, not deployed, or not supported. Attach exact command, revision, result and retained report paths. Passing one category does not imply another. Any discovered consequential defect blocks its phase until fixed and reverified; stop dependent work rather than weakening the invariant.
+
+## Phase 1 independent implementation review
+
+**PASS — local Phase 1 control-plane acceptance**, pending separate security review and later full compatibility/CI gates. Inspected actual `database.mjs`, `security.mjs`, `service.mjs`, configuration and initial SQL migration, then authored an independent native-PostgreSQL/real-loopback-HTTP harness under `scripts/hosted-qa/`. Disposable wallet signatures/base58 are produced independently; no production signing/canonicalization helper is imported.
+
+Executed pinned Node `--test scripts/hosted-qa/phase1.test.mjs`: **11 passed, 0 failed, 0 skipped**, 2.20 seconds in the final targeted run including lifecycle extensions. Log: ignored `web/test-results/hosted-qa-baseline/phase1-native-pg.log`.
+
+Verified two distinct admins and application isolation across detail/credentials/callbacks/usage/events; missing/wrong Origin and CSRF denial; session/browser binding; signed exact payload, different account and same-wallet different-session denial; proof replay and competing redemption; invalid callback schemes/credentials/fragments/queries/wildcards/ambiguous paths/private hosts/origin mismatch; loopback verification exception versus pending nonlocal callback; once-only key reveal, metadata/audit secrecy and persisted verifier; overlap rotation, scope checks, revocation, pause and logout; preserved sessions/app state/revocation after service and database-pool restart; unavailable DB returning 503 while liveness remains available; concurrent registration respecting 20-app quota and overlap rotation respecting 10-key quota.
+
+Final lifecycle extensions exercise actual backend-only `POST /v1/credentials/validate`: valid key, invalid key, browser Origin, unknown wallet override, overlapping rotation, revoked key, paused app, disabled owner and process restart. Additional verifier scope checks remain server-side. Concurrent signed partial updates preserve both name and paused status. At the ten-key limit overlap rotation denies while immediate zero-overlap rotation succeeds. Signed callback renewal issues a new DNS token and returns pending; the prior token denies, the new token verifies, and signed revocation clears verification and prevents old proof reuse.
+
+The restart test restarts service/listener/pool without stopping the shared cluster; separate tooling probes above establish native cluster restart/restore. Injected deterministic DNS TXT responses establish local wrong-token denial and correct-token verification, not live external domain control. DNS expiry and hosted-profile callback behavior require additional fixture tests; later browser UX and remote CI are not implied. One test initially expected 403 for a disabled-owner key; the implemented contract intentionally hides disabled owners behind 401 `API_KEY_INVALID`, and the assertion was corrected. No authorization succeeded in that negative case. No consequential defect remained in the exercised current code.
