@@ -27,15 +27,21 @@ test('Phase7 native HTTP default seven-second budget bounds incomplete bodies an
 
 test('Phase7 actual incomplete headers close within the independent five-second header ceiling',{timeout:12000},async t=>{
  const c=await accessFixture();t.after(()=>c.close());const address=new URL(c.base),started=performance.now();
+ assert.ok(c.service.server.server.listenerCount('clientError')>0);
+ // Fastify's timeout destruction may reach a writing peer before its408 bytes.
+ const serverErrors=new Set(),observe=error=>serverErrors.add(error.code);c.service.server.server.on('clientError',observe);t.after(()=>c.service.server.server.off('clientError',observe));
+ let requestEvents=0;const observeRequest=()=>requestEvents++;c.service.server.server.on('request',observeRequest);t.after(()=>c.service.server.server.off('request',observeRequest));
  const socket=connectSocket({host:address.hostname,port:Number(address.port)});let drip,ceiling;
  t.after(()=>{clearInterval(drip);clearTimeout(ceiling);socket.destroy();});
  const response=await new Promise((resolve,reject)=>{
-  let data='';socket.on('data',bytes=>data+=bytes.toString('ascii'));socket.on('error',reject);socket.on('close',()=>resolve(data));
+  let data='',transportError=null;socket.on('data',bytes=>{data+=bytes.toString('ascii');clearInterval(drip);});socket.on('end',()=>clearInterval(drip));socket.on('error',error=>{clearInterval(drip);transportError=error.code??'UNCLASSIFIED';});socket.on('close',()=>resolve({data,transportError}));
   ceiling=setTimeout(()=>{socket.destroy();reject(Error('Owned incomplete-header fixture exceeded ceiling'));},8000);
   socket.on('connect',()=>{socket.write('POST /v1/developer/auth/challenge HTTP/1.1\r\nHost: '+address.host+'\r\nX-Slow: ');drip=setInterval(()=>socket.write('x'),500);});
  });clearInterval(drip);clearTimeout(ceiling);
- assert.match(response,/^HTTP\/1\.1 408 /);const elapsed=performance.now()-started;assert.ok(elapsed>=4500&&elapsed<7500,'header ceiling must bound an actively dripping peer');
- assert.equal(c.service.diagnostics().http.active,0);assert.equal((await new Browser(c.base).request('GET','/v1/health/live')).status,200);
+ assert.ok(/^HTTP\/1\.1 408 /.test(response.data)||response.data===''&&response.transportError==='ECONNRESET','header timeout must return408 or its verified transport reset');
+ assert.ok(response.transportError===null||response.transportError==='ECONNRESET');assert.ok(serverErrors.has('ERR_HTTP_REQUEST_TIMEOUT'));
+ const elapsed=performance.now()-started;assert.ok(elapsed>=4500&&elapsed<7500,'header ceiling must bound an actively dripping peer');
+ assert.equal(c.service.diagnostics().http.active,0);assert.equal(requestEvents,0);assert.equal((await new Browser(c.base).request('GET','/v1/health/live')).status,200);
 });
 
 test('Phase7 short actual deadline retains native SQL work and rolls back signed mutation/proof before commit',{timeout:10000},async t=>{

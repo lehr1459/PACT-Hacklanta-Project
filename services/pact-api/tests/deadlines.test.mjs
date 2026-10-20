@@ -69,14 +69,23 @@ test('expired handler cannot commit a signed mutation after its final SQL work s
 
 test('actual HTTP incomplete headers cannot extend receipt indefinitely by trickling bytes',async t=>{
   const service=await fixture();t.after(()=>service.cleanup());await service.server.listen({host:'127.0.0.1',port:0});
-  const started=performance.now();let timer,socket;
-  const result=await new Promise((resolve,reject)=>{
-    socket=net.createConnection({host:'127.0.0.1',port:service.server.server.address().port});let body='';
-    socket.setEncoding('utf8');socket.setTimeout(8000,()=>socket.destroy(Error('header test transport ceiling')));
+  assert.ok(service.server.server.listenerCount('clientError')>0,'observe the existing framework handler without replacing timeout behavior');
+  // Fastify writes408 then destroys the socket; a writing peer may see reset
+  // before response bytes. Verify the timeout itself, not a delivery guarantee.
+  const serverErrors=new Set(),observe=error=>serverErrors.add(error.code);service.server.server.on('clientError',observe);t.after(()=>service.server.server.off('clientError',observe));
+  let requestEvents=0;const observeRequest=()=>requestEvents++;service.server.server.on('request',observeRequest);t.after(()=>service.server.server.off('request',observeRequest));
+  const started=performance.now();let timer,ceiling,socket;
+  const result=await new Promise(resolve=>{
+    socket=net.createConnection({host:'127.0.0.1',port:service.server.server.address().port});let body='',transportError=null;
+    socket.setEncoding('utf8');ceiling=setTimeout(()=>socket.destroy(Object.assign(Error('header test absolute transport ceiling'),{code:'FIXTURE_TRANSPORT_CEILING'})),8000);
     socket.on('connect',()=>{socket.write('POST /v1/developer/auth/challenge HTTP/1.1\r\nHost: localhost\r\nX-Trickle: ');
       timer=setInterval(()=>socket.write('a'),100);});
-    socket.on('data',chunk=>body+=chunk);socket.on('end',()=>resolve(body));socket.on('error',reject);
-  }).finally(()=>{clearInterval(timer);socket?.destroy();});
-  assert.match(result,/^HTTP\/1\.1 408 /);assert.ok(performance.now()-started<7500);
+    socket.on('data',chunk=>{body+=chunk;clearInterval(timer);});socket.on('end',()=>clearInterval(timer));socket.on('error',error=>{clearInterval(timer);transportError=error.code??'UNCLASSIFIED';});socket.on('close',()=>resolve({body,transportError}));
+  }).finally(()=>{clearInterval(timer);clearTimeout(ceiling);socket?.destroy();});
+  assert.ok(/^HTTP\/1\.1 408 /.test(result.body)||result.body===''&&result.transportError==='ECONNRESET','header timeout must send408 or close with the observed timeout reset');
+  assert.ok(result.transportError===null||result.transportError==='ECONNRESET');assert.ok(serverErrors.has('ERR_HTTP_REQUEST_TIMEOUT'));
+  const elapsed=performance.now()-started;assert.ok(elapsed>=4500&&elapsed<7500,'the configured five-second deadline must cause the denial');
   assert.equal(service.diagnostics().http.active,0,'incomplete headers must not acquire application admission');
+  assert.equal(requestEvents,0,'incomplete headers must not reach a request handler');
+  assert.equal((await service.server.inject({method:'GET',url:'/v1/health/live'})).statusCode,200);
 });
