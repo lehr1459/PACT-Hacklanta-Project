@@ -1,5 +1,5 @@
 import type {Reporter,TestCase,TestResult,FullResult} from '@playwright/test/reporter';
-import {mkdir,writeFile} from 'node:fs/promises';
+import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import path from 'node:path';
 // Do not serialize matcher errors, stacks, attachments, steps or test stdout:
 // those can contain one-time responses before a failed assertion is redacted.
@@ -18,8 +18,15 @@ export default class ConsoleReceipt implements Reporter{
  }
  async onEnd(result:FullResult){
   const tests=[...this.results.values()],passed=tests.filter(t=>t.status==='passed').length,skipped=tests.filter(t=>t.status==='skipped').length;
+  let binding:{}|{revision:string;runId:string;buildRevision:string;buildRunId:string}={};
+  if(process.env.PACT_HOSTED_QA_RUN_ID){
+   if(!/^[a-f0-9-]{36}$/.test(process.env.PACT_HOSTED_QA_RUN_ID)||!process.env.PACT_HOSTED_QA_REVISION?.match(/^[a-f0-9]{40}$/))throw Error('Invalid hosted receipt binding');
+   const build=JSON.parse(await readFile(path.resolve(path.dirname(this.options.outputFile),'../../.next/hosted-build.json'),'utf8'));
+   if(build.revision!==process.env.PACT_HOSTED_QA_REVISION||build.runId!==process.env.PACT_HOSTED_QA_RUN_ID)throw Error('Hosted browser build binding mismatch');
+   binding={revision:build.revision,runId:build.runId,buildRevision:build.revision,buildRunId:build.runId};
+  }
   const receipt={schemaVersion:1,kind:'hosted-browser-receipt',status:result.status,stats:{expected:passed,skipped,unexpected:tests.length-passed-skipped},
-   runnerErrors:this.runnerErrors,suppressedOutput:this.suppressedOutput,rawDiagnosticsRecorded:false,tests};
+   runnerErrors:this.runnerErrors,suppressedOutput:this.suppressedOutput,rawDiagnosticsRecorded:false,...binding,tests};
   await mkdir(path.dirname(this.options.outputFile),{recursive:true});await writeFile(this.options.outputFile,JSON.stringify(receipt,null,2)+'\n');
   process.stdout.write(JSON.stringify({status:result.status,passed,skipped,failed:receipt.stats.unexpected,runnerErrors:this.runnerErrors})+'\n');
  }

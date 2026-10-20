@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-19",
+  "graphs": {
+    "sdk": "e253fba5cd90782fe8fab5e3a99e7a4ed43576c15d8eeefb5f2161382b7efb60",
+    "service": "37540ffff94be576c0442fb71809cf335a7f72205305015ecbb65439c5fc3b1f",
+    "client": "18e2315d6c6113e4350dc70f67dffb2f51ec9584d16cac588fccffadf9776350",
+    "common": "7fc3844c7930bb04aff5201b8a148abb881f88d0d03e365e934dea3bdcac1251",
+    "express": "b4beb5dc92ed8708552b13f0a0c18d03251077341fac63221d4b94bdb684e853",
+    "next": "e21dee692db9c01501edfb13df65858d9ad8536c1963f8e1ec259ddb8cc838a1",
+    "rest": "f200935e540c3d595a686f2499a2e86fb947aaf47211fa4d28d22715cb4ab63f"
+  },
+  "reachability": {
+    "sources": {
+      "packages/pact-sdk/src/internal/license-reader.ts": "b5fce5198345edbecf8aadc274937e99109e031fc633a8882c59576c99a4c313",
+      "packages/pact-sdk/src/server-chain.ts": "9c49235a6da843d05c9a0eabd2e9c2dac313d9efefbdbcf07015a7f70164c705",
+      "packages/pact-sdk/node_modules/jayson/lib/generateRequest.js": "35581da7a5fb407477419f5c20f5507034beca27fbba2be7cf7871931c795bea"
+    },
+    "reason": "Explicit hosted review: bounded native JSON reader; stream-json and jayson TCP/stream runtime excluded. UUID index includes v3/v5 definitions but reviewed generator calls v4 without caller buffers. Cold import is supplementary; new caller behavior requires code review."
+  },
+  "exceptions": [
+    {
+      "package": "uuid",
+      "advisory": "GHSA-w5hq-g745-h8pq",
+      "severity": "moderate",
+      "versions": [
+        "8.3.2"
+      ],
+      "projects": [
+        "sdk"
+      ],
+      "owner": "Security and SDK maintainers",
+      "expires": "2026-11-15",
+      "reason": "Reviewed transitive calls use v4 without caller-supplied buffers, rather than the affected APIs. Cross-major override requires independent upstream compatibility assessment. See docs/security/dependencies.md. Hosted reachability independently rechecked; see docs/platform/hosted/SECURITY_REVIEW.md."
+    },
+    {
+      "package": "stream-json",
+      "advisory": "GHSA-528h-pc64-c93x",
+      "severity": "moderate",
+      "versions": [
+        "1.9.1"
+      ],
+      "projects": [
+        "sdk"
+      ],
+      "owner": "Security and SDK maintainers",
+      "expires": "2026-11-15",
+      "reason": "The supported web3 browser JSON-RPC client does not import the jayson TCP/stream parser. Patched major changes module format and import paths. See docs/security/dependencies.md. Hosted reachability independently rechecked; see docs/platform/hosted/SECURITY_REVIEW.md."
+    },
+    {
+      "package": "stream-json",
+      "advisory": "GHSA-hqr4-qq8f-hg3x",
+      "severity": "moderate",
+      "versions": [
+        "1.9.1"
+      ],
+      "projects": [
+        "sdk"
+      ],
+      "owner": "Security and SDK maintainers",
+      "expires": "2026-11-15",
+      "reason": "The affected JSONC parser is outside supported runtime imports. Patched major changes module format and import paths. See docs/security/dependencies.md. Hosted reachability independently rechecked; see docs/platform/hosted/SECURITY_REVIEW.md."
+    },
+    {
+      "package": "stream-json",
+      "advisory": "GHSA-mjw6-4jj6-33hc",
+      "severity": "moderate",
+      "versions": [
+        "1.9.1"
+      ],
+      "projects": [
+        "sdk"
+      ],
+      "owner": "Security and SDK maintainers",
+      "expires": "2026-11-15",
+      "reason": "The affected stream Assembler is outside supported runtime imports. Patched major changes module format and import paths. See docs/security/dependencies.md. Hosted reachability independently rechecked; see docs/platform/hosted/SECURITY_REVIEW.md."
+    }
+  ]
+}

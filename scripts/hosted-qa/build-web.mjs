@@ -1,4 +1,5 @@
-import {access} from 'node:fs/promises';
+import {access,writeFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {root, execute} from '../validation/common.mjs';
 import {loadRuntimePolicy} from '../validation/runtime.mjs';
@@ -20,3 +21,9 @@ const result = await execute(process.execPath, ['node_modules/next/dist/bin/next
     NEXT_PUBLIC_SOLANA_RPC_URL: 'https://api.devnet.solana.com', NEXT_PUBLIC_PACT_CONTRACT_ADDRESS: ''},
 });
 process.exitCode = result.code;
+if(result.code===0&&process.env.PACT_HOSTED_QA_RUN_ID){
+ if(!/^[a-f0-9-]{36}$/.test(process.env.PACT_HOSTED_QA_RUN_ID))throw Error('Invalid hosted build binding');
+ const revision=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
+ if(revision!==process.env.PACT_HOSTED_QA_REVISION)throw Error('Build revision mismatch');
+ await writeFile(path.join(root,'web/.next/hosted-build.json'),JSON.stringify({revision,runId:process.env.PACT_HOSTED_QA_RUN_ID})+'\n');
+}

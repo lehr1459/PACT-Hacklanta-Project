@@ -22,3 +22,5 @@ packages/pact-hosted-client/** text eol=lf
 docs/platform/hosted/INTEGRATION_GUIDE.md text eol=lf
 web/public/developer/guide.md text eol=lf
 web/public/fonts/*.ttf binary
+services/pact-api/Dockerfile text eol=lf
+services/pact-api/Dockerfile.dockerignore text eol=lf

@@ -30,3 +30,25 @@ The Phase 5 console suite runs in the same isolated prebuilt checkout using `nod
 Phase 6 independent additions are `phase6-contract.test.mjs` (static frozen OpenAPI route/security semantics and actual native malformed-proof consumption), `phase6-client.test.mjs` (the private client through real HTTP), and `phase6-consumer.test.mjs` (actual Express and production Next BFF wrappers using the private client, native PostgreSQL and the real hardened SDK). Run them serially with the earlier suites. The consumer test exercises missing/active/exact-expiry/outage decisions, server-only grant exchange, cookie rotation, CSRF, replay, a logout during an awaited chain read and actual persisted grant revocation. The Next case additionally restarts a previously licensed local session and requires fresh authentication.
 
 For complete Next coverage, first build `examples/pact-hosted-next` in the isolated clean checkout. Set `PACT_QA_NEXT_EXAMPLE_BUILD` to that example's absolute directory before running `node --test --test-concurrency=1 scripts/hosted-qa/phase6-consumer.test.mjs`. This setting contains only a local directory. The harness generates its own ephemeral server key and passes it only in the owned child process environment, never command arguments, files or output. It chooses an ephemeral loopback port, checks for active environment files by existence only and stops only its own child. Without this setting the Next case is explicitly skipped; that result is not complete example acceptance.
+
+## Complete hosted acceptance gate
+
+Use a fresh committed checkout, pinned Node24.22.0/npm11.19.1, no active environment files and the dedicated loopback PostgreSQL fixture. Set `PACT_HOSTED_QA_CLEAN=1`; optionally set `PACT_QA_DATABASE_URL` only to that fixture. Run:
+
+```text
+node scripts/hosted-qa/run.mjs install
+node web/node_modules/@playwright/test/cli.js install chromium
+node scripts/hosted-qa/run.mjs all
+node scripts/hosted-qa/artifact.mjs
+node scripts/hosted-qa/export-receipts.mjs
+```
+
+Linux CI installs Chromium with `--with-deps`. `all` requires the complete explicit native suite (at least85cases), actual production Next consumer, API/client/example tests, contract drift, seven dependency graphs, private packed-client checks and16console+12connect browser checks. Node tests cannot be empty, failed, cancelled, skipped or todo. A run UUID and source revision bind the actual production web build and browser receipts. The initial tree must be clean; final source changes are rejected apart from exact generated Next type-reference contents. `portable` runs the cross-platform contract/client/example/reporting subset, not native database/browser acceptance.
+
+Phase7 native cases cover real clock storage and process faults, absolute body/handler/header ceilings, bounded retention/erasure and isolated snapshot quarantine/rekey. They never truncate the shared QA database. The checksum drift probe still requires exclusive serialized database use. The finite load check uses24actual HTTP decisions across two apps at four concurrent reads, actual durable host-clock authority and synthetic raw RPC; it records numeric percentiles and outage recovery, not provider capacity or an SLA.
+
+The production artifact driver makes a fresh allowlisted private production installation, excludes PGlite and development-only esbuild, and tests real HTTP readiness, administrator/key operations, graceful restart and revoke in its own uniquely named disposable database. The unchanged SDK retains TypeScript through Solana codecs' optional production peer dependency; it is not evidence of a failed `--omit=dev` install. No environment file or proprietary customer source is copied. On Linux with Docker available, add `--docker` to require a pinned two-stage image build and actual nonroot/read-only container smoke over host-loopback networking; no image is pushed. Its local-profile native-PostgreSQL smoke does not accept hosted TLS/provider configuration. Docker execution remains separate evidence when the local host lacks a daemon.
+
+Raw child logs, clocks, backups and fixture material remain ignored/private. Both hosted browser configs disable traces/video/automatic screenshots and raw failure diagnostics. The auditor rejects raw cookies/proofs, recordings, page snapshots and unapproved rasters; it cannot certify image pixels. Export reconstructs only three fixed numeric/status summaries, rejects stale build/run/source bindings and refuses existing/linked output leaves. Use a fresh owned `hosted-export` directory for each export. CI uploads only those three files after scanning, never the raw test tree. Historical private image quarantine is never exported.
+
+The existing original matrix remains `node scripts/validation/run.mjs all-node --clean` and Windows `all-chain`, followed by clean-source provenance rebuild. New remote jobs require owner-authorized push/run; local replay and the foundation's earlier green run are separate facts. Review Node by October21 and dependency exceptions by November15,2026.

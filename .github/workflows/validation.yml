@@ -109,6 +109,74 @@ jobs:
             solana/target/provenance-*/build.log
           retention-days: 14
 
+  hosted-api-and-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:18.4-bookworm@sha256:882236b897e39051d2368c5ccc6cda944904723506b2dfc97f2a8f5bc9afa382
+        env:
+          POSTGRES_USER: pact_test
+          POSTGRES_PASSWORD: pact-local-fixture-only
+          POSTGRES_DB: postgres
+        ports:
+          - 55439:5432
+        options: >-
+          --health-cmd "pg_isready -U pact_test -d postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      PACT_HOSTED_QA_CLEAN: '1'
+      PACT_QA_DATABASE_URL: postgresql://pact_test:pact-local-fixture-only@127.0.0.1:55439/pact_hosted_qa
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.22.0
+      - run: npm install --global npm@11.19.1
+      - name: Install private local packages in dependency order
+        run: node scripts/hosted-qa/run.mjs install
+      - name: Install Chromium
+        run: node web/node_modules/@playwright/test/cli.js install --with-deps chromium
+      - name: Mandatory hosted SQL, contracts, examples, abuse and browser acceptance
+        run: node scripts/hosted-qa/run.mjs all
+      - name: Production artifact and container smoke (no push)
+        run: node scripts/hosted-qa/artifact.mjs --docker
+      - name: Scan and reconstruct allowlisted evidence
+        id: safe-evidence
+        if: always()
+        run: |
+          node scripts/hosted-qa/audit-console-artifacts.mjs web/test-results/hosted-console
+          node scripts/hosted-qa/audit-console-artifacts.mjs web/test-results/hosted-connect
+          node scripts/hosted-qa/export-receipts.mjs
+      - name: Hosted summary receipts only
+        if: always() && steps.safe-evidence.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hosted-validation-summaries
+          path: |
+            web/test-results/hosted-export/matrix.json
+            web/test-results/hosted-export/console.json
+            web/test-results/hosted-export/connect.json
+          if-no-files-found: error
+          retention-days: 14
+
+  hosted-portable-windows:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    env:
+      PACT_HOSTED_QA_CLEAN: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.22.0
+      - run: npm install --global npm@11.19.1
+      - run: node scripts/hosted-qa/run.mjs install
+      - name: Contracts, private client, adapters and secret-safe reporting
+        run: node scripts/hosted-qa/run.mjs portable
+
   optional-public-reads:
     if: github.event_name == 'workflow_dispatch' && inputs.live_read_only
     runs-on: ubuntu-24.04
