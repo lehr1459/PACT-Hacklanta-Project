@@ -113,7 +113,15 @@ test('real console setup, signed policy, once-only secrets, rotation, enforcemen
   await page.getByRole('combobox',{name:'Template framework',exact:true}).selectOption(framework);
   const values=await page.locator('textarea').evaluateAll(elements=>elements.map(el=>(el as HTMLTextAreaElement).value).join('\n'));
   expect(!values.includes(original)&&!values.includes('pact_grant_')).toBe(true);expect(values.includes('SET_ONLY_IN_YOUR_SERVER_SECRET_STORE')).toBe(true);
+  const commands=await page.getByRole('textbox',{name:'Runnable example commands',exact:true}).inputValue();
+  const directory=framework==='rest'?'examples/pact-hosted-rest':framework==='express'?'examples/pact-hosted-express':'examples/pact-hosted-next';
+  expect(commands.includes(directory)&&commands.includes('npm --prefix')).toBe(true);
  }
+ const guide=await page.request.get('/developer/guide.md');expect(guide.status()).toBe(200);expect((await guide.text()).includes('server')).toBe(true);
+ const download=page.waitForEvent('download');await page.getByRole('link',{name:'Download OpenAPI contract',exact:true}).click();
+ const artifact=await download;expect(artifact.suggestedFilename()).toBe('pact-openapi.json');
+ const stream=await artifact.createReadStream();if(!stream)throw Error('OpenAPI download unavailable');const parts:Buffer[]=[];for await(const bytes of stream)parts.push(bytes);
+ const contract=JSON.parse(Buffer.concat(parts).toString('utf8'));expect(contract.openapi).toBe('3.1.0');expect(Object.values(contract.paths).flatMap(item=>Object.values(item as object)).length).toBe(35);
  await state(page,'active');expect((await validateCredential(original)).valid).toBe(true);
  await tab(page,'Credentials');const oldRow=page.getByTestId('credential-'+originalId);
  await oldRow.getByRole('button',{name:'Review rotate credential Independent acceptance key',exact:true}).click();

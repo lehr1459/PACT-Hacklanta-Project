@@ -5,7 +5,7 @@ const POLICY_KEY=/^[a-z][a-z0-9-]{0,63}$/;
 function decimal(value){return typeof value==='string'&&/^(?:0|[1-9]\d{0,19})$/.test(value);}
 export function registerAccess(service){
   const {database,reader,now,hash,authenticateKey,authenticateGrant,telemetry,options:{origin}}=service;
-  const db=database.protected??database,{route}=service.internals;
+  const db=database.protected??database,{route,validateBody}=service.internals;
   const appActive=new Map(),keyActive=new Map();
   function admit(key){
     if((appActive.get(key.app_id)??0)>=4||(keyActive.get(key.id)??0)>=4)fail('OVERLOADED',503);
@@ -68,7 +68,7 @@ export function registerAccess(service){
   }
   function safeReason(error){
     if(error?.code==='API_KEY_INVALID'||error?.code==='API_KEY_SCOPE_DENIED'||error?.code==='GRANT_INVALID'||error?.code==='AUTH_INVALID')return'AUTH_INVALID';
-    return ['APP_DISABLED','POLICY_CHANGED','RATE_LIMITED','OVERLOADED','INVALID_INPUT','DATABASE_UNAVAILABLE','RESOURCE_NOT_FOUND'].includes(error?.code)?error.code:'CHAIN_UNAVAILABLE';
+    return ['APP_DISABLED','POLICY_CHANGED','RATE_LIMITED','OVERLOADED','INVALID_INPUT','DATABASE_UNAVAILABLE','RESOURCE_NOT_FOUND','STALE_CHAIN'].includes(error?.code)?error.code:'CHAIN_UNAVAILABLE';
   }
   route('POST','/v1/access/check',async(req,reply)=>{
     const started=performance.now();let key,release,recorded=false;
@@ -82,6 +82,7 @@ export function registerAccess(service){
       strict(req.body,['walletGrant','resourceKey']);
       if(typeof req.body.resourceKey!=='string'||!POLICY_KEY.test(req.body.resourceKey))fail('INVALID_INPUT');
       if(typeof req.body.walletGrant!=='string'||!req.body.walletGrant.startsWith('pact_grant_')||!token(req.body.walletGrant.slice(11)))fail('GRANT_INVALID',401);
+      validateBody(req);
       await quotas(key);
       const grant=await authenticateGrant(req.body.walletGrant,key,db);
       const resource=(await db.query('SELECT * FROM app_resources WHERE app_id=$1 AND resource_key=$2',[key.app_id,req.body.resourceKey])).rows[0];
@@ -117,7 +118,15 @@ export function registerAccess(service){
       if(time>=ctx.validUntil)fail('AUTH_INVALID',401);
       const result={decision:'ALLOW',reason:'ACTIVE_LICENSE',...bound,expiresAt:status.expiry,verifiedAt:new Date(time).toISOString(),
         contextSlot:status.contextSlot,chainTimestamp:status.chainTimestamp,freshness:freshness(status,time,ctx.validUntil)};
-      record('ACTIVE_LICENSE',200,'ALLOW');return result;
+      req.pactFinalGuard=()=>{
+        try{
+          const checked=fresh(status,resource,grant);
+          if(checked>=ctx.validUntil)fail('AUTH_INVALID',401);
+          if(checked>=result.freshness.validUntilMs)fail('STALE_CHAIN',503);
+          record('ACTIVE_LICENSE',200,'ALLOW');
+        }catch(error){record(safeReason(error),error instanceof ApiError?error.status:503);throw error;}
+      };
+      return result;
     }catch(error){
       record(safeReason(error),error instanceof ApiError?error.status:503);
       throw error;

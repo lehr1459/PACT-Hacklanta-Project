@@ -19,6 +19,7 @@ export async function fixture(options={}){
       async readiness(){return{ready:true,network:'devnet',programId:'EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy',
         contextSlot:100,startedAtMs:clock.value,receivedAtMs:clock.value,chainTimestamp:String(Math.floor(clock.value/1000))};},
     }}:{}),...options});
+  if(options.beforeReady)await options.beforeReady(service);
   await service.server.ready();
   return{...service,clock,pepper,async cleanup(){await service.close();if(!options.database)await database.close();}};
 }

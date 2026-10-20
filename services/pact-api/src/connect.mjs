@@ -5,7 +5,7 @@ const TRANSACTION_TTL=300000,CHALLENGE_TTL=120000,CODE_TTL=60000,GRANT_TTL=90000
 function opaque(value,prefix){return typeof value==='string'&&value.startsWith(prefix)&&token(value.slice(prefix.length));}
 export function registerConnect(service){
   const {database:db,now,hash,authenticateKey,options:{origin,profile}}=service;
-  const {route,browser,cookies,setCookie,cookieNames,domainRecords}=service.internals;
+  const {route,browser,cookies,setCookie,cookieNames,domainRecords,validateBody,validateResult}=service.internals;
   const buyer=(req,mutation=false)=>browser(req,mutation,'connectBinding');
   function liveCallback(row){
     if(!row||row.status!=='verified'||Number(row.verified_until)<=now()||profile==='hosted'&&row.local)fail('CALLBACK_UNAVAILABLE',403);
@@ -71,9 +71,12 @@ export function registerConnect(service){
     strict(req.body,['redirectUri','state','codeChallenge','codeChallengeMethod','purpose']);
     text(req.body.redirectUri,2048);text(req.body.purpose,200);
     if(!token(req.body.state)||!token(req.body.codeChallenge)||req.body.codeChallengeMethod!=='S256')fail('INVALID_LOGIN_INPUT');
+    validateBody(req);
     const callback=(await db.query('SELECT * FROM callback_uris WHERE app_id=$1 AND uri=$2',[key.app_id,req.body.redirectUri])).rows[0];
     await currentDNS(liveCallback(callback));
     const transactionId=id('con'),createdAt=now(),expiresAt=createdAt+TRANSACTION_TTL;
+    const loginUrl=new URL('/connect',origin);loginUrl.searchParams.set('transactionId',transactionId);
+    const result=validateResult(req,{transactionId,loginUrl:loginUrl.href,expiresAt,issuer:origin});
     await db.transaction(async tx=>{
       const ctx=await context(tx,{appId:key.app_id,callbackId:callback.id,credentialId:key.id});
       if(ctx.callback.uri!==req.body.redirectUri||ctx.callback.proof_hash!==callback.proof_hash)fail('CALLBACK_UNAVAILABLE',403);
@@ -85,8 +88,7 @@ export function registerConnect(service){
       if(now()>=expiresAt)fail('LOGIN_INVALID',401);
       ctx.check();
     });
-    const loginUrl=new URL('/connect',origin);loginUrl.searchParams.set('transactionId',transactionId);
-    return{transactionId,loginUrl:loginUrl.href,expiresAt,issuer:origin};
+    return result;
   });
   route('GET','/v1/connect/transactions/:transactionId',async(req,reply)=>{
     buyer(req);
@@ -98,6 +100,7 @@ export function registerConnect(service){
   });
   route('POST','/v1/connect/challenge',async req=>{
     const binding=buyer(req,true);strict(req.body,['transactionId','walletAddress']);walletBytes(req.body.walletAddress);
+    validateBody(req);
     const {login}=await current(req.body.transactionId,{needsUnproven:true,bindingHash:hash('buyer-browser',binding)});
     const challengeId=id('buy'),createdAt=now(),expiresAt=Math.min(createdAt+CHALLENGE_TTL,Number(login.expires_at));
     const payloadHash=digest(canonical({transactionId:login.id,redirectUri:login.redirect_uri,stateHash:login.state_hash,
@@ -105,6 +108,7 @@ export function registerConnect(service){
     const issued=message({origin,wallet:req.body.walletAddress,purpose:`application-login: ${login.purpose}`,appId:login.app_id,
       challengeId,binding:hash('buyer-browser',binding),payloadHash,issuedAt:createdAt,expiresAt});
     const exactMessage=`${issued}\nLogin transaction: ${login.id}`;
+    const result=validateResult(req,{challengeId,message:exactMessage,expiresAt});
     await db.transaction(async tx=>{
       const ctx=await context(tx,{appId:login.app_id,callbackId:login.callback_id,callbackRevision:login.callback_revision,epoch:login.policy_epoch,creatorCredentialId:login.creator_credential_id});
       const currentLogin=await transaction(login.id,tx);
@@ -119,7 +123,7 @@ export function registerConnect(service){
       if(now()>=expiresAt)fail('LOGIN_INVALID',401);
       ctx.check();
     });
-    return{challengeId,message:exactMessage,expiresAt};
+    return result;
   });
   route('POST','/v1/connect/verify',async req=>{
     const binding=buyer(req,true);strict(req.body,['transactionId','challengeId','signatureBase64']);
@@ -127,8 +131,9 @@ export function registerConnect(service){
     const challenge=(await db.query(`UPDATE wallet_challenges SET consumed_at=$1 WHERE id=$2 AND transaction_id=$3
       AND binding_hash=$4 AND expires_at>$1 AND consumed_at IS NULL RETURNING *`,[now(),req.body.challengeId,req.body.transactionId,hash('buyer-browser',binding)])).rows[0];
     if(!challenge||!signatureValid(challenge.wallet,challenge.message,req.body.signatureBase64))fail('WALLET_PROOF_INVALID',401);
+    validateBody(req);
     const code=`pact_code_${random()}`;
-    const login=await db.transaction(async tx=>{
+    const result=await db.transaction(async tx=>{
       const login=await transaction(req.body.transactionId,tx);
       const ctx=await context(tx,{appId:login.app_id,callbackId:login.callback_id,callbackRevision:login.callback_revision,epoch:login.policy_epoch,creatorCredentialId:login.creator_credential_id});
       if(ctx.callback.uri!==login.redirect_uri||now()>=Number(challenge.expires_at)
@@ -138,12 +143,14 @@ export function registerConnect(service){
         AND wallet IS NULL AND code_hash IS NULL AND redeemed_at IS NULL AND expires_at>$5 AND active_challenge_id=$6 RETURNING *`,
         [challenge.wallet,hash('login-code',code),expiresAt,login.id,now(),challenge.id])).rows[0];
       if(!issued||now()>=expiresAt||now()>=Number(challenge.expires_at))fail('LOGIN_INVALID',401);
+      const destination=new URL(issued.redirect_uri);
+      destination.searchParams.set('code',code);destination.searchParams.set('state',issued.state);destination.searchParams.set('iss',origin);
+      const result=validateResult(req,{callbackUrl:destination.href});
+      if(now()>=expiresAt||now()>=Number(challenge.expires_at))fail('LOGIN_INVALID',401);
       ctx.check();
-      return issued;
+      return result;
     });
-    const destination=new URL(login.redirect_uri);
-    destination.searchParams.set('code',code);destination.searchParams.set('state',login.state);destination.searchParams.set('iss',origin);
-    return{callbackUrl:destination.href};
+    return result;
   });
   route('POST','/v1/connect/token',async req=>{
     const key=await authenticateKey(req,'connect:write');
@@ -151,6 +158,7 @@ export function registerConnect(service){
     if(!opaque(req.body.code,'pact_code_')||!token(req.body.state)||req.body.issuer!==origin
       ||typeof req.body.codeVerifier!=='string'||!/^[A-Za-z0-9._~-]{43,128}$/.test(req.body.codeVerifier))fail('LOGIN_INVALID',401);
     text(req.body.redirectUri,2048);
+    validateBody(req);
     const codeHash=hash('login-code',req.body.code),challenge=createHash('sha256').update(req.body.codeVerifier,'ascii').digest('base64url');
     const grant=`pact_grant_${random()}`;
     const result=await db.transaction(async tx=>{
@@ -168,15 +176,18 @@ export function registerConnect(service){
       const createdAt=now(),expiresAt=createdAt+GRANT_TTL;
       await tx.query(`INSERT INTO wallet_grants(id,token_hash,app_id,wallet,policy_epoch,provenance_login_id,created_at,expires_at)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,[id('grt'),hash('wallet-grant',grant),login.app_id,login.wallet,login.policy_epoch,login.id,createdAt,expiresAt]);
+      const result=validateResult(req,{walletGrant:grant,walletAddress:login.wallet,appId:login.app_id,environment:'devnet',expiresAt,issuer:origin});
       if(Number(login.code_expires_at)<=now()||Number(login.expires_at)<=now())fail('LOGIN_INVALID',401);
       ctx.check();
-      return{walletGrant:grant,walletAddress:login.wallet,appId:login.app_id,environment:'devnet',expiresAt,issuer:origin};
+      return result;
     });
     return result;
   });
   route('POST','/v1/connect/revoke',async req=>{
     const key=await authenticateKey(req,'connect:write',db,true);strict(req.body,['walletGrant']);
     if(!opaque(req.body.walletGrant,'pact_grant_'))fail('GRANT_INVALID',401);
+    validateBody(req);
+    const result=validateResult(req,{revoked:true});
     await db.transaction(async tx=>{
       const ctx=await context(tx,{appId:key.app_id,credentialId:key.id,allowPaused:true});
       const row=(await tx.query(`UPDATE wallet_grants SET revoked_at=COALESCE(revoked_at,$1) WHERE token_hash=$2 AND app_id=$3
@@ -184,7 +195,7 @@ export function registerConnect(service){
       if(!row)fail('GRANT_INVALID',401);
       ctx.check();
     });
-    return{revoked:true};
+    return result;
   });
   async function authenticateGrant(walletGrant,app,tx=db){
     if(!opaque(walletGrant,'pact_grant_'))fail('GRANT_INVALID',401);

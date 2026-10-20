@@ -1,6 +1,14 @@
 # Hosted API runtime contract
 
-Phases 1–4 contract, 2026-10-19. New `/v1` only; existing `/api/v1` and customer-hosted SDK are unchanged. This is a private custom wallet proof service, not OAuth/OIDC/SIWS conformance.
+Phases 1–6 contract, 2026-10-19. New `/v1` only; existing `/api/v1` and customer-hosted SDK are unchanged. This is a private custom wallet proof service, not OAuth/OIDC/SIWS conformance.
+
+## Runtime schemas and downloadable OpenAPI
+
+`src/contract.mjs` exports immutable `schemas`, `actionSchemas` and the exact 35-operation registry. Existing semantic checks retain canonical address/URL, relative expiry, owner, signature, replay and lock behavior. Full request schemas compile through Fastify's existing JSON Schema compiler at explicit pre-effect checkpoints, after those checks where their error categories or one-use signature consumption matter. Invalid own signature attempts still consume the challenge and return 401; generic early schema validation must not turn these into reusable 400 failures. No coercion, default insertion or unknown-property removal is enabled.
+
+The shared route wrapper checks every terminal supported JSON success/decision against the same response schemas; errors are also schema checked. No response serializer silently strips unexpected fields. Access performs a final synchronous check after response validation, using its original read-start and authority deadlines; validation never refreshes the lease, and a rejected result is never counted as ALLOW. Unknown response fields/schema versions are not consumer permission.
+
+`npm run openapi` generates `services/pact-api/openapi.json` and `web/public/developer/openapi.json` from this registry and its request/response/action schemas. `npm run openapi:check` and the service contract tests detect byte drift, missing route registrations, unresolved references and mutation of the frozen schemas. The static web download is `/developer/openapi.json`; it is not a new API gateway endpoint. The OpenAPI server domain is an explicitly invalid documentation placeholder, not a deployment. Cookie security includes the HTTPS names and the documented local HTTP variants; mutations additionally require the exact Origin and CSRF header. Credentials/scopes, status/error unions, TTLs and original chain-freshness units are documented without changing existing SDK exports.
 
 ## Factory and topology
 

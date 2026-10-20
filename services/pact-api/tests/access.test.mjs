@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
 import {fixture,client,wallet} from './fixtures.mjs';
 const PROGRAM='EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy',OFFER='11111111111111111111111111111111';
-async function setup(){
+async function setup(beforeReady){
   const state={mode:'active',seller:null,hold:null,quarantined:0,calls:0};let service;
   const reader={
     diagnostics:()=>({quarantined:state.quarantined}),
@@ -19,7 +19,7 @@ async function setup(){
     },
     async readiness(){return{ready:true,network:'devnet',programId:PROGRAM,contextSlot:101,startedAtMs:service.clock.value,receivedAtMs:service.clock.value};},
   };
-  service=await fixture({reader});
+  service=await fixture({reader,beforeReady});
   const admin=await client(service);state.seller=admin.identity.address;
   const app=(await admin.request('POST','/v1/developer/apps',{name:'Access fixture',framework:'rest'})).json.app;
   const url=`/v1/developer/apps/${app.id}`;
@@ -86,6 +86,27 @@ test('final post-RPC key/grant/policy checks and post-commit freshness fail clos
       release();const result=await pending;assert.equal(result.status,401);assert.notEqual(result.json.decision,'ALLOW');
     }finally{await service.cleanup();}
   }
+});
+
+test('response contract validation cannot extend the original access deadline or report a rejected ALLOW',async t=>{
+  const {service,access}=await setup(instance=>{
+    instance.server.addHook('preHandler',async req=>{
+      if(req.url!=='/v1/access/check')return;
+      const original=req.compileValidationSchema.bind(req);
+      Object.defineProperty(req,'compileValidationSchema',{value:schema=>{
+        const validate=original(schema);
+        return value=>{
+          const valid=validate(value);
+          if(value?.decision==='ALLOW')service.clock.value+=8000;
+          return valid;
+        };
+      }});
+    });
+  });t.after(()=>service.cleanup());
+  const response=await access();assert.equal(response.status,503);assert.equal(response.json.error.code,'STALE_CHAIN');
+  assert.notEqual(response.json.decision,'ALLOW');
+  await service.flushTelemetry();
+  assert.equal(Number((await service.database.query('SELECT COALESCE(SUM(allowed),0) AS allowed FROM usage_aggregates')).rows[0].allowed),0);
 });
 test('collector failure cannot alter ALLOW; chain reservations and schema readiness have bounded failure behavior',async t=>{
   const {service,state,access}=await setup();t.after(()=>service.cleanup());

@@ -9,7 +9,9 @@
     "dev": "node src/dev.mjs",
     "start": "node src/start.mjs",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
-    "migrate": "node src/migrate.mjs"
+    "migrate": "node src/migrate.mjs",
+    "openapi": "node scripts/openapi.mjs",
+    "openapi:check": "node scripts/openapi.mjs --check"
   },
   "dependencies": { "@pact/sdk": "file:../../packages/pact-sdk", "fastify": "5.12.7", "pg": "8.23.1" },
   "devDependencies": { "@electric-sql/pglite": "0.5.10" }

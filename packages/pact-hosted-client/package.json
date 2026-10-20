@@ -1,0 +1,11 @@
+{
+  "name": "@pact/hosted-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.19.1",
+  "engines": {"node": ">=24.22.0 <25"},
+  "exports": {".": {"types": "./index.d.ts", "browser": "./browser-denied.mjs", "node": "./index.mjs", "default": "./browser-denied.mjs"}},
+  "files": ["index.mjs", "index.d.ts", "browser-denied.mjs", "README.md"],
+  "scripts": {"test": "node --test tests/*.test.mjs"}
+}

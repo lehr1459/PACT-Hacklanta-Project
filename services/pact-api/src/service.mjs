@@ -7,6 +7,7 @@ import {registerConnect} from './connect.mjs';
 import {registerAccess} from './access.mjs';
 import {verifySchema} from './database.mjs';
 import {createAccessTelemetry} from './telemetry.mjs';
+import {operation,operations,validateBody,validateContract,validateOutput} from './contract.mjs';
 import {ApiError, fail, random, id, digest, keyed, equal, token, canonical, walletBytes,
   signatureValid, message, origin as validateOrigin, callback, strict, text, SCOPES} from './security.mjs';
 
@@ -62,6 +63,10 @@ export async function createService(options) {
     } finally {clearTimeout(timer);}
   }
   const envelope = (req, value) => ({schemaVersion: 1, requestId: req.id, ...value});
+  const validateResult=(req,value,status=200)=>{
+    validateOutput(req,operation(req.method,req.routeOptions.url),status,envelope(req,value));
+    return value;
+  };
   const cookieNames = {binding: secure ? '__Secure-pact_hosted_binding' : 'pact_hosted_binding',
     connectBinding:secure?'__Secure-pact_connect_binding':'pact_connect_binding',
     session: secure ? '__Secure-pact_hosted_session' : 'pact_hosted_session'};
@@ -122,10 +127,20 @@ export async function createService(options) {
   server.setErrorHandler((error, req, reply) => {
     const status = error instanceof ApiError ? error.status : error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 503;
     const code = error instanceof ApiError ? error.code : status === 413 ? 'BODY_TOO_LARGE' : status < 500 ? 'INVALID_INPUT' : 'SERVICE_UNAVAILABLE';
-    reply.code(status).send(envelope(req,{error:{code,message:code}}));
+    const value=envelope(req,{error:{code,message:code}});
+    validateContract(req,'Error',value,'RESPONSE_SCHEMA_INVALID',503);
+    reply.code(status).send(value);
   });
-  server.setNotFoundHandler((req,reply) => reply.code(404).send(envelope(req,{error:{code:'NOT_FOUND',message:'NOT_FOUND'}})));
+  server.setNotFoundHandler((req,reply) => {
+    const value=envelope(req,{error:{code:'NOT_FOUND',message:'NOT_FOUND'}});
+    validateContract(req,'Error',value,'RESPONSE_SCHEMA_INVALID',503);
+    return reply.code(404).send(value);
+  });
+  const registeredOperations=new Set();
   function route(method,url,handler) {
+    const contract=operation(method,url);
+    if(registeredOperations.has(contract.operationId))fail('CONTRACT_ROUTE_DUPLICATE',503);
+    registeredOperations.add(contract.operationId);
     server.route({method,url,handler:async (req,reply) => {
       if(req.pactAborted)fail('REQUEST_ABORTED',503);
       req.pactWorkPending=true;
@@ -133,7 +148,10 @@ export async function createService(options) {
         if (Object.keys(req.query ?? {}).length) fail('INVALID_INPUT');
         const result = await handler(req,reply);
         if (reply.sent) return;
-        return envelope(req,result ?? {});
+        const output=validateOutput(req,contract,reply.statusCode,envelope(req,result ?? {}));
+        // Contract compilation/validation cannot extend the access snapshot lease.
+        req.pactFinalGuard?.();
+        return output;
       }finally{req.pactWorkPending=false;releaseAdmission(req);}
     }});
   }
@@ -230,6 +248,7 @@ export async function createService(options) {
       await db.query('UPDATE action_challenges SET consumed_at=$1 WHERE id=$2 AND consumed_at IS NULL',[now(),challenge.id]);
       fail('ACTION_PROOF_INVALID',401);
     }
+    validateBody(req);
     const prepared = prepare ? await prepare(principal,req.body.payload) : undefined;
     return db.transaction(async tx => {
       const validSession = await lockSession(tx,principal);
@@ -238,6 +257,7 @@ export async function createService(options) {
         AND consumed_at IS NULL AND expires_at>$1 RETURNING id`,[now(),challenge.id]);
       if (!consumed.rows[0]) fail('ACTION_PROOF_INVALID',401);
       const result = await work(tx,principal,app,req.body.payload,prepared);
+      validateResult(req,result);
       await audit(tx,req,principal,app.id,action);
       adminLease(validSession);
       if(now()>=Number(challenge.expires_at))fail('ACTION_PROOF_INVALID',401);
@@ -268,18 +288,21 @@ export async function createService(options) {
   });
   route('POST','/v1/developer/auth/challenge',async req => {
     const binding=browser(req,true); strict(req.body,['walletAddress']); walletBytes(req.body.walletAddress);
+    validateBody(req);
     const challengeId=id('adm'), issuedAt=now(), expiresAt=issuedAt+120000;
     const issuedMessage=message({origin,wallet:req.body.walletAddress,purpose:'developer-admin-login',challengeId,
       binding:hash('browser',binding),issuedAt,expiresAt});
+    const result=validateResult(req,{challengeId,message:issuedMessage,expiresAt});
     await db.query('INSERT INTO admin_challenges(id,wallet,binding_hash,message,created_at,expires_at) VALUES($1,$2,$3,$4,$5,$6)',
       [challengeId,req.body.walletAddress,hash('browser',binding),issuedMessage,issuedAt,expiresAt]);
-    return {challengeId,message:issuedMessage,expiresAt};
+    return result;
   });
   route('POST','/v1/developer/auth/verify',async (req,reply) => {
     const binding=browser(req,true); strict(req.body,['challengeId','signatureBase64']);
     const proof=(await db.query(`UPDATE admin_challenges SET consumed_at=$1 WHERE id=$2 AND binding_hash=$3
       AND expires_at>$1 AND consumed_at IS NULL RETURNING *`,[now(),text(req.body.challengeId,64),hash('browser',binding)])).rows[0];
     if (!proof || !signatureValid(proof.wallet,proof.message,req.body.signatureBase64)) fail('AUTH_INVALID',401);
+    validateBody(req);
     const sessionToken=random(), issuedAt=now(), expiresAt=issuedAt+900000;
     const account=await db.transaction(async tx => {
       const account=(await tx.query(`INSERT INTO developer_accounts(id,wallet,created_at) VALUES($1,$2,$3)
@@ -289,6 +312,7 @@ export async function createService(options) {
       if(token(oldToken)) await tx.query('UPDATE admin_sessions SET revoked_at=$1 WHERE token_hash=$2',[issuedAt,hash('admin-session',oldToken)]);
       await tx.query('INSERT INTO admin_sessions(token_hash,account_id,binding_hash,created_at,expires_at) VALUES($1,$2,$3,$4,$5)',
         [hash('admin-session',sessionToken),account.id,hash('browser',binding),issuedAt,expiresAt]);
+      validateResult(req,{authenticated:true,account:{id:account.id,walletAddress:account.wallet},expiresAt});
       if(now()>=Number(proof.expires_at)||now()>=expiresAt)fail('AUTH_INVALID',401);
       return account;
     });
@@ -298,6 +322,8 @@ export async function createService(options) {
   route('POST','/v1/developer/auth/logout',async (req,reply) => {
     browser(req,true); strict(req.body,[]);
     const principal=await session(req);
+    validateBody(req);
+    validateResult(req,{authenticated:false});
     await db.query('UPDATE admin_sessions SET revoked_at=$1 WHERE token_hash=$2',[now(),principal.token_hash]);
     setCookie(reply,cookieNames.session,'',0); return {authenticated:false};
   });
@@ -306,14 +332,16 @@ export async function createService(options) {
     strict(req.body,['name','framework'],['description']); text(req.body.name);
     text(req.body.description ?? '',500,0);
     if(!FRAMEWORKS.includes(req.body.framework)) fail('INVALID_INPUT');
+    validateBody(req);
     return db.transaction(async tx => {
       const validSession=await lockSession(tx,principal);
       const count=(await tx.query('SELECT COUNT(*) AS count FROM developer_applications WHERE owner_id=$1',[principal.account_id])).rows[0];
       if(Number(count.count)>=20) fail('APP_QUOTA',429);
       const app=(await tx.query(`INSERT INTO developer_applications(id,owner_id,name,description,framework,created_at,updated_at)
         VALUES($1,$2,$3,$4,$5,$6,$6) RETURNING *`,[id('app'),principal.account_id,req.body.name,req.body.description ?? '',req.body.framework,now()])).rows[0];
+      const result=validateResult(req,{app:appView(app)});
       await audit(tx,req,principal,app.id,'app.create');
-      adminLease(validSession);return {app:appView(app)};
+      adminLease(validSession);return result;
     });
   });
   route('GET','/v1/developer/apps',async req => {
@@ -325,11 +353,13 @@ export async function createService(options) {
     browser(req,true);const principal=await session(req);
     strict(req.body,['action','appId','payload']);const app=await owned(db,req.body.appId,principal);
     const payloadHash=validatePayload(req.body.action,req.body.payload), challengeId=id('act'), issuedAt=now(), expiresAt=issuedAt+120000;
+    validateBody(req);
     const issuedMessage=message({origin,wallet:principal.wallet,purpose:req.body.action,challengeId,
       binding:principal.token_hash,appId:app.id,payloadHash,issuedAt,expiresAt});
+    const result=validateResult(req,{challengeId,message:issuedMessage,payloadHash,expiresAt});
     await db.query(`INSERT INTO action_challenges(id,account_id,session_hash,app_id,action,payload_hash,message,created_at,expires_at)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,[challengeId,principal.account_id,principal.token_hash,app.id,req.body.action,payloadHash,issuedMessage,issuedAt,expiresAt]);
-    return {challengeId,message:issuedMessage,payloadHash,expiresAt};
+    return result;
   });
   route('PATCH','/v1/developer/apps/:appId',req => mutate(req,'app.update',async (tx,principal,app,payload) => {
     const row=(await tx.query(`UPDATE developer_applications SET name=$1,description=$2,framework=$3,status=$4,updated_at=$5
@@ -445,6 +475,7 @@ export async function createService(options) {
   }
   route('POST','/v1/credentials/validate',async req=>{
     strict(req.body,[]);const credential=await authenticateKey(req,'access:check');
+    validateBody(req);
     return{valid:true,appId:credential.app_id,credentialId:credential.id,environment:credential.environment,scopes:JSON.parse(credential.scopes)};
   });
   const reader=options.reader??createPlatformReader({...options.readerOptions,now});
@@ -461,11 +492,12 @@ export async function createService(options) {
   const telemetry=createAccessTelemetry(db,now);
   const service={server,database:db,reader,chainRead,authenticateKey,now,hash,options:{origin,profile},telemetry,
     flushTelemetry:telemetry.flush,diagnostics:()=>({http:{active,...admitted},chain:{...chainActive},telemetry:telemetry.diagnostics(),database:db.diagnostics?.()}),
-    internals:{route,envelope,session,owned,audit,mutate,browser,cookies,setCookie,cookieNames,domainRecords,validatePayload,appView,keyView,callbackView,
+    internals:{route,envelope,session,owned,audit,mutate,browser,cookies,setCookie,cookieNames,domainRecords,validatePayload,validateBody,validateResult,appView,keyView,callbackView,
       registerAction(action,validator){if(ACTIONS.includes(action)||additionalActions.has(action))fail('DUPLICATE_ACTION',503);additionalActions.set(action,validator);}},
     async close(){for(const entry of dnsPending)entry.resolver?.cancel();await server.close();await telemetry.flush();}};
   registerResources(service);
   registerConnect(service);
   registerAccess(service);
+  if(registeredOperations.size!==operations.length)fail('CONTRACT_ROUTE_MISSING',503);
   return service;
 }
