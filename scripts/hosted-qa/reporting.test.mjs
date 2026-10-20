@@ -62,3 +62,14 @@ test('actual browser reporter binds current run to its production build marker',
   const receipt=JSON.parse(await readFile(output,'utf8'));assert.equal(receipt.runId,runId);assert.equal(receipt.buildRunId,runId);assert.equal(receipt.revision,revision);assert.equal(receipt.buildRevision,revision);
  }finally{for(const[key,value]of Object.entries({PACT_HOSTED_QA_RUN_ID:oldRun,PACT_HOSTED_QA_REVISION:oldRevision})){if(value===undefined)delete process.env[key];else process.env[key]=value;}}
 });
+
+test('legacy Base discovery preserves its cases and cannot collect sensitive hosted suites',()=>{
+ const result=spawnSync(process.execPath,[path.join(root,'web/node_modules/@playwright/test/cli.js'),'test','--list','--reporter=json','--config',path.join(root,'web/playwright.config.ts')],{cwd:root,encoding:'utf8',windowsHide:true});
+ assert.equal(result.status,0,'legacy discovery must complete without starting fixtures');
+ let report;try{report=JSON.parse(result.stdout);}catch{throw Error('Unsupported discovery receipt');}
+ const files=new Set();let cases=0;
+ function visit(suite){if(suite.file)files.add(suite.file.replaceAll('\\','/'));cases+=(suite.specs??[]).reduce((total,spec)=>total+(spec.tests?.length??0),0);for(const child of suite.suites??[])visit(child);}
+ for(const suite of report.suites??[])visit(suite);
+ assert.ok(cases>0&&files.has('browser.spec.ts'),'existing Base cases remain collected');
+ assert.equal([...files].some(file=>/(?:^|\/)hosted\//.test(file)),false,'hosted proofs must never enter legacy trace/reporting configuration');
+});
