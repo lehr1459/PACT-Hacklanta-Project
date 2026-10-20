@@ -25,7 +25,7 @@ Accept the concrete [clock model](CLOCK_ADR.md) and [operator procedures](OPERAT
 
 ## Staging acceptance record
 
-1. Approve a new staging target. Do not reuse or replace the older public site. Confirm current hosted-platform implementation/security/QA report has no unresolved consequential defect and both required remote CI lanes pass at the proposed exact revision.
+1. Approve a new staging target. Do not reuse or replace the older public site. Confirm current implementation/security/QA reports have no unresolved consequential defect. At the proposed exact revision require the original `node-and-browser` and `pinned-chain` jobs plus the new `hosted-api-and-browser` and `hosted-portable-windows` jobs to pass, including actual Linux container execution. Owner-approved push/run and required-status configuration remain separate actions; the foundation's earlier green run is insufficient.
 2. Supply external configuration through the approved secret manager. Verify runtime and schema version, migration checksums, app/key/grant revocation, fixed Solana Devnet genesis/program, exact PACT origin and gateway restrictions. No credentials belong in browser build variables.
 3. Prove liveness separately from readiness. DB/RPC/auth outages and malformed upstream state must deny protected requests. Measure protected admission under public/auth load; do not widen freshness limits to meet latency targets.
 4. Register two independent developer applications and distinct admin wallets. Prove cross-tenant reads/writes fail, callbacks require domain proof and signed mutation, and key creation/rotation/revoke works without secret retention in browser storage/logs.

@@ -10,6 +10,9 @@ Solana Devnet is the primary development environment. The validated Base Sepolia
 | --- | --- |
 | `web/` | Next.js marketplace: seller, buyer, verification, Studio integration and versioned REST routes |
 | `packages/pact-sdk/` | Public verification, checkout, widget, React and server APIs |
+| `services/pact-api/` | Private API-first developer service, PostgreSQL migrations and hosted contracts |
+| `packages/pact-hosted-client/` | Private backend-only typed REST adapter |
+| `examples/pact-hosted-*` | Enforcing Express/Next backends and REST diagnostics |
 | `solana/` | Rust program, wire specification, pinned tooling and local bytecode tests |
 | `contracts/` | Preserved Base Sepolia contract, ABI, evidence, tooling and tests |
 | `examples/pact-demo-app/` | Independent read-only SDK license gate |
@@ -40,6 +43,10 @@ With that same explicit environment, `npm --prefix web run build` creates the lo
 
 ## Integration
 
+The new API-first integration uses `/integrate/developer` to register applications, verify callbacks and seller-owned offers, manage credentials and inspect usage. Application backends authenticate wallet grants and ask the PACT REST API before granting access. Start with the [hosted integration guide](docs/platform/hosted/INTEGRATION_GUIDE.md), [local setup](docs/platform/hosted/LOCAL_TESTING.md), [hosted OpenAPI](services/pact-api/openapi.json) and [implementation evidence](docs/platform/hosted/IMPLEMENTATION_REPORT.md). This is locally implemented private-pilot software; the older public site is unchanged. New remote CI/container execution and owner-approved staging/real-wallet acceptance remain open gates.
+
+Customer-hosted SDK integration remains an alternative at `/integrate#self-hosted`. The following guides describe that preserved model.
+
 Start with the [developer quickstart](docs/platform/quickstart.md), [SDK reference](packages/pact-sdk/README.md), [REST specification](docs/platform/openapi.json), [integration wizard](docs/INTEGRATION_WIZARD.md), or [embedded checkout guide](docs/EMBEDDED_CHECKOUT.md). The SDK is local and unpublished; install its actual local path or build and pack it for another machine.
 
 The root SDK verification API remains compatible alongside opt-in `/checkout`, `/widget`, `/v1`, `/server` and `/react` entrypoints. Client-side gates demonstrate entitlement checks. Protected resources require wallet authentication and a fresh server-side entitlement check. Current authentication deliberately supports one persistent Node process and fails closed in known serverless environments; see [security limits](docs/platform/security.md).
@@ -57,6 +64,8 @@ node scripts/validation/run.mjs all-chain --clean
 ```
 
 The runner installs the SDK first and validates all three apps, API/auth, generated integrations, packed consumers, browser modes and artifact/dependency policies. Select targeted lanes from the validation guide for ordinary development; do not run shared Next builds concurrently.
+
+The API-first platform additionally requires the [complete hosted gate](scripts/hosted-qa/README.md#complete-hosted-acceptance-gate), including native PostgreSQL, both production browser suites, private consumers, all seven dependency graphs and production/container artifact checks. Existing foundation CI receipts do not validate the unpublished feature branch. Node security review is due **2026-10-21**; scoped SDK dependency exceptions expire **2026-11-15**.
 
 Use [current validation](docs/development/VALIDATION.md) for the clean committed-checkout runner, setup/example/packed-consumer lanes and explicit skips; the [execution record](docs/development/EXECUTION.md) distinguishes observed results from pending external gates. No lint command is configured. See [Solana tooling](solana/README.md) for local SBF/LiteSVM validation and [Base tooling](contracts/SETUP.md) for pinned Foundry validation. Compiled Solana bytecode and exported Base ABI/evidence are required inputs.
 

@@ -6,7 +6,9 @@ Keep local startup configuration separate from fixture validation. Browser/test/
 
 ## Low-code developer integration
 
-Open `/integrate` from **Integrate your app** in the marketplace. Next.js App Router and React TSX developers can name their app, validate an existing Devnet offer, and copy a local SDK install command, configuration, wallet-connected gate and self-contained AI coding prompt. Creating an offer uses the existing Seller studio and requires separate operator transaction authorization.
+Open `/integrate` from **Integrate your app** in the marketplace. The API-first entry opens `/integrate/developer` for application registration, callback verification, seller-owned resource policies, credentials, integration commands, usage and audit. It requires the separately running local hosted service and fixed `/v1` gateway; follow [local setup](../docs/platform/hosted/LOCAL_TESTING.md) and the [integration guide](../docs/platform/hosted/INTEGRATION_GUIDE.md). The feature has not replaced the older public deployment; remote CI/container and owner staging/wallet acceptance remain open gates.
+
+The preserved customer-hosted option is at `/integrate#self-hosted`. Next.js App Router and React TSX developers can name their app, validate an existing Devnet offer, and copy a local SDK install command, configuration, wallet-connected gate and self-contained AI coding prompt. Creating an offer uses the existing Seller studio and requires separate operator transaction authorization.
 
 The SDK remains unpublished; build `packages/pact-sdk` before a clean web install/build. This web application now uses the local `@pact/sdk` package. The wizard performs public reads only and its preview states are explicitly synthetic. Generated client-side UI gating alone is not production-grade security; confidential backend resources need wallet authentication and fresh server authorization. No app registration, database or signing credentials are introduced.
 

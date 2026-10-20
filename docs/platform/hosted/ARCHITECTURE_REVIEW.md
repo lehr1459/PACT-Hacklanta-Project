@@ -121,3 +121,9 @@ Track **2026-10-21 Node security review** and **2026-11-15 dependency-exception 
 - [node-postgres transactions](https://node-postgres.com/features/transactions): transaction statements use one client, not arbitrary pool queries.
 - [PostgreSQL UPDATE](https://www.postgresql.org/docs/current/sql-update.html): conditional update and `RETURNING` support atomic compare-and-consume.
 - [Solana messages and auth](https://solana.com/docs/frontend/messages-and-auth): message proof is separate from transaction approval.
+
+## Final local integration review
+
+The architecture reviewer independently inspected the final clean hosted summaries at `ead5ba0`: all20commands pass; console16/connect12 have zero skips/errors; the production artifact has67files, `sourceDirty:false`, actual HTTP smoke and `container:not-executed`. Git confirms unchanged protected SDK/chain/contracts/original examples, foundation branch57b425f and the report's exact four-file606→ac1949e delta. These are inspected receipts, not a claim that this reviewer executed every lane.
+
+No new consequential implementation/report defect was identified. Limited custom pilot authentication, one-process/trusted-clock/volume assumptions and unsupported public SSO/replicas remain explicit. Actual remote CI, Docker, provider/real-wallet acceptance and rollout remain unclaimed. Closeout requires independent QA's actual remaining legacy receipts to replace pending reconciliation; root owns that final integration and must not relabel the earlier failed aggregate run.

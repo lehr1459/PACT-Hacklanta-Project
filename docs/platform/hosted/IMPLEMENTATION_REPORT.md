@@ -1,6 +1,6 @@
 # API-first integration implementation evidence
 
-This is a live engineering record, started 2026-10-19. Pending rows are not completion claims. Source specification: [master plan](MASTER_PLAN.md). Current branch: `codex/api-first-integrations`. Existing public deployment, Solana program and isolated Base fallback are preserved.
+Engineering record started 2026-10-19. Phases0–7 and the Phase8 implementation are complete locally; final validation evidence and remaining external gates are distinguished below. Source specification: [master plan](MASTER_PLAN.md). Current branch: `codex/api-first-integrations`. Existing public deployment, Solana program and isolated Base fallback are preserved. Earlier phase sections retain their historical scope and pending items; the final reconciliation supersedes their progress statements.
 
 ## Checkpoints and phase gates
 
@@ -14,8 +14,8 @@ This is a live engineering record, started 2026-10-19. Pending rows are not comp
 | 4: access decision engine | `3772d0b` — PASS locally | Backend-only key/grant/resource authorization through the unchanged hardened reader. Independent combined native PostgreSQL/HTTP/gateway/actual SDK55/55. Root post-fix service19/19; independent security3/3 and review PASS. |
 | 5: integration console | `0b69de3` — PASS locally | Functional owner console and preserved generator. Service29/29, independent console16/16, connect12/12 and native-PG/API55/55; QA/security PASS. |
 | 6: contracts/docs/examples | `7014447` — PASS locally | Runtime/OpenAPI35 operations and real enforcing consumers. Service34/34, independent native/API/framework60/60, console16/16, connect12/12; independent QA/security PASS. |
-| 7: reliability/security/operations | PASS locally; focused commit follows | Service68/68, independent native84/84, production console16/16 + connect12/12, safe reporter/artifact checks and independent QA/security review. Durable clock, finite caps, actual deadlines, bounded retention/erase and isolated restore/rekey drills. |
-| 8: complete validation | Pending | Exact new-commit remote CI also requires authorized push/run. |
+| 7: reliability/security/operations | `4f01e68` — PASS locally | Service68/68, independent native84/84, production console16/16 + connect12/12, safe reporter/artifact checks and independent QA/security review. Durable clock, finite caps, actual deadlines, bounded retention/erase and isolated restore/rekey drills. |
+| 8: complete validation | `da10e55`, `606425d`, `ead5ba0`, `ac1949e` — local acceptance PASS | Clean hosted20-command matrix and production artifact smoke pass; complete original Node/browser/chain coverage is reconciled by exact input binding below. Clock sampling, header transport probe and legacy discovery corrections are focused commits. Independent QA/security/architecture accept the local scope. New remote CI and actual container execution remain unexecuted exit gates. |
 | 9: staging/wallet acceptance | Preparation only | [Owner checklist](STAGING_AND_PILOT.md). No hosting or wallet action authorized. |
 | 10: controlled pilot | Preparation only | Owner decisions and invitation/rollout approval required; no external app edits. |
 
@@ -120,6 +120,82 @@ Independent findings fixed before this gate: final disk I/O could cross a deadli
 Six historical proof-review screenshots were moved into ignored private quarantine without viewing/exporting their contents. Earlier textual audits did not establish raster safety. Current connect capture occurs before proof creation; both hosted suites disable automatic recordings and raw error output. The first connect collection attempts failed because the new afterEach hook lacked Playwright's required destructuring argument; the test-only correction preserves all assertions, and original failed receipts remain separate.
 
 Receipts under ignored `web/test-results/hosted-qa-baseline/`: `phase7-service-backend-final.log`, `phase7-web-build.log`, `phase7-next-build.log`, `phase7-native-final.log`, `phase7-console.log`, `phase7-connect-final.log`, `phase7-artifact-audit.json` and maintenance/deadline/security probes. Independent [QA](QA_REVIEW.md) and [security](SECURITY_REVIEW.md) reviews accept the local phase. Phase8 adds exact committed-source CI/artifact gates; remote execution and provider/human acceptance remain separate.
+
+## Phase8 validation and private artifacts
+
+Commit `da10e55c3afea75febe73d2386e785e36ff764ad` adds the complete hosted runner, an immutable-image Docker build/smoke, exact source-copy allowlists, fresh production installation smoke and narrowly reconstructed CI summaries. Existing Linux/browser and Windows/chain jobs keep their behavior; new hosted PostgreSQL/browser/container and Windows portable jobs are additional gates. An operator must separately configure any required branch-protection status checks; no live repository settings changed.
+
+The hosted runner refuses dirty/uncommitted input and active environment files, mandates every named test file, requires nonempty zero-failure/cancel/skip/todo Node receipts, actually builds/runs the Next consumer and requires all16console+12connect cases. Source revision/run UUID bind the production build and browser receipts; final source changes fail except exact generated Next reference contents. Export refuses stale/contradictory receipts and existing/linked destinations, reconstructs only fixed status/numeric data and uploads three exact files after artifact scans. Raw logs, proofs, recordings, clocks, SQL backups and private quarantine are excluded.
+
+Independent security executes **22/22 policy tests**, zero skips/failures; independent QA executes the prior21-case policy suite and separately inspects the final signal-exit cleanup correction. Both independently review the final runner/export/artifact/dependency boundaries with no unresolved consequential source finding. Seven live audited graphs pass: service/client/common/Express/Next/REST have zero reported findings; the separately linked unchanged SDK retains four moderate affected packages under exact reviewed advisory/version/reachability exceptions expiring November15. New/drifted/expanded/unavailable reports fail closed; no audit fix or deadline extension occurred.
+
+Finite native load independently passes24fresh bound decisions over actual HTTP/SQL/hardened SDK, two apps and four concurrent reads, followed by RPC-outage503/recovery and settled reservations. Host clock authority is real; chain bytes/provider are local synthetic fixtures. Initial security measurement p50/p95/p99 was53.0/117.8/123.7ms; subsequent runs differ, so these are bounded local observations, not provider capacity/SLA evidence. The final clean run retains its own numeric receipt.
+
+A fresh allowlisted production install passes actual readiness, signed administrator/key mint, key validation, graceful restart preserving session/key and revoke denial. Initial receipt `phase8-production-artifact-root.log` is honestly labeled dirty source at4f01e68; final committed replay is separate below. PGlite/esbuild are excluded; unchanged SDK TypeScript can remain through Solana codecs' optional production peer. An initial assertion incorrectly assumed it would be omitted; npm's installed dependency explanation established the actual peer edge, and no dependency/lockfile was changed. The image verifies Node/npm, runs nonroot and its prepared smoke requires read-only root plus private clock storage. Local Docker is unavailable; this is not a container execution pass or hosted TLS/provider acceptance.
+
+### Final clean hosted and artifact evidence
+
+Clean committed checkout `web/test-results/hosted-web/final` passes all **20 ordered hosted commands** at `ead5ba0a51c4f7a8d4a3e54695f9a9bff552a9a0`, run UUID `aa353a1b-a3e2-48df-b83f-6c324c978c72`. Its matrix is `web/test-results/hosted-ci/results.json`; captured outer log is `web/test-results/hosted-qa-baseline/phase8-final-hosted-ead.log`. No workstation environment file was read/copied and the root web build was untouched.
+
+| Check | Actual local result |
+| --- | --- |
+| Hosted service | 74/74 passed; zero skips |
+| Native PostgreSQL, actual HTTP/gateway, unchanged hardened SDK, production Express/Next consumers, recovery and finite load | 85/85 passed; zero skips |
+| Production developer console / connect browsers | 16/16 and12/12 passed; zero skips/runner errors |
+| Private client/common/Express/Next/REST package checks | 25 passed in five mandatory commands |
+| Contracts / compilation / builds |35-operation OpenAPI drift, Next route generation/typecheck, both production builds passed |
+| Dependencies / private archive | Seven live graph checks and six policy tests passed; reproducible packed-client consumer passed |
+| Final policy/discovery supplement at `ac1949e` |23/23 passed; zero skips (`phase8-final-policies-ac1949e.log`) |
+| Restricted receipt export | Three reconstructed summaries passed actual source/build/run binding and export; `phase8-final-export.log` |
+| Fresh production artifact at `ead5ba0` |67 allowlisted files; `sourceDirty:false`; actual HTTP readiness, malformed-key denial, signed key mint/validation, graceful restart and signed revoke passed (`phase8-final-artifact-ead.log`) |
+| Container / new remote CI | Not executed locally; Docker unavailable. Remote execution requires authorized push/run. |
+
+Final artifact scope is a fresh unpacked production installation against native PostgreSQL, not an executed image. Its private directory is `web/test-results/hosted-artifact/a9856135adbd59e1` inside that clean candidate. The final artifact receipt supersedes the earlier dirty-source smoke without erasing it. Only numeric/status summaries are export-eligible; all raw logs, backups and private evidence stay local.
+
+The final finite-load receipt records24positive decisions, four concurrent requests over two apps, p50 **48.714ms**, p95 **97.913ms**, p99/max **176.464ms**, one expected outage denial, one recovery allowance and all admissions settled. These are actual workstation/SQL/HTTP/SDK/durable-clock observations over local encoded Devnet RPC fixtures; they establish neither external-provider performance nor a production SLA.
+
+Root also inspected the final candidate's approved sanitized narrow-console and desktop connect-start captures. The console shows backend credentials separately from wallet controls and disables signed mutation when the proven wallet is disconnected; the connect page presents the requesting application/site, issuer, Devnet, purpose and expiry before wallet connection. These current pre-proof/sanitized captures are separate from unread historical private quarantine. Browser assertions cover keyboard behavior and narrow layout; actual assistive devices and Phantom remain human acceptance.
+
+### Corrections and preserved failed attempts
+
+The initial `da10e55` hosted run had84/85 native cases; its finite-load503 remains causally unclassified. Investigation independently reproduced a healthy host-clock sampling defect: scheduler preemption between wall and monotonic reads could incorrectly latch unavailable. Commit `606425d` brackets the wall sample with monotonic reads, accepts only a bounded tight pair and retries at most three times without weakening rollback/freeze/expiry checks. The conservative lower offset bound and strict elapsed-time floor are documented in [CLOCK_ADR](CLOCK_ADR.md). Independent senior and security reviews passed; the final service suite includes21 clock cases. No claim is made that this proved the cause of the initial load failure.
+
+The `606425d` service replay then observed a header-timeout TCP reset rather than delivered408. Three wire probes and pinned framework source confirmed that it writes408 then destroys the socket. Commit `ead5ba0` changes two tests only: require the actual HTTP header-timeout event, bounded closure, zero request/admission and subsequent liveness, accepting only a complete408 or empty-wire reset. Unexpected bytes/errors still fail; receiving/handler policies did not change. Both initial failed hosted matrices remain separate ignored evidence directories.
+
+The original full legacy Node replay subsequently collected hosted specs under the Base fixture and its automatic recording settings. Commit `ac1949e` excludes only `tests/hosted` from that legacy config; the hosted runner still explicitly requires both safe dedicated suites. An actual `--list` regression proves Base cases remain and hosted cases are absent. Security independently passed the regression. QA moved the entire accidental raw Base output/report into ignored private quarantine (73files including30rasters across PNG/JPEG/WebP and11recording/archive files), without viewing/exporting contents. The earlier13 count was PNG-only; `final-original-discovery-quarantine.json` records the complete metadata inventory. No textual scan retrospectively certifies those images.
+
+### Preserved foundation and source binding
+
+The isolated chain candidate at `606425d` passes complete `all-chain --clean`: **43 compiled Solana and23 Base tests**, compiled/committed artifact checks and separate provenance `--rebuild`. Logs are `phase8-final-all-chain-606.log` and `phase8-final-provenance-606.log` in the ignored baseline directory. Every product, chain, SDK, lockfile and validation-runner input is unchanged from606 toac1949e; the only four changed files are two header tests, the reporting test and the legacy Base config. Fromead5ba0 toac1949e only the latter two change. This is explicit per-lane source binding, not an invented single all-matrix pass at the latest hash.
+
+The original Node/browser replay at606 passes **721 Node cases** (SDK625, platform29, policy67), all three production builds/typechecks and production-route smoke, plus **252 Solana browser cases**. Six preconfigured optional/setup/public-read cases are skipped by that fixture lane; the separate required Solana setup command passes. The initial aggregate receipt honestly remains failed at the Base discovery conflict. Independent QA resumes affected/unrun lanes at the reviewed discovery fix and reconciles their receipts below; unchanged expensive lanes are not repeatedly rerun.
+
+| Legacy lane | Bound source and actual result |
+| --- | --- |
+| Node/build/Solana | `606425d`:721Node cases, three builds/typechecks, route smoke; Solana mock252pass/6configured skips and setup10pass/248mode skips |
+| Base | `ac1949e`:50mock pass/2setup-mode skips;2setup pass/50fixture-mode skips |
+| Integration | `ac1949e`:10wizard pass/2optional-mode skips;44generated-consumer pass/0skips |
+| Checkout | `ac1949e`:32pass/4opt-in/live-mode skips; static server port-ownership/fallback, page/bundle, POST/traversal/unknown-path safety passes |
+| Examples | `ac1949e`:Prism22pass/2public-read skips; platform backend-enforcement16pass/0skips |
+| Packed SDK consumer | `ac1949e`:12/12checks passed, including real Next SSR/backend/browser, React18 StrictMode, vanilla ESM/IIFE and rejection of server entrypoints in a client build |
+| Original dependency policy / committed artifacts | `ac1949e`:4/4dependency assessments and3artifact check groups passed; existing scoped exceptions unchanged |
+| External Saturday | Explicit optional skip: repository unconfigured; no external repository accessed or modified |
+
+The source-bound legacy browser total is **438 passing cases**. All resumed lanes finish exit0 at `ac1949e`; independent QA accepts the complete local coverage reconciliation. The configured mode skips above select complementary fixtures or separately authorized public reads; none hides a failed required case. Hosted-specific mandatory checks separately require zero skips. Raw per-lane captures are `final-original-<lane>.log`; source-bound structured receipts remain under the isolated candidate's `web/test-results/validation` tree. Never republish the retained raw output or private quarantine.
+
+QA independently inspected actual final hosted matrix, production build/browser/export markers and the clean production artifact, rather than accepting implementation-agent claims. They confirm74service/85native/25client-and-example-unit cases, original hosted16reporting+6dependency policies,16console/12connect browsers and all20commands with matchingead5ba0/runUUID and no skips/failures. The follow-up discovery supplement is23/23 at ac1949e. Security and architecture independently reconciled the same bound receipts and preserved-source deltas; no consequential local defect remains identified. The earlier failed original aggregate remains failed and retained; these per-lane receipts are the accepted composite, not a relabeled single aggregate result.
+
+QA's compact receipt is `web/test-results/hosted-qa-baseline/final-independent-reconciliation.json`. Its owned candidate is clean at ac1949e with no owned Node children or listeners3001–3010/3031. Root verifies the exact PostgreSQL22020 binary/data directory and stops that owned cluster successfully, retaining synthetic fixtures privately. Final closeout edits are documentation only; no further runtime/test inputs change.
+
+Root preservation check against57b425f shows no diff in `packages/pact-sdk`, `solana`, `contracts` or the original three example applications. `codex/full-development` remains57b425f, and the pre-existing generated-reference edit remains preserved in9074ddd. Final closeout documentation changes do not alter tested implementation inputs.
+
+Remote CI at the new feature revision, actual Docker execution, owner-approved staging, real Phantom/device acceptance and pilot rollout remain distinct gates. No push, deployment, publication, wallet action, on-chain protocol change or Saturday Lights edit occurred. Phase8's external exit criteria therefore remain open even after local checks pass.
+
+### Testing and owner handoff
+
+Follow [LOCAL_TESTING](LOCAL_TESTING.md) for the SDK-first install, two local processes and `/integrate/developer`; follow [the harness guide](../../../scripts/hosted-qa/README.md) for deterministic PostgreSQL/browser acceptance and the complete hosted runner. The private Express/Next examples protect real backend routes, while the REST helper is diagnostic. [INTEGRATION_GUIDE](INTEGRATION_GUIDE.md) documents application registration, callback verification, key lifecycle, wallet grants, backend enforcement and migration from the preserved customer-hosted SDK option. [OPERATIONS](OPERATIONS.md) covers explicit migrations, retention, incident quarantine, restart and offline restore/rekey.
+
+**Implemented locally:** API, persistent model, signed console, grants, resource policies, typed access, monitoring, examples, contracts, operational drills and mandatory CI definitions. **CI verified:** foundation57b425f only; new branch pending authorized execution. **Staging accepted:** none. **Human action required:** approve hostname/TLS/provider/PostgreSQL/secret store/RPC/ingress/backups, roles/on-call, privacy/terms/retention/account recovery/distribution, real-wallet/device tests and bounded pilot. **Not deployed:** this feature is absent from the older public site. **Not supported:** public OAuth/OIDC/SIWS SSO, distributed/multi-host authentication, Mainnet, commercial SLA, wallet custody, copyright transfer, billing/webhooks or npm publication. These are explicit limits, not future-success claims. [STAGING_AND_PILOT](STAGING_AND_PILOT.md) prepares Phases9–10 without executing them.
 
 ## Evidence boundaries
 
