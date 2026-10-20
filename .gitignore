@@ -13,6 +13,7 @@ coverage/
 .vercel/
 test-results/
 playwright-report/
+.private-evidence/
 *.tsbuildinfo
 packages/pact-sdk/dist/
 # Reproducible Playwright merge output and local SDK package archives.

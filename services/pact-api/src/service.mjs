@@ -7,6 +7,8 @@ import {registerConnect} from './connect.mjs';
 import {registerAccess} from './access.mjs';
 import {verifySchema} from './database.mjs';
 import {createAccessTelemetry} from './telemetry.mjs';
+import {boundedUsage} from './usage.mjs';
+import {openClock,attachClock} from './clock.mjs';
 import {operation,operations,validateBody,validateContract,validateOutput} from './contract.mjs';
 import {ApiError, fail, random, id, digest, keyed, equal, token, canonical, walletBytes,
   signatureValid, message, origin as validateOrigin, callback, strict, text, SCOPES} from './security.mjs';
@@ -25,20 +27,27 @@ export async function createService(options) {
   const local = ['local','test'].includes(profile), secure = origin.startsWith('https:');
   if (!local && !secure) fail('SERVICE_CONFIGURATION_REQUIRED', 503);
   if (!local && db.kind !== 'postgres') fail('DATABASE_CONFIGURATION_REQUIRED',503);
-  let lastTime = -1;
+  const requestDeadlineMs=options.requestDeadlineMs??7000;
+  if(!Number.isSafeInteger(requestDeadlineMs)||requestDeadlineMs<50||requestDeadlineMs>7000
+    ||profile!=='test'&&requestDeadlineMs!==7000)fail('SERVICE_CONFIGURATION_REQUIRED',503);
   const additionalActions = new Map();
-  const now = () => {
-    const value = (options.now ?? Date.now)();
-    if (!Number.isSafeInteger(value) || value < lastTime || value < 0) fail('CLOCK_UNAVAILABLE', 503);
-    lastTime = value; return value;
-  };
+  if((options.now||options.monotonicNow)&&profile!=='test')fail('CLOCK_CONFIGURATION_REQUIRED',503);
+  if(Boolean(options.now)!==Boolean(options.monotonicNow))fail('CLOCK_CONFIGURATION_REQUIRED',503);
+  const namespace=keyed(pepper,'clock-namespace',origin);
+  const clockAuthority=options.clock?await attachClock(options.clock,{database:db,namespace})
+    :await openClock({database:db,directory:options.clockDirectory,namespace,...(options.now?{wallNow:options.now,monotonicNow:options.monotonicNow}:{})});
+  try{
+  const now=clockAuthority.now;
   // Origin changes are an authentication epoch change, even with the same SQL backup/pepper.
-  const hash = (purpose, value) => keyed(pepper, `${origin}\0${purpose}`, value);
+  const hash = (purpose, value) => keyed(pepper, `${origin}\0${clockAuthority.uuid}\0${purpose}`, value);
   const server = Fastify({logger: false, bodyLimit: 16384,
-    requestTimeout: 10000, connectionTimeout: 10000, keepAliveTimeout: 5000,
+    handlerTimeout:requestDeadlineMs,requestTimeout:7000, connectionTimeout:5000, keepAliveTimeout:5000,
     maxRequestsPerSocket: 100, trustProxy: false, genReqId: () => randomUUID(),
     ajv: {customOptions: {removeAdditional: false, coerceTypes: false, useDefaults: false}},
     routerOptions: {maxParamLength: 128}});
+  server.server.maxConnections=128;
+  server.server.headersTimeout=5000;
+  server.server.connectionsCheckingInterval=250;
   let active = 0;
   const admitted={access:0,auth:0,control:0};
   const maximum=options.activeLimit??32;
@@ -46,7 +55,7 @@ export async function createService(options) {
   const protectedDb=db.protected??db;
   function releaseAdmission(req){
     if(!req.pactAdmitted||req.pactReleased||req.pactWorkPending||!req.pactAborted&&!req.pactResponded)return;
-    req.pactReleased=true;active--;admitted[req.pactLane]--;
+    req.pactReleased=true;clearTimeout(req.pactDeadlineTimer);active--;admitted[req.pactLane]--;
   }
   const dnsPending = new Set();
   async function domainRecords(hostname) {
@@ -63,6 +72,10 @@ export async function createService(options) {
     } finally {clearTimeout(timer);}
   }
   const envelope = (req, value) => ({schemaVersion: 1, requestId: req.id, ...value});
+  function requestGuard(req){
+    if(req.pactDeadlineExpired||req.pactDeadlineAt!==undefined&&performance.now()>=req.pactDeadlineAt)fail('REQUEST_DEADLINE',503);
+    if(req.pactAborted)fail('REQUEST_ABORTED',503);
+  }
   const validateResult=(req,value,status=200)=>{
     validateOutput(req,operation(req.method,req.routeOptions.url),status,envelope(req,value));
     return value;
@@ -113,22 +126,43 @@ export async function createService(options) {
     const lane=path==='/v1/access/check'?'access':path.startsWith('/v1/connect/')||path.startsWith('/v1/developer/auth/')?'auth':'control';
     if (active >= maximum || admitted[lane]>=caps[lane]) fail('OVERLOADED',503);
     active++;admitted[lane]++;req.pactLane=lane;req.pactAdmitted = true;
+    req.pactDeadlineAt=performance.now()+requestDeadlineMs;
+    req.raw.socket.setTimeout?.(5000);
     req.pactAbortController=new AbortController();
     const abort=()=>{req.pactAborted=true;req.pactAbortController.abort();releaseAdmission(req);};
+    // Fastify5's native timer is cancelled on IncomingMessage.close, which also
+    // fires when a complete request body finishes. This absolute service timer
+    // deliberately survives that event and any still-running handler work.
+    req.pactDeadlineTimer=setTimeout(()=>{
+      req.pactDeadlineExpired=true;abort();
+      if(!reply.sent)reply.code(503).send(new ApiError('REQUEST_DEADLINE',503));
+    },requestDeadlineMs);
+    req.pactDeadlineTimer.unref?.();
     req.raw.once('aborted',abort);
+    req.signal.addEventListener('abort',()=>{
+      if(req.signal.reason?.code==='FST_ERR_HANDLER_TIMEOUT'){req.pactDeadlineExpired=true;abort();}
+      else if(req.raw.aborted)abort();
+    },{once:true});
     reply.raw.once('close',()=>{
       if(reply.raw.writableFinished){req.pactResponded=true;releaseAdmission(req);}else abort();
     });
     if (req.raw.url.length > 4096 || req.headers.authorization?.length > 512) fail('INVALID_INPUT');
     req.pactWorkPending=true;
-    try{await budget(req);}finally{req.pactWorkPending=false;releaseAdmission(req);}
+    try{await budget(req);requestGuard(req);}finally{req.pactWorkPending=false;releaseAdmission(req);}
   });
-  server.addHook('onResponse', async req => {req.pactResponded=true;releaseAdmission(req);});
+  server.addHook('onResponse', async req => {clearTimeout(req.pactDeadlineTimer);req.pactResponded=true;releaseAdmission(req);});
+  server.addHook('preHandler',async req=>{
+    // A complete request is governed by its absolute deadline; the receiving
+    // idle timer must not destroy its socket before a structured denial.
+    req.raw.socket.setTimeout?.(requestDeadlineMs+1000);
+    requestGuard(req);
+  });
   server.setErrorHandler((error, req, reply) => {
     const status = error instanceof ApiError ? error.status : error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 503;
-    const code = error instanceof ApiError ? error.code : status === 413 ? 'BODY_TOO_LARGE' : status < 500 ? 'INVALID_INPUT' : 'SERVICE_UNAVAILABLE';
+    const code = error instanceof ApiError ? error.code : error.code==='FST_ERR_HANDLER_TIMEOUT'?'REQUEST_DEADLINE':status === 413 ? 'BODY_TOO_LARGE' : status < 500 ? 'INVALID_INPUT' : 'SERVICE_UNAVAILABLE';
     const value=envelope(req,{error:{code,message:code}});
     validateContract(req,'Error',value,'RESPONSE_SCHEMA_INVALID',503);
+    if(code==='REQUEST_DEADLINE')reply.header('connection','close');
     reply.code(status).send(value);
   });
   server.setNotFoundHandler((req,reply) => {
@@ -142,15 +176,17 @@ export async function createService(options) {
     if(registeredOperations.has(contract.operationId))fail('CONTRACT_ROUTE_DUPLICATE',503);
     registeredOperations.add(contract.operationId);
     server.route({method,url,handler:async (req,reply) => {
-      if(req.pactAborted)fail('REQUEST_ABORTED',503);
+      requestGuard(req);
       req.pactWorkPending=true;
       try{
         if (Object.keys(req.query ?? {}).length) fail('INVALID_INPUT');
         const result = await handler(req,reply);
         if (reply.sent) return;
         const output=validateOutput(req,contract,reply.statusCode,envelope(req,result ?? {}));
+        requestGuard(req);
         // Contract compilation/validation cannot extend the access snapshot lease.
         req.pactFinalGuard?.();
+        requestGuard(req);
         return output;
       }finally{req.pactWorkPending=false;releaseAdmission(req);}
     }});
@@ -187,6 +223,9 @@ export async function createService(options) {
   async function audit(tx, req, principal, appId, type) {
     await tx.query('INSERT INTO security_audit_events(id,owner_id,app_id,type,request_id,outcome,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)',
       [id('evt'),principal.account_id,appId,type,req.id,'success',now()]);
+  }
+  async function controlCapacity(tx){
+    if(db.kind==='postgres')await tx.query('SELECT pg_advisory_xact_lock(726742814)');
   }
   function appView(row) {
     return {id:row.id,name:row.name,description:row.description,framework:row.framework,
@@ -261,7 +300,11 @@ export async function createService(options) {
       await audit(tx,req,principal,app.id,action);
       adminLease(validSession);
       if(now()>=Number(challenge.expires_at))fail('ACTION_PROOF_INVALID',401);
-      if(finalCheck)finalCheck(prepared,principal,req.body.payload);
+      const finalTime=now();
+      if(finalTime>=Number(validSession.expires_at))fail('AUTH_REQUIRED',401);
+      if(finalTime>=Number(challenge.expires_at))fail('ACTION_PROOF_INVALID',401);
+      if(finalCheck)finalCheck(prepared,principal,req.body.payload,finalTime);
+      requestGuard(req);
       return result;
     });
   }
@@ -305,15 +348,24 @@ export async function createService(options) {
     validateBody(req);
     const sessionToken=random(), issuedAt=now(), expiresAt=issuedAt+900000;
     const account=await db.transaction(async tx => {
-      const account=(await tx.query(`INSERT INTO developer_accounts(id,wallet,created_at) VALUES($1,$2,$3)
-        ON CONFLICT(wallet) DO UPDATE SET wallet=EXCLUDED.wallet RETURNING *`,[id('dev'),proof.wallet,issuedAt])).rows[0];
+      let account=(await tx.query('SELECT * FROM developer_accounts WHERE wallet=$1 FOR UPDATE',[proof.wallet])).rows[0];
+      if(!account){
+        await controlCapacity(tx);
+        account=(await tx.query('SELECT * FROM developer_accounts WHERE wallet=$1 FOR UPDATE',[proof.wallet])).rows[0];
+        if(!account){
+          if(Number((await tx.query('SELECT COUNT(*) AS count FROM developer_accounts')).rows[0].count)>=1000)fail('ACCOUNT_CAPACITY',429);
+          account=(await tx.query('INSERT INTO developer_accounts(id,wallet,created_at) VALUES($1,$2,$3) RETURNING *',[id('dev'),proof.wallet,issuedAt])).rows[0];
+        }
+      }
       if(account.status !== 'active') fail('AUTH_INVALID',401);
       const oldToken=cookies(req)[cookieNames.session];
       if(token(oldToken)) await tx.query('UPDATE admin_sessions SET revoked_at=$1 WHERE token_hash=$2',[issuedAt,hash('admin-session',oldToken)]);
       await tx.query('INSERT INTO admin_sessions(token_hash,account_id,binding_hash,created_at,expires_at) VALUES($1,$2,$3,$4,$5)',
         [hash('admin-session',sessionToken),account.id,hash('browser',binding),issuedAt,expiresAt]);
       validateResult(req,{authenticated:true,account:{id:account.id,walletAddress:account.wallet},expiresAt});
-      if(now()>=Number(proof.expires_at)||now()>=expiresAt)fail('AUTH_INVALID',401);
+      const finalTime=now();
+      if(finalTime>=Number(proof.expires_at)||finalTime>=expiresAt)fail('AUTH_INVALID',401);
+      requestGuard(req);
       return account;
     });
     setCookie(reply,cookieNames.session,sessionToken,900);
@@ -341,7 +393,7 @@ export async function createService(options) {
         VALUES($1,$2,$3,$4,$5,$6,$6) RETURNING *`,[id('app'),principal.account_id,req.body.name,req.body.description ?? '',req.body.framework,now()])).rows[0];
       const result=validateResult(req,{app:appView(app)});
       await audit(tx,req,principal,app.id,'app.create');
-      adminLease(validSession);return result;
+      adminLease(validSession);requestGuard(req);return result;
     });
   });
   route('GET','/v1/developer/apps',async req => {
@@ -416,10 +468,11 @@ export async function createService(options) {
       return row;
     }));
   async function mint(tx,principal,app,payload,rotatedFrom=null) {
+    if(Number((await tx.query('SELECT COUNT(*) AS count FROM api_credentials WHERE app_id=$1',[app.id])).rows[0].count)>=1000)fail('CREDENTIAL_HISTORY_LIMIT',429);
     const keyId=id('key'), secret=`pact_sk_dev_${keyId}_${random()}`;
-    const row=(await tx.query(`INSERT INTO api_credentials(id,app_id,creator_id,name,prefix,token_hash,scopes,created_at,expires_at,rotated_from)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,[keyId,app.id,principal.account_id,payload.name,
-      `pact_sk_dev_${keyId}`,hash('api-key',secret),JSON.stringify(payload.scopes),now(),payload.expiresAt,rotatedFrom])).rows[0];
+    const row=(await tx.query(`INSERT INTO api_credentials(id,app_id,creator_id,name,prefix,token_hash,scopes,created_at,expires_at,rotated_from,authority_uuid)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,[keyId,app.id,principal.account_id,payload.name,
+      `pact_sk_dev_${keyId}`,hash('api-key',secret),JSON.stringify(payload.scopes),now(),payload.expiresAt,rotatedFrom,clockAuthority.uuid])).rows[0];
     return {credential:keyView(row),secret};
   }
   route('GET','/v1/developer/apps/:appId/credentials',async req=>{
@@ -453,11 +506,12 @@ export async function createService(options) {
   });
   route('GET','/v1/developer/apps/:appId/usage',async req=>{
     await owned(db,req.params.appId,await session(req));
-    return{buckets:(await db.query('SELECT * FROM usage_aggregates WHERE app_id=$1 AND bucket>$2 ORDER BY bucket DESC LIMIT 720',[req.params.appId,now()-30*DAY])).rows.map(row=>
+    const buckets=(await db.query('SELECT * FROM usage_aggregates WHERE app_id=$1 AND bucket>$2 ORDER BY bucket DESC LIMIT 720',[req.params.appId,now()-30*DAY])).rows.map(row=>
       ({bucket:Number(row.bucket),requests:Number(row.requests),allowed:Number(row.allowed),denied:Number(row.denied),errors:Number(row.errors),
-        latencyTotalMs:Number(row.latency_total_ms),latencyMaxMs:Number(row.latency_max_ms)})),
-      reasons:(await db.query('SELECT bucket,reason,requests FROM usage_reasons WHERE app_id=$1 AND bucket>$2 ORDER BY bucket DESC,reason LIMIT 720',[req.params.appId,now()-30*DAY])).rows.map(row=>
-        ({bucket:Number(row.bucket),reason:row.reason,requests:Number(row.requests)}))};
+        latencyTotalMs:Number(row.latency_total_ms),latencyMaxMs:Number(row.latency_max_ms)}));
+    const reasons=(await db.query('SELECT bucket,reason,requests FROM usage_reasons WHERE app_id=$1 AND bucket>$2 ORDER BY bucket DESC,reason LIMIT 720',[req.params.appId,now()-30*DAY])).rows.map(row=>
+      ({bucket:Number(row.bucket),reason:row.reason,requests:Number(row.requests)}));
+    return boundedUsage(buckets,reasons);
   });
   async function authenticateKey(req,scope,tx=db,allowPaused=false) {
     if(req.headers.origin!==undefined)fail('BROWSER_API_KEY_DENIED',403);
@@ -490,14 +544,15 @@ export async function createService(options) {
     finally{chainActive[lane]--;if(lane==='access'){const count=chainApps.get(appId)-1;if(count)chainApps.set(appId,count);else chainApps.delete(appId);}}
   }
   const telemetry=createAccessTelemetry(db,now);
-  const service={server,database:db,reader,chainRead,authenticateKey,now,hash,options:{origin,profile},telemetry,
+  const service={server,database:db,reader,chainRead,authenticateKey,now,hash,clockAuthority,options:{origin,profile},telemetry,
     flushTelemetry:telemetry.flush,diagnostics:()=>({http:{active,...admitted},chain:{...chainActive},telemetry:telemetry.diagnostics(),database:db.diagnostics?.()}),
-    internals:{route,envelope,session,owned,audit,mutate,browser,cookies,setCookie,cookieNames,domainRecords,validatePayload,validateBody,validateResult,appView,keyView,callbackView,
+    internals:{route,envelope,session,owned,audit,controlCapacity,mutate,browser,cookies,setCookie,cookieNames,domainRecords,validatePayload,validateBody,validateResult,requestGuard,appView,keyView,callbackView,
       registerAction(action,validator){if(ACTIONS.includes(action)||additionalActions.has(action))fail('DUPLICATE_ACTION',503);additionalActions.set(action,validator);}},
-    async close(){for(const entry of dnsPending)entry.resolver?.cancel();await server.close();await telemetry.flush();}};
+    async close(){try{for(const entry of dnsPending)entry.resolver?.cancel();await server.close();await telemetry.flush();}finally{clockAuthority.close();}}};
   registerResources(service);
   registerConnect(service);
   registerAccess(service);
   if(registeredOperations.size!==operations.length)fail('CONTRACT_ROUTE_MISSING',503);
   return service;
+  }catch(error){clockAuthority.close();throw error;}
 }

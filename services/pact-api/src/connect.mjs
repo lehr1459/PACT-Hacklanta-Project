@@ -5,14 +5,14 @@ const TRANSACTION_TTL=300000,CHALLENGE_TTL=120000,CODE_TTL=60000,GRANT_TTL=90000
 function opaque(value,prefix){return typeof value==='string'&&value.startsWith(prefix)&&token(value.slice(prefix.length));}
 export function registerConnect(service){
   const {database:db,now,hash,authenticateKey,options:{origin,profile}}=service;
-  const {route,browser,cookies,setCookie,cookieNames,domainRecords,validateBody,validateResult}=service.internals;
+  const {route,browser,cookies,setCookie,cookieNames,domainRecords,validateBody,validateResult,requestGuard}=service.internals;
   const buyer=(req,mutation=false)=>browser(req,mutation,'connectBinding');
   function liveCallback(row){
     if(!row||row.status!=='verified'||Number(row.verified_until)<=now()||profile==='hosted'&&row.local)fail('CALLBACK_UNAVAILABLE',403);
     return row;
   }
   // Lock ordering matches control-plane operations: account, app, credentials.
-  async function context(tx,{appId,callbackId,callbackRevision,epoch,credentialId,creatorCredentialId,allowPaused=false}){
+  async function context(tx,{appId,callbackId,callbackRevision,epoch,credentialId,creatorCredentialId,allowPaused=false,request}){
     let validUntil=Infinity;
     const account=(await tx.query(`SELECT d.id,d.status FROM developer_accounts d JOIN developer_applications a ON a.owner_id=d.id
       WHERE a.id=$1 FOR UPDATE OF d`,[appId])).rows[0];
@@ -31,7 +31,7 @@ export function registerConnect(service){
       liveCallback(callback);validUntil=Math.min(validUntil,Number(callback.verified_until));
       if(callbackRevision!==undefined&&String(callback.revision)!==String(callbackRevision))fail('LOGIN_INVALID',401);
     }
-    const check=()=>{if(now()>=validUntil)fail('LOGIN_INVALID',401);};
+    const check=(deadlines=[])=>{const time=now();if(time>=Math.min(validUntil,...deadlines.map(Number)))fail('LOGIN_INVALID',401);if(request)requestGuard(request);};
     check();return{app,callback,check};
   }
   async function transaction(transactionId,tx=db){
@@ -40,12 +40,12 @@ export function registerConnect(service){
     if(!row||Number(row.expires_at)<=now()||row.redeemed_at!==null)fail('LOGIN_INVALID',401);
     return row;
   }
-  async function current(transactionId,{needsUnproven=false,bindingHash,claimBinding=false}={}){
+  async function current(transactionId,{needsUnproven=false,bindingHash,claimBinding=false,request}={}){
     const login=await transaction(transactionId);
     if(needsUnproven&&login.wallet!==null)fail('LOGIN_INVALID',401);
     const result=await db.transaction(async tx=>{
       const ctx=await context(tx,{appId:login.app_id,callbackId:login.callback_id,
-        epoch:login.policy_epoch,callbackRevision:login.callback_revision,creatorCredentialId:login.creator_credential_id});
+        epoch:login.policy_epoch,callbackRevision:login.callback_revision,creatorCredentialId:login.creator_credential_id,request});
       if(bindingHash){
         if(claimBinding){
           const claimed=(await tx.query(`UPDATE login_transactions SET browser_binding_hash=$1 WHERE id=$2
@@ -54,7 +54,7 @@ export function registerConnect(service){
           if(!claimed)fail('LOGIN_INVALID',401);
         }else if(!equal(login.browser_binding_hash,bindingHash))fail('LOGIN_INVALID',401);
       }
-      ctx.check();return ctx;
+      ctx.check([login.expires_at]);return ctx;
     });
     return{login,...result};
   }
@@ -78,7 +78,7 @@ export function registerConnect(service){
     const loginUrl=new URL('/connect',origin);loginUrl.searchParams.set('transactionId',transactionId);
     const result=validateResult(req,{transactionId,loginUrl:loginUrl.href,expiresAt,issuer:origin});
     await db.transaction(async tx=>{
-      const ctx=await context(tx,{appId:key.app_id,callbackId:callback.id,credentialId:key.id});
+      const ctx=await context(tx,{appId:key.app_id,callbackId:callback.id,credentialId:key.id,request:req});
       if(ctx.callback.uri!==req.body.redirectUri||ctx.callback.proof_hash!==callback.proof_hash)fail('CALLBACK_UNAVAILABLE',403);
       const count=(await tx.query('SELECT COUNT(*) AS count FROM login_transactions WHERE app_id=$1 AND expires_at>$2 AND redeemed_at IS NULL',[key.app_id,now()])).rows[0];
       if(Number(count.count)>=100)fail('LOGIN_QUOTA',429);
@@ -86,7 +86,7 @@ export function registerConnect(service){
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,[transactionId,key.app_id,key.id,callback.id,req.body.redirectUri,
         ctx.app.policy_epoch,req.body.purpose,req.body.state,hash('login-state',req.body.state),req.body.codeChallenge,createdAt,expiresAt,ctx.callback.revision]);
       if(now()>=expiresAt)fail('LOGIN_INVALID',401);
-      ctx.check();
+      ctx.check([expiresAt]);
     });
     return result;
   });
@@ -94,14 +94,14 @@ export function registerConnect(service){
     buyer(req);
     let binding=cookies(req)[cookieNames.connectBinding];
     if(!token(binding)){binding=random();setCookie(reply,cookieNames.connectBinding,binding,600);}
-    const {login,app,callback}=await current(req.params.transactionId,{needsUnproven:true,bindingHash:hash('buyer-browser',binding),claimBinding:true});
+    const {login,app,callback}=await current(req.params.transactionId,{needsUnproven:true,bindingHash:hash('buyer-browser',binding),claimBinding:true,request:req});
     return{transaction:{id:login.id,app:{id:app.id,name:app.name},websiteOrigin:callback.website_origin,
       purpose:login.purpose,expiresAt:Number(login.expires_at),issuer:origin},csrfToken:binding};
   });
   route('POST','/v1/connect/challenge',async req=>{
     const binding=buyer(req,true);strict(req.body,['transactionId','walletAddress']);walletBytes(req.body.walletAddress);
     validateBody(req);
-    const {login}=await current(req.body.transactionId,{needsUnproven:true,bindingHash:hash('buyer-browser',binding)});
+    const {login}=await current(req.body.transactionId,{needsUnproven:true,bindingHash:hash('buyer-browser',binding),request:req});
     const challengeId=id('buy'),createdAt=now(),expiresAt=Math.min(createdAt+CHALLENGE_TTL,Number(login.expires_at));
     const payloadHash=digest(canonical({transactionId:login.id,redirectUri:login.redirect_uri,stateHash:login.state_hash,
       callbackRevision:String(login.callback_revision),codeChallenge:login.code_challenge,purpose:login.purpose,policyEpoch:String(login.policy_epoch)}));
@@ -110,7 +110,7 @@ export function registerConnect(service){
     const exactMessage=`${issued}\nLogin transaction: ${login.id}`;
     const result=validateResult(req,{challengeId,message:exactMessage,expiresAt});
     await db.transaction(async tx=>{
-      const ctx=await context(tx,{appId:login.app_id,callbackId:login.callback_id,callbackRevision:login.callback_revision,epoch:login.policy_epoch,creatorCredentialId:login.creator_credential_id});
+      const ctx=await context(tx,{appId:login.app_id,callbackId:login.callback_id,callbackRevision:login.callback_revision,epoch:login.policy_epoch,creatorCredentialId:login.creator_credential_id,request:req});
       const currentLogin=await transaction(login.id,tx);
       if(currentLogin.wallet!==null||!equal(currentLogin.browser_binding_hash,hash('buyer-browser',binding)))fail('LOGIN_INVALID',401);
       const count=(await tx.query('SELECT COUNT(*) AS count FROM wallet_challenges WHERE transaction_id=$1 AND expires_at>$2 AND consumed_at IS NULL',[login.id,now()])).rows[0];
@@ -121,7 +121,7 @@ export function registerConnect(service){
         VALUES($1,$2,$3,$4,$5,$6,$7)`,[challengeId,login.id,req.body.walletAddress,hash('buyer-browser',binding),exactMessage,createdAt,expiresAt]);
       await tx.query('UPDATE login_transactions SET active_challenge_id=$1 WHERE id=$2',[challengeId,login.id]);
       if(now()>=expiresAt)fail('LOGIN_INVALID',401);
-      ctx.check();
+      ctx.check([expiresAt]);
     });
     return result;
   });
@@ -135,7 +135,7 @@ export function registerConnect(service){
     const code=`pact_code_${random()}`;
     const result=await db.transaction(async tx=>{
       const login=await transaction(req.body.transactionId,tx);
-      const ctx=await context(tx,{appId:login.app_id,callbackId:login.callback_id,callbackRevision:login.callback_revision,epoch:login.policy_epoch,creatorCredentialId:login.creator_credential_id});
+      const ctx=await context(tx,{appId:login.app_id,callbackId:login.callback_id,callbackRevision:login.callback_revision,epoch:login.policy_epoch,creatorCredentialId:login.creator_credential_id,request:req});
       if(ctx.callback.uri!==login.redirect_uri||now()>=Number(challenge.expires_at)
         ||!equal(login.browser_binding_hash,hash('buyer-browser',binding))||login.active_challenge_id!==challenge.id)fail('LOGIN_INVALID',401);
       const expiresAt=Math.min(now()+CODE_TTL,Number(login.expires_at));
@@ -147,7 +147,7 @@ export function registerConnect(service){
       destination.searchParams.set('code',code);destination.searchParams.set('state',issued.state);destination.searchParams.set('iss',origin);
       const result=validateResult(req,{callbackUrl:destination.href});
       if(now()>=expiresAt||now()>=Number(challenge.expires_at))fail('LOGIN_INVALID',401);
-      ctx.check();
+      ctx.check([expiresAt,challenge.expires_at]);
       return result;
     });
     return result;
@@ -164,7 +164,7 @@ export function registerConnect(service){
     const result=await db.transaction(async tx=>{
       const found=(await tx.query('SELECT * FROM login_transactions WHERE code_hash=$1 AND app_id=$2',[codeHash,key.app_id])).rows[0];
       if(!found)fail('LOGIN_INVALID',401);
-      const ctx=await context(tx,{appId:key.app_id,callbackId:found.callback_id,callbackRevision:found.callback_revision,epoch:found.policy_epoch,credentialId:key.id,creatorCredentialId:found.creator_credential_id});
+      const ctx=await context(tx,{appId:key.app_id,callbackId:found.callback_id,callbackRevision:found.callback_revision,epoch:found.policy_epoch,credentialId:key.id,creatorCredentialId:found.creator_credential_id,request:req});
       const login=(await tx.query('SELECT * FROM login_transactions WHERE id=$1 FOR UPDATE',[found.id])).rows[0];
       if(!login||login.redeemed_at!==null||login.wallet===null||Number(login.expires_at)<=now()||Number(login.code_expires_at)<=now()
         ||ctx.callback.uri!==login.redirect_uri
@@ -178,7 +178,7 @@ export function registerConnect(service){
         VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,[id('grt'),hash('wallet-grant',grant),login.app_id,login.wallet,login.policy_epoch,login.id,createdAt,expiresAt]);
       const result=validateResult(req,{walletGrant:grant,walletAddress:login.wallet,appId:login.app_id,environment:'devnet',expiresAt,issuer:origin});
       if(Number(login.code_expires_at)<=now()||Number(login.expires_at)<=now())fail('LOGIN_INVALID',401);
-      ctx.check();
+      ctx.check([login.code_expires_at,login.expires_at,expiresAt]);
       return result;
     });
     return result;
@@ -189,7 +189,7 @@ export function registerConnect(service){
     validateBody(req);
     const result=validateResult(req,{revoked:true});
     await db.transaction(async tx=>{
-      const ctx=await context(tx,{appId:key.app_id,credentialId:key.id,allowPaused:true});
+      const ctx=await context(tx,{appId:key.app_id,credentialId:key.id,allowPaused:true,request:req});
       const row=(await tx.query(`UPDATE wallet_grants SET revoked_at=COALESCE(revoked_at,$1) WHERE token_hash=$2 AND app_id=$3
         RETURNING id`,[now(),hash('wallet-grant',req.body.walletGrant),key.app_id])).rows[0];
       if(!row)fail('GRANT_INVALID',401);

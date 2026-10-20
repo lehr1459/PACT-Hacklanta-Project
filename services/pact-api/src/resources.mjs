@@ -11,7 +11,7 @@ function view(row){
 }
 export function registerResources(service){
   const {database:db,reader,now}=service;
-  const {route,session,owned,mutate,registerAction}=service.internals;
+  const {route,session,owned,mutate,registerAction,controlCapacity}=service.internals;
   registerAction('resource.bind',payload=>{
     strict(payload,['resourceKey','offerAddress']);resourceKey(payload.resourceKey);walletBytes(payload.offerAddress);
   });
@@ -22,8 +22,7 @@ export function registerResources(service){
     if(Object.hasOwn(payload,'offerAddress'))walletBytes(payload.offerAddress);
     if(Object.hasOwn(payload,'enabled')&&typeof payload.enabled!=='boolean')fail('INVALID_INPUT');
   });
-  function checkedQuote(quote,offerAddress,principal){
-    const time=now();
+  function checkedQuote(quote,offerAddress,principal,time=now()){
     if(!quote||quote.offer!==offerAddress||quote.program!==PROGRAM||quote.seller!==principal.wallet)fail('OFFER_OWNERSHIP_REQUIRED',403);
     if(quote.active!==true)fail('OFFER_INACTIVE',409);
     if(!Number.isSafeInteger(quote.contextSlot)||quote.contextSlot<0||!Number.isSafeInteger(quote.startedAtMs)
@@ -45,6 +44,13 @@ export function registerResources(service){
       digest(req.body.proof.signatureBase64),now()]);
     await tx.query('UPDATE developer_applications SET policy_epoch=policy_epoch+1,updated_at=$1 WHERE id=$2',[now(),row.app_id]);
   }
+  async function historyCapacity(tx,appId,key,emergency=false){
+    await controlCapacity(tx);
+    if(emergency)return;
+    const total=Number((await tx.query('SELECT COUNT(*) AS count FROM resource_versions')).rows[0].count);
+    const resource=Number((await tx.query('SELECT COUNT(*) AS count FROM resource_versions WHERE app_id=$1 AND resource_key=$2',[appId,key])).rows[0].count);
+    if(total>=10000||resource>=1000)fail('RESOURCE_HISTORY_LIMIT',429);
+  }
   route('GET','/v1/developer/apps/:appId/resources',async req=>{
     await owned(db,req.params.appId,await session(req));
     return{resources:(await db.query('SELECT * FROM app_resources WHERE app_id=$1 ORDER BY resource_key LIMIT 50',[req.params.appId])).rows.map(view)};
@@ -61,12 +67,14 @@ export function registerResources(service){
   });
   route('POST','/v1/developer/apps/:appId/resources',req=>mutate(req,'resource.bind',async(tx,principal,app,payload,quote)=>{
     checkedQuote(quote,payload.offerAddress,principal);
+    await historyCapacity(tx,app.id,payload.resourceKey);
+    if(Number((await tx.query('SELECT COUNT(*) AS count FROM app_resources')).rows[0].count)>=1000)fail('RESOURCE_CAPACITY',429);
     if(Number((await tx.query('SELECT COUNT(*) AS count FROM app_resources WHERE app_id=$1',[app.id])).rows[0].count)>=50)fail('RESOURCE_QUOTA',429);
     const row=(await tx.query(`INSERT INTO app_resources(app_id,resource_key,offer_address,version,enabled,created_at,updated_at,verified_at,context_slot)
       VALUES($1,$2,$3,1,true,$4,$4,$5,$6) RETURNING *`,[app.id,payload.resourceKey,payload.offerAddress,now(),quote.receivedAtMs,quote.contextSlot])).rows[0];
     await history(tx,req,principal,row);return{resource:view(row)};
   },(principal,payload)=>verifiedOffer(payload.offerAddress,principal),
-  (quote,principal,payload)=>checkedQuote(quote,payload.offerAddress,principal)));
+  (quote,principal,payload,time)=>checkedQuote(quote,payload.offerAddress,principal,time)));
   async function update(req){
     return mutate(req,'resource.update',async(tx,principal,app,payload,prepared)=>{
       if(payload.resourceKey!==req.params.resourceKey)fail('INVALID_INPUT');
@@ -76,6 +84,9 @@ export function registerResources(service){
       const target=payload.offerAddress??current.offer_address;
       if(prepared.quote)checkedQuote(prepared.quote,target,principal);
       if(req.method==='DELETE'&&(payload.enabled!==false||Object.hasOwn(payload,'offerAddress')))fail('INVALID_INPUT');
+      const disableOnly=payload.enabled===false&&!Object.hasOwn(payload,'offerAddress');
+      if(disableOnly&&!current.enabled)return{resource:view(current)};
+      await historyCapacity(tx,app.id,payload.resourceKey,disableOnly&&current.enabled);
       const row=(await tx.query(`UPDATE app_resources SET offer_address=$1,enabled=$2,version=version+1,updated_at=$3,
         verified_at=$4,context_slot=$5 WHERE app_id=$6 AND resource_key=$7 RETURNING *`,[target,payload.enabled??current.enabled,now(),
         prepared.quote?prepared.quote.receivedAtMs:current.verified_at,prepared.quote?prepared.quote.contextSlot:current.context_slot,app.id,payload.resourceKey])).rows[0];
@@ -89,8 +100,8 @@ export function registerResources(service){
       // Emergency disable of an existing policy remains available during an RPC outage.
       if(payload.enabled===false&&!Object.hasOwn(payload,'offerAddress'))return{};
       return{quote:await verifiedOffer(payload.offerAddress??current.offer_address,principal)};
-    },(prepared,principal,payload)=>{
-      if(prepared.quote)checkedQuote(prepared.quote,payload.offerAddress??prepared.quote.offer,principal);
+    },(prepared,principal,payload,time)=>{
+      if(prepared.quote)checkedQuote(prepared.quote,payload.offerAddress??prepared.quote.offer,principal,time);
     });
   }
   route('PATCH','/v1/developer/apps/:appId/resources/:resourceKey',update);

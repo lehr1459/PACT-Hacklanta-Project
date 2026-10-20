@@ -5,14 +5,15 @@ import {createService} from '../../services/pact-api/src/service.mjs';
 import {prepareDatabase,nonce,wallet} from './helpers.mjs';
 import {Browser,ORIGIN} from './browser.mjs';
 import {rpcFixture} from './rpc-fixture.mjs';
+import {clockDirectory} from './phase7-clock-fixture.mjs';
 
 const random=()=>randomBytes(32).toString('base64url');
 export async function accessFixture({serviceOptions={},wrapDatabase}={}){
  const origin=serviceOptions.origin??ORIGIN;
  const native=await createDatabase({connectionString:await prepareDatabase(),profile:'test'});await migrate(native);
- const rpc=await rpcFixture(),clock={value:Date.now()};rpc.state.timestampSeconds=Math.floor(clock.value/1000);
+ const rpc=await rpcFixture(),clock={value:Date.now()},initialWall=clock.value;rpc.state.timestampSeconds=Math.floor(clock.value/1000);
  const database=wrapDatabase?wrapDatabase(native,{rpc,clock}):native;
- const service=await createService({database,origin:ORIGIN,pepper:random(),profile:'test',now:()=>clock.value,
+ const service=await createService({database,origin:ORIGIN,pepper:random(),profile:'test',clockDirectory:await clockDirectory(),now:()=>clock.value,monotonicNow:()=>clock.value-initialWall,
   rateLimit:1000,readerOptions:{rpcUrl:rpc.url},...serviceOptions});
  const base=await service.server.listen({port:0,host:'127.0.0.1'}),admin=new Browser(base,origin);await admin.login();
  async function app(owner=admin){

@@ -6,12 +6,13 @@ import {createService} from '../../services/pact-api/src/service.mjs';
 import {prepareDatabase,wallet,nonce} from './helpers.mjs';
 import {Browser,ORIGIN} from './browser.mjs';
 import {rpcFixture,PROGRAM,GENESIS} from './rpc-fixture.mjs';
+import {clockDirectory} from './phase7-clock-fixture.mjs';
 
 test('Phase2 independent real-PG policy binding through hardened SDK and HTTP RPC',async t=>{
  const connectionString=await prepareDatabase(),db=await createDatabase({connectionString,profile:'test'});
  await migrate(db);const rpc=await rpcFixture();
  const service=await createService({database:db,origin:ORIGIN,pepper:randomBytes(32).toString('base64url'),
-  profile:'test',rateLimit:1000,readerOptions:{rpcUrl:rpc.url}});
+  profile:'test',rateLimit:1000,clockDirectory:await clockDirectory(),readerOptions:{rpcUrl:rpc.url}});
  const base=await service.server.listen({port:0,host:'127.0.0.1'});
  t.after(async()=>{await service.close();await db.close();await rpc.close();});
  const a=new Browser(base),b=new Browser(base);await a.login();await b.login();

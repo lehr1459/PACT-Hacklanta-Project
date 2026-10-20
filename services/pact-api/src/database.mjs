@@ -18,7 +18,7 @@ export async function createDatabase({connectionString, localPath, profile = 'lo
     const {Pool} = await import('pg');
     const poolOptions={connectionString, max: 2, connectionTimeoutMillis: 1500,
       idleTimeoutMillis: 30000, statement_timeout: 2500, query_timeout: 3000,
-      application_name: 'pact-hosted-api'};
+      application_name: 'pact-hosted-api',options:'-c synchronous_commit=on'};
     engine = new Pool(poolOptions);protectedEngine=new Pool(poolOptions);
     engine.on('error', () => {}); // Never log provider messages/URLs/secrets.
     protectedEngine.on('error',()=>{});

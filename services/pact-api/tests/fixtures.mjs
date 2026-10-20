@@ -1,4 +1,8 @@
 import {generateKeyPairSync,sign,randomBytes} from 'node:crypto';
+import {mkdtemp,mkdir,readFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {setTimeout as delay} from 'node:timers/promises';
 import {createDatabase,migrate} from '../src/database.mjs';
 import {createService} from '../src/service.mjs';
 export function wallet(){
@@ -12,16 +16,28 @@ export function wallet(){
 export async function fixture(options={}){
   const database=options.database??await createDatabase({profile:'test',localPath:options.localPath});
   await migrate(database);
-  const clock={value:Date.now()},pepper=options.pepper??randomBytes(32).toString('base64url');
+  const clock=options.clockState??{value:Date.now()},pepper=options.pepper??randomBytes(32).toString('base64url');
+  const temporary=!options.clockDirectory&&!options.localPath&&!options.clock;
+  const clockDirectory=options.clockDirectory??(options.localPath?join(options.localPath,'.clock'):options.clock?undefined:await mkdtemp(join(tmpdir(),'pact-clock-test-')));
+  if(clockDirectory){
+    await mkdir(clockDirectory,{recursive:true,mode:0o700});
+    if(!options.now){try{const record=await readFile(join(clockDirectory,'authority.bin'));
+      const ceiling=Number(record.subarray(111,127).toString('ascii'));
+      if(ceiling>Date.now())await delay(ceiling-Date.now()+2);clock.value=Date.now();
+    }catch(error){if(error.code!=='ENOENT')throw error;}}
+  }
+  const wallNow=options.now??(()=>clock.value),monotonicNow=options.monotonicNow??wallNow;
   const service=await createService({database,profile:'test',origin:'http://localhost:3000',pepper,
-    now:()=>clock.value,rateLimit:10000,
+    ...(options.clock?{clock:options.clock}:{clockDirectory,now:wallNow,monotonicNow}),rateLimit:10000,
     ...(!options.reader&&!options.readerOptions?{reader:{
       async readiness(){return{ready:true,network:'devnet',programId:'EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy',
         contextSlot:100,startedAtMs:clock.value,receivedAtMs:clock.value,chainTimestamp:String(Math.floor(clock.value/1000))};},
     }}:{}),...options});
   if(options.beforeReady)await options.beforeReady(service);
   await service.server.ready();
-  return{...service,clock,pepper,async cleanup(){await service.close();if(!options.database)await database.close();}};
+  return{...service,clock,pepper,async cleanup(){await service.close();if(!options.database)await database.close();if(temporary){
+    if(!clockDirectory.startsWith(join(tmpdir(),'pact-clock-test-')))throw Error('unexpected disposable clock path');
+    await rm(clockDirectory,{recursive:true,force:true});}}};
 }
 export async function client(service,identity=wallet()){
   const jar=new Map();let csrf;

@@ -5,14 +5,17 @@ import {createDatabase,migrate} from '../../services/pact-api/src/database.mjs';
 import {createService} from '../../services/pact-api/src/service.mjs';
 import {Client,prepareDatabase,nonce,assertSecretAbsent} from './helpers.mjs';
 import {Browser,ORIGIN as origin} from './browser.mjs';
+import {clockDirectory,waitForClockCeiling} from './phase7-clock-fixture.mjs';
 
 test('Phase1 independent native PostgreSQL control-plane acceptance',async t=>{
  const connectionString=await prepareDatabase();
  const pepper=randomBytes(32).toString('base64url');
+ const directory=await clockDirectory();let started=false;
  let db,service,base,dnsRows=[];
  async function start(){
+  if(started)await waitForClockCeiling(directory);
   db=await createDatabase({connectionString,profile:'test'});await migrate(db);
-  service=await createService({database:db,origin,pepper,profile:'test',rateLimit:1000,resolveTxt:async()=>dnsRows});
+  service=await createService({database:db,origin,pepper,profile:'test',rateLimit:1000,resolveTxt:async()=>dnsRows,clockDirectory:directory});started=true;
   base=await service.server.listen({port:0,host:'127.0.0.1'});
  }
  await start();
@@ -165,7 +168,7 @@ test('Phase1 independent native PostgreSQL control-plane acceptance',async t=>{
 test('Phase1 quotas remain atomic under concurrent app creation and key rotation',async t=>{
  const connectionString=await prepareDatabase(),db=await createDatabase({connectionString,profile:'test'});
  await migrate(db);
- const service=await createService({database:db,origin,pepper:randomBytes(32).toString('base64url'),profile:'test',rateLimit:1000});
+ const service=await createService({database:db,origin,pepper:randomBytes(32).toString('base64url'),profile:'test',rateLimit:1000,clockDirectory:await clockDirectory()});
  const base=await service.server.listen({port:0,host:'127.0.0.1'});
  t.after(async()=>{await service.close();await db.close();});
  await t.test('parallel registrations cannot exceed twenty owned apps',async()=>{

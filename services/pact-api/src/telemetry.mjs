@@ -4,9 +4,9 @@ const SAFE_REASONS=new Set(['ACTIVE_LICENSE','LICENSE_REQUIRED','EXPIRED','RESOU
 export function createAccessTelemetry(database,now){
   const pending=new Set();let dropped=0,failures=0;
   const increment=value=>Math.min(value+1,Number.MAX_SAFE_INTEGER);
-  function record({appId,ownerId,requestId,reason,decision,status,latencyMs}){
+  function record({appId,ownerId,requestId,reason,decision,status,latencyMs,observedAt}){
     if(!SAFE_REASONS.has(reason)||pending.size>=8){dropped=increment(dropped);return;}
-    let timestamp;try{timestamp=now();}catch{failures=increment(failures);return;}
+    let timestamp;try{timestamp=observedAt??now();if(!Number.isSafeInteger(timestamp)||timestamp<0)throw Error();}catch{failures=increment(failures);return;}
     const bucket=Math.floor(timestamp/3600000)*3600000;
     const task=Promise.resolve().then(()=>database.transaction(async tx=>{
       const allowed=decision==='ALLOW'?1:0,error=status>=500?1:0,denied=allowed||error?0:1;

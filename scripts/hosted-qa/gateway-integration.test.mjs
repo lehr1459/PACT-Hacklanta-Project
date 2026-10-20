@@ -8,10 +8,11 @@ import {createDatabase,migrate} from '../../services/pact-api/src/database.mjs';
 import {createService} from '../../services/pact-api/src/service.mjs';
 import {prepareDatabase,nonce,assertSecretAbsent} from './helpers.mjs';
 import {Browser,ORIGIN} from './browser.mjs';
+import {clockDirectory} from './phase7-clock-fixture.mjs';
 
 test('actual HTTP fixed gateway carries admin and connect cookies into real PostgreSQL service',async t=>{
  const database=await createDatabase({connectionString:await prepareDatabase(),profile:'test'});await migrate(database);
- const service=await createService({database,origin:ORIGIN,pepper:randomBytes(32).toString('base64url'),profile:'test',rateLimit:1000});
+ const service=await createService({database,origin:ORIGIN,pepper:randomBytes(32).toString('base64url'),profile:'test',rateLimit:1000,clockDirectory:await clockDirectory()});
  const upstream=await service.server.listen({port:0,host:'127.0.0.1'});
  const gateway=createServer(async(req,res)=>{
   try{

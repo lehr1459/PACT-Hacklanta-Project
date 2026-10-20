@@ -6,22 +6,26 @@ import {createService} from '../../services/pact-api/src/service.mjs';
 import {prepareDatabase,wallet,nonce,assertSecretAbsent} from './helpers.mjs';
 import {Browser,ORIGIN} from './browser.mjs';
 import {rpcFixture,PROGRAM,GENESIS} from './rpc-fixture.mjs';
+import {clockDirectory} from './phase7-clock-fixture.mjs';
+import {openClock} from '../../services/pact-api/src/clock.mjs';
+import {keyed} from '../../services/pact-api/src/security.mjs';
 
 const random=()=>randomBytes(32).toString('base64url');
 const pkce=()=>{const verifier=random();return{verifier,challenge:createHash('sha256').update(verifier).digest('base64url')};};
 const callback='http://127.0.0.1:4200/callback';
 
 test('Phase3 independent hosted wallet login: native PostgreSQL, actual HTTP, two isolated services',async t=>{
- const connectionString=await prepareDatabase(),pepper=random();let clock=Date.now();
+ const connectionString=await prepareDatabase(),pepper=random();let clock=Date.now();const initialWall=clock,wallNow=()=>clock,monotonicNow=()=>clock-initialWall,authorities=new Map();
  const rpc=await rpcFixture();let nodes=[];
  async function node(issuer=ORIGIN){
   const database=await createDatabase({connectionString,profile:'test'});await migrate(database);
-  const service=await createService({database,origin:issuer,pepper,profile:'test',now:()=>clock,rateLimit:1000,readerOptions:{rpcUrl:rpc.url}});
+  if(!authorities.has(issuer))authorities.set(issuer,await openClock({database,directory:await clockDirectory(),namespace:keyed(pepper,'clock-namespace',issuer),wallNow,monotonicNow}));
+  const service=await createService({database,origin:issuer,pepper,profile:'test',clock:authorities.get(issuer),rateLimit:1000,readerOptions:{rpcUrl:rpc.url}});
   const base=await service.server.listen({port:0,host:'127.0.0.1'}),result={database,service,base,closed:false};nodes.push(result);return result;
  }
  async function close(n){if(n.closed)return;await n.service.close();await n.database.close();n.closed=true;}
  let first=await node(),second=await node();
- t.after(async()=>{for(const n of nodes)await close(n);await rpc.close();});
+ t.after(async()=>{for(const n of nodes)await close(n);for(const authority of authorities.values())authority.close();await rpc.close();});
  const a=new Browser(first.base),b=new Browser(first.base);await a.login();await b.login();
  async function app(admin,name){
   const appId=(await admin.request('POST','/v1/developer/apps',{name:`${name} ${nonce()}`,framework:'rest'})).data.app.id;

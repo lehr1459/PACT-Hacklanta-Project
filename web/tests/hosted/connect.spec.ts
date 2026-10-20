@@ -1,5 +1,11 @@
 import {test,expect,type Page} from '@playwright/test';
-import {generateKeyPairSync,sign} from 'node:crypto';
+import {generateKeyPairSync,sign,createHash} from 'node:crypto';
+import {mkdir,writeFile} from 'node:fs/promises';
+import path from 'node:path';
+const proofHashes=new Set<string>();
+test.afterEach(async({},info)=>{
+ await mkdir(info.project.outputDir,{recursive:true});await writeFile(path.join(info.project.outputDir,`worker-${info.workerIndex}-proof-hashes.json`),JSON.stringify({hashes:[...proofHashes]})+'\n');
+});
 
 function wallet(){
  const {privateKey,publicKey}=generateKeyPairSync('ed25519');
@@ -7,7 +13,7 @@ function wallet(){
  let number=BigInt('0x'+bytes.toString('hex')),address='';
  while(number>0n){address=alphabet[Number(number%58n)]+address;number/=58n;}
  for(const byte of bytes){if(byte!==0)break;address='1'+address;}
- return{address,sign:(message:Uint8Array)=>sign(null,message,privateKey).toString('base64')};
+ return{address,sign:(message:Uint8Array)=>{const value=sign(null,message,privateKey).toString('base64');proofHashes.add(createHash('sha256').update(value).digest('hex'));return value;}};
 }
 
 const CONSUMER='http://127.0.0.1:3113';
@@ -60,6 +66,10 @@ test('production nonce CSP hydrates; explicit keyboard review and signature comp
  const second=await page.request.get(page.url());expect(second.headers()['content-security-policy']).not.toBe(csp);
  const scriptNonces=await page.locator('script').evaluateAll(scripts=>scripts.filter(s=>(s as HTMLScriptElement).src||s.textContent).map(s=>(s as HTMLScriptElement).nonce));
  expect(scriptNonces.length).toBeGreaterThan(0);expect(scriptNonces.every(value=>value===nonce)).toBe(true);
+ const safe=await page.evaluate(()=>{
+  const text=(document.body.textContent??'')+' '+[...document.querySelectorAll('input,textarea')].map(x=>(x as HTMLInputElement).value).join(' ');
+  return !/pact_sk_dev_key_|pact_(?:grant|code)_|pact-domain-verification=|Browser\/session binding: [a-f0-9]{64}/.test(text);
+ });expect(safe).toBe(true);await page.screenshot({path:info.outputPath('connect-start-sanitized.png'),fullPage:true});
  await expect(page.getByText('Sign in to the independent browser consumer',{exact:true})).toBeVisible();
  expect((await stats(page)).connect).toBe(0);expect((await stats(page)).sign).toBe(0);
  await page.keyboard.press('Tab');
@@ -70,10 +80,9 @@ test('production nonce CSP hydrates; explicit keyboard review and signature comp
  await expect(page.getByRole('button',{name:'Connect Phantom',exact:true})).toBeFocused();
  await page.keyboard.press('Enter');await page.getByRole('button',{name:'Review sign-in message',exact:true}).click();
  const message=page.getByRole('textbox',{name:'Exact sign-in message'});await expect(message).toBeFocused();
- const exact=await message.inputValue();expect(exact).toContain(identities.first.address);expect(exact).toContain('No transaction or purchase.');
+ const exact=await message.inputValue();expect(exact.includes(identities.first.address)).toBe(true);expect(exact.includes('No transaction or purchase.')).toBe(true);
  expect((await stats(page)).sign).toBe(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
- await page.screenshot({path:info.outputPath('connect-review.png'),fullPage:true});
  await page.getByRole('button',{name:'Sign in with Phantom',exact:true}).click();
  await expect(page).toHaveURL(CONSUMER+'/result');await expect(page.getByRole('heading',{name:'Consumer signed in'})).toBeVisible();
  const result=await consumerState(page);expect(result.completed).toBe(true);expect(result.serverSessionHasGrant).toBe(true);expect(result.walletAddress).toBe(identities.first.address);expect(result.exchanges).toBe(1);

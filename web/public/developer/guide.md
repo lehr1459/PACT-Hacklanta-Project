@@ -75,6 +75,8 @@ See `services/pact-api/CONTRACT.md` and generated OpenAPI for all35 operations, 
 
 Read-only readiness proves current database schema plus Devnet reader readiness, not a buyer entitlement or program custody audit. Usage/audit are owner-scoped, bounded and asynchronous; they can lag/drop observations and are not billing or a complete access ledger. Key rotation can allow a bounded overlap; revoke incident credentials and grants, pause apps or disable resources through reviewed controls.
 
+Usage responses include newest records within96KiB and may omit older retained rows. The hosted service requires a private persistent local clock authority and trusted synchronized host time; filesystem faults, rollback, freeze or accumulated negative clock slew fail closed. One persistent process is supported. Restore requires offline quarantine and a new authentication epoch, followed by fresh login and key issue. See the repository's `CLOCK_ADR.md` and `OPERATIONS.md` for capacity, retention, deletion and recovery limits. These requirements apply to the hosted operator; they do not change the existing customer-hosted SDK.
+
 ## Contracts, REST diagnostics and validation
 
 Generated runtime-backed schema: `services/pact-api/openapi.json`, served as static `/developer/openapi.json`. Rebuild with `npm --prefix services/pact-api run openapi`; check byte/source/schema drift with `npm --prefix services/pact-api run openapi:check`. Large documentation artifacts bypass the bounded `/v1` gateway.

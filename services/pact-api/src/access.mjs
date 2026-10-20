@@ -5,7 +5,7 @@ const POLICY_KEY=/^[a-z][a-z0-9-]{0,63}$/;
 function decimal(value){return typeof value==='string'&&/^(?:0|[1-9]\d{0,19})$/.test(value);}
 export function registerAccess(service){
   const {database,reader,now,hash,authenticateKey,authenticateGrant,telemetry,options:{origin}}=service;
-  const db=database.protected??database,{route,validateBody}=service.internals;
+  const db=database.protected??database,{route,validateBody,requestGuard}=service.internals;
   const appActive=new Map(),keyActive=new Map();
   function admit(key){
     if((appActive.get(key.app_id)??0)>=4||(keyActive.get(key.id)??0)>=4)fail('OVERLOADED',503);
@@ -42,7 +42,7 @@ export function registerAccess(service){
     return{readStartedAtMs:status.startedAtMs,receivedAtMs:status.receivedAtMs,lastProgressAtMs:status.lastProgressAtMs,
       verifiedAtMs:time,maxAgeMs:FRESHNESS_MS,maxProgressAgeMs:SLOT_PROGRESS_MS,validUntilMs:Number(deadline)};
   }
-  async function finalContext(key,grant,resource,walletGrant){
+  async function finalContext(key,grant,resource,walletGrant,req){
     return db.transaction(async tx=>{
       const owner=(await tx.query('SELECT id,status FROM developer_accounts WHERE id=$1 FOR UPDATE',[key.owner_id])).rows[0];
       if(!owner||owner.status!=='active')fail('AUTH_INVALID',401);
@@ -59,6 +59,7 @@ export function registerAccess(service){
         ||currentResource.enabled!==resource.enabled||String(app.policy_epoch)!==String(grant.policy_epoch))fail('POLICY_CHANGED',403);
       const validUntil=Math.min(Number(credential.expires_at),Number(currentGrant.expires_at));
       if(now()>=validUntil)fail('AUTH_INVALID',401);
+      requestGuard(req);
       return{validUntil,epoch:String(app.policy_epoch)};
     });
   }
@@ -72,10 +73,10 @@ export function registerAccess(service){
   }
   route('POST','/v1/access/check',async(req,reply)=>{
     const started=performance.now();let key,release,recorded=false;
-    function record(reason,status,decision='DENY'){
+    function record(reason,status,decision='DENY',observedAt){
       if(!key||recorded)return;recorded=true;
       telemetry.record({appId:key.app_id,ownerId:key.owner_id,requestId:req.id,reason,decision,status,
-        latencyMs:Math.min(60000,Math.max(0,Math.ceil(performance.now()-started)))});
+        latencyMs:Math.min(60000,Math.max(0,Math.ceil(performance.now()-started))),observedAt});
     }
     try{
       key=await authenticateKey(req,'access:check',db);release=admit(key);
@@ -93,7 +94,7 @@ export function registerAccess(service){
           {signal:req.pactAbortController?.signal}));fresh(status,resource,grant);}
         catch(error){chainError=error?.code==='OVERLOADED'?'OVERLOADED':error?.code==='STALE_CHAIN'||error?.code==='STALE'?'STALE_CHAIN':'CHAIN_UNAVAILABLE';}
       }
-      const ctx=await finalContext(key,grant,resource,req.body.walletGrant);
+      const ctx=await finalContext(key,grant,resource,req.body.walletGrant,req);
       if(now()>=ctx.validUntil)fail('AUTH_INVALID',401);
       const bound=binding(key,grant,resource,ctx.epoch);
       function denied(reason,httpStatus,knownStatus=null){
@@ -120,10 +121,13 @@ export function registerAccess(service){
         contextSlot:status.contextSlot,chainTimestamp:status.chainTimestamp,freshness:freshness(status,time,ctx.validUntil)};
       req.pactFinalGuard=()=>{
         try{
+          requestGuard(req);
           const checked=fresh(status,resource,grant);
           if(checked>=ctx.validUntil)fail('AUTH_INVALID',401);
           if(checked>=result.freshness.validUntilMs)fail('STALE_CHAIN',503);
-          record('ACTIVE_LICENSE',200,'ALLOW');
+          requestGuard(req);
+          record('ACTIVE_LICENSE',200,'ALLOW',checked);
+          requestGuard(req);
         }catch(error){record(safeReason(error),error instanceof ApiError?error.status:503);throw error;}
       };
       return result;

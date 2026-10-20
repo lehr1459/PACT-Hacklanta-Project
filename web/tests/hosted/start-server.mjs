@@ -10,6 +10,7 @@ import {prepareDatabase,nonce,wallet as disposableWallet} from '../../../scripts
 import {Browser} from '../../../scripts/hosted-qa/browser.mjs';
 import {validationEnv} from '../../../scripts/validation/common.mjs';
 import {rpcFixture} from '../../../scripts/hosted-qa/rpc-fixture.mjs';
+import {clockDirectory} from '../../../scripts/hosted-qa/phase7-clock-fixture.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
 if(process.env.PACT_HOSTED_QA_CLEAN!=='1')throw Error('Run only in an explicitly approved isolated clean test checkout');
@@ -23,7 +24,7 @@ const random=()=>randomBytes(32).toString('base64url');
 const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.length===b.length&&timingSafeEqual(Buffer.from(a),Buffer.from(b));
 const db=await createDatabase({connectionString:await prepareDatabase(),profile:'test'});await migrate(db);
 const rpc=await rpcFixture();
-const service=await createService({database:db,origin:ORIGIN,pepper:random(),profile:'test',rateLimit:1000,readerOptions:{rpcUrl:rpc.url}});
+const service=await createService({database:db,origin:ORIGIN,pepper:random(),profile:'test',rateLimit:1000,clockDirectory:await clockDirectory(),readerOptions:{rpcUrl:rpc.url}});
 const upstream=await service.server.listen({port:0,host:'127.0.0.1'}),admin=new Browser(upstream,ORIGIN);await admin.login();
 let r=await admin.request('POST','/v1/developer/apps',{name:`Independent browser consumer ${nonce()}`,framework:'rest'});
 if(r.status!==200)throw Error('App fixture failed');const appId=r.data.app.id;

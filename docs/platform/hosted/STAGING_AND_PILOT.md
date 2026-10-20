@@ -9,8 +9,8 @@ Record each decision and approver in a private operating record. Do not fill mis
 | Decision | Evidence required before staging |
 | --- | --- |
 | Hostname/TLS and gateway | Approved PACT HTTPS origin, exact routing to console and `/v1`, TLS ownership, no alternate upstream bypass, no raw auth URL/header logging, forwarding-header policy |
-| Persistent Node hosting | Approved provider/account and one supervised persistent process; no serverless or hidden replicas; bounded CPU/memory, graceful shutdown and restart policy |
-| PostgreSQL | Approved provider/region, encrypted transport/storage, pool/connection limits, least-privilege runtime role, separate migration authority, backup access and restore drill |
+| Persistent Node hosting | Approved provider/account and one supervised persistent process; no serverless or hidden replicas; bounded CPU/memory, graceful shutdown and restart policy; private durable local clock volume, ACLs, fsync latency and long-duration NTP/suspend acceptance |
+| PostgreSQL | Approved provider/region, encrypted transport/storage, fsync/synchronous commit, pool/connection limits, least-privilege runtime role, separate migration authority, capacity-count preflight, backup access and offline quarantine/rekey restore drill |
 | Secrets | Approved encrypted secret manager and access roles for DB, API verifier pepper and private RPC; rotation/revocation procedure; no wallet custody |
 | RPC/capacity | Approved Devnet-only RPC endpoint(s), cost ceilings, health/failover evidence, measured quotas and admission limits |
 | Operations | Named operating owner, backup owner, private incident contact, on-call expectations and notification channel |
@@ -20,6 +20,8 @@ Record each decision and approver in a private operating record. Do not fill mis
 | Acceptance scope | Distinct seller/buyer test wallets, actual supported browser/device list and explicit authorization of each human-run transaction workflow |
 
 The runtime security review is due **October21,2026**. Existing dependency exceptions expire **November15,2026**, earlier when new dependencies change reachability. Passing a local build does not waive either gate. Owner approval must cite the exact reviewed source/artifact revision and actual CI receipts.
+
+Accept the concrete [clock model](CLOCK_ADR.md) and [operator procedures](OPERATIONS.md): strict negative time slew may stop authorization, synchronous disk cannot be interrupted, automatic snapshot rollback detection is unsupported, maintenance needs a scheduler, and account erasure is limited to10000actual rows with all auth ingress stopped/drained. Retention/privacy and backup policies need owner/legal approval before external use. No local simulation certifies the eventual provider or hardware.
 
 ## Staging acceptance record
 

@@ -19,7 +19,7 @@ In terminal one, run:
 npm --prefix services/pact-api run dev
 ```
 
-This creates an ignored disposable local SQL database and verifier pepper, listens on `127.0.0.1:4100`, and expects the browser-visible issuer `http://localhost:3000`. It does not print the pepper or load an environment file. It uses PGlite for local exploration; PostgreSQL remains required for hosted operation and independent multi-client acceptance. Without an explicitly configured local RPC fixture, offer/licensing reads use Devnet read-only RPC and require network availability. No purchase or wallet prompt is automatic.
+This creates an ignored disposable local SQL database, verifier pepper and private clock directory, listens on `127.0.0.1:4100`, and expects the browser-visible issuer `http://localhost:3000`. Preserve the database and clock directory together across normal restarts. A cold restart before the saved100ms ceiling refuses until trusted time catches up; do not delete its authority record to bypass refusal. It does not print the pepper or load an environment file. It uses PGlite for local exploration; PostgreSQL remains required for hosted operation and independent multi-client acceptance. Without an explicitly configured local RPC fixture, offer/licensing reads use Devnet read-only RPC and require network availability. No purchase or wallet prompt is automatic.
 
 In terminal two, set only the fixed internal gateway target and start the web application. PowerShell:
 
@@ -55,3 +55,5 @@ The service suite uses disposable native Ed25519 message keypairs and local SQL.
 Production browser validation must run in a separate clean checkout with `PACT_HOSTED_QA_CLEAN=1`; the guarded build driver refuses active environment files by existence only. Do not run that build over a workstation `.env.local` or reuse another developer's `.next` directory. The final implementation report distinguishes targeted local checks, clean committed-checkout checks and remote CI receipts.
 
 The API contract is [services/pact-api/CONTRACT.md](../../../services/pact-api/CONTRACT.md). External staging, actual Phantom/device acceptance and a Devnet pilot remain [owner-controlled gates](STAGING_AND_PILOT.md).
+
+Phase7 adds operator-only bounded retention/quarantine/deletion, isolated native restore and durable clock fault tests. Read [clock assumptions](CLOCK_ADR.md) and [operations](OPERATIONS.md) before recovery. A valid old SQL+clock+pepper snapshot can revive later-revoked authority; an offline restore requires quarantine plus a new pepper and empty clock directory, not copying old authority. Normal NTP negative slew can trigger the strict retained monotonic floor; operator host acceptance remains required.

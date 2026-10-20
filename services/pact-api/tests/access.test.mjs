@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
+import fs from 'node:fs';
+import {syncBuiltinESMExports} from 'node:module';
 import {fixture,client,wallet} from './fixtures.mjs';
 const PROGRAM='EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy',OFFER='11111111111111111111111111111111';
 async function setup(beforeReady){
@@ -107,6 +109,50 @@ test('response contract validation cannot extend the original access deadline or
   assert.notEqual(response.json.decision,'ALLOW');
   await service.flushTelemetry();
   assert.equal(Number((await service.database.query('SELECT COALESCE(SUM(allowed),0) AS allowed FROM usage_aggregates')).rows[0].allowed),0);
+});
+
+test('terminal synchronous clock I/O cannot cross the HTTP deadline and return ALLOW',async t=>{
+  let delayed=false;
+  const {service,access}=await setup(instance=>{
+    instance.server.addHook('preHandler',async req=>{
+      if(req.url!=='/v1/access/check')return;
+      Object.defineProperty(req,'pactFinalGuard',{configurable:true,set(next){
+        Object.defineProperty(req,'pactFinalGuard',{value:()=>{
+          req.pactDeadlineAt=performance.now()+5;
+          const original=fs.lstatSync;
+          fs.lstatSync=(...args)=>{if(!delayed){delayed=true;const until=performance.now()+15;while(performance.now()<until){}}return original(...args);};
+          syncBuiltinESMExports();
+          try{return next();}finally{fs.lstatSync=original;syncBuiltinESMExports();}
+        }});
+      }});
+    });
+  });t.after(()=>service.cleanup());
+  const response=await access();assert.equal(delayed,true);assert.equal(response.status,503);assert.equal(response.json.error.code,'REQUEST_DEADLINE');
+  await service.flushTelemetry();
+  assert.equal(Number((await service.database.query('SELECT COALESCE(SUM(allowed),0) AS allowed FROM usage_aggregates')).rows[0].allowed),0);
+});
+
+test('one terminal durable time sample validates quote age before policy commit',async t=>{
+  const {service,admin,app,url}=await setup();t.after(()=>service.cleanup());
+  const payload={resourceKey:'premium',expectedVersion:1,enabled:true},proof=await admin.proof('resource.update',app.id,payload);
+  const originalTransaction=service.database.transaction.bind(service.database),originalRead=fs.readSync;
+  let armed=false,reads=0,injected=false;
+  service.database.transaction=work=>originalTransaction(tx=>work({query:async(sql,values)=>{
+    const result=await tx.query(sql,values);if(sql.startsWith('INSERT INTO security_audit_events'))armed=true;return result;
+  }}));
+  fs.readSync=(...args)=>{
+    // Two fixed record reads per clock sample. Inject into the final sample,
+    // after the preliminary session and proof checks have already sampled time.
+    if(armed&&++reads===5){injected=true;service.clock.value+=8000;}
+    return originalRead(...args);
+  };syncBuiltinESMExports();
+  try{
+    const response=await admin.request('PATCH',`${url}/resources/premium`,{payload,proof});
+    assert.equal(injected,true);assert.equal(response.status,503);assert.equal(response.json.error.code,'CHAIN_UNAVAILABLE');
+    const resource=(await service.database.query("SELECT version FROM app_resources WHERE app_id=$1 AND resource_key='premium'",[app.id])).rows[0];
+    assert.equal(Number(resource.version),1);
+    assert.equal(Number((await service.database.query("SELECT COUNT(*) AS count FROM resource_versions WHERE app_id=$1 AND resource_key='premium'",[app.id])).rows[0].count),1);
+  }finally{fs.readSync=originalRead;syncBuiltinESMExports();}
 });
 test('collector failure cannot alter ALLOW; chain reservations and schema readiness have bounded failure behavior',async t=>{
   const {service,state,access}=await setup();t.after(()=>service.cleanup());

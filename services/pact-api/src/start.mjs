@@ -1,10 +1,12 @@
 import {configuration} from './config.mjs';
-import {createDatabase,migrate} from './database.mjs';
+import {createDatabase} from './database.mjs';
+import {prepareStartupDatabase} from './startup.mjs';
 import {createService} from './service.mjs';
 let database,service;
 try{
   const config=configuration();
-  database=await createDatabase(config);await migrate(database);
+  database=await createDatabase(config);
+  await prepareStartupDatabase(database,config.profile);
   service=await createService({...config,database});
   await service.server.listen({host:config.host,port:config.port});
   process.stdout.write('PACT hosted control plane listening on configured loopback interface.\n');

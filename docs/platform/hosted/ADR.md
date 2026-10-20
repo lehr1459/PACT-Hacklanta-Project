@@ -85,3 +85,5 @@ Owner decisions before Phase9/10: approved DNS/TLS and hosting/database scope, s
 Review Node security release by **2026-10-21** and dependency exceptions by **2026-11-15** (earlier on new reachability). Do not extend those deadlines to make validation pass.
 
 References inspected: [RFC9700](https://www.rfc-editor.org/rfc/rfc9700.html), [node-postgres transactions](https://node-postgres.com/features/transactions), [PGlite](https://pglite.dev/docs/), [Fastify request bounds](https://fastify.dev/docs/latest/Reference/Server/). These guide engineering; they do not certify this custom protocol.
+
+Phase7 implements the [durable clock decision](CLOCK_ADR.md) and [bounded operations/recovery procedures](OPERATIONS.md). Credential metadata retention is 90 days after expiry/revocation; backup retention remains an unconfigured owner policy. Offline restore quarantine plus a new pepper/clock epoch is mandatory; restoring old valid state does not automatically detect later revocations.
