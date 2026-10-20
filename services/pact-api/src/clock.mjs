@@ -52,12 +52,21 @@ export async function openClock({database,directory,namespace,wallNow=wallSource
   function unavailable(code){state.failed=true;throw new ApiError(code,503);}
   state.sample=()=>{
     if(state.failed)fail('CLOCK_UNAVAILABLE',503);
-    const wall=wallNow(),mono=monotonicNow();
-    if(!Number.isSafeInteger(wall)||wall<0||!Number.isFinite(mono)||mono<0||wall<state.lastWall||mono<state.lastMono)unavailable('CLOCK_UNAVAILABLE');
-    // Retain the largest wall/monotonic offset. Never re-anchor a lagging wall.
-    if(Math.floor(mono+state.maxOffset)>wall+1)unavailable('CLOCK_UNAVAILABLE');
-    state.maxOffset=Math.max(state.maxOffset,wall-mono);state.lastWall=wall;state.lastMono=mono;
-    return wall;
+    for(let attempt=0;attempt<3;attempt++){
+      const before=monotonicNow(),wall=wallNow(),after=monotonicNow();
+      if(!Number.isSafeInteger(wall)||wall<0||!Number.isFinite(before)||!Number.isFinite(after)
+        ||before<0||after<before||wall<state.lastWall||before<state.lastMono||after<state.lastMono)unavailable('CLOCK_UNAVAILABLE');
+      state.lastWall=wall;state.lastMono=after;
+      // A scheduler pause makes this pair uncertain. Preserve observed rollback
+      // bounds and the retained offset, then seek a tight pair with bounded work.
+      if(after-before>1)continue;
+      // The wall read lies within this monotonic interval. Retain only its lower
+      // offset bound, never resetting that bound when the wall later lags.
+      if(Math.floor(before+state.maxOffset)>wall+1)unavailable('CLOCK_UNAVAILABLE');
+      state.maxOffset=Math.max(state.maxOffset,wall-after);
+      return wall;
+    }
+    unavailable('CLOCK_UNAVAILABLE');
   };
   state.io=work=>{try{const value=work();state.sample();return value;}catch(error){state.failed=true;throw error instanceof ApiError?error:new ApiError('CLOCK_STORAGE_UNAVAILABLE',503);}};
   state.checkIdentity=()=>{

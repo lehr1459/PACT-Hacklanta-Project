@@ -56,7 +56,7 @@ test('clock missing/recreated/orphan/corrupt/torn files never bootstrap an exist
   await assert.rejects(()=>f.open({directory:orphan,namespace:nonce()}),error=>error.code==='CLOCK_BINDING_MISMATCH');
 });
 
-for(const kind of['wall-backward','mono-backward','frozen-wall','forward-then-freeze','short-write','fsync-failure','slow-disk','corrupt-record','replaced-file','replaced-lock']){
+for(const kind of['wall-backward','mono-backward','frozen-wall','slow-wall','forward-then-freeze','short-write','fsync-failure','slow-disk','corrupt-record','replaced-file','replaced-lock']){
   test(`clock ${kind} latches unavailable and cannot revive TTLs`,async t=>{
     const f=await setup(t),clock=await f.open();const previous=clock.now();
     const originalWrite=fs.writeSync,originalSync=fs.fsyncSync;
@@ -64,6 +64,7 @@ for(const kind of['wall-backward','mono-backward','frozen-wall','forward-then-fr
       if(kind==='wall-backward')f.sources.wall--;
       if(kind==='mono-backward')f.sources.mono--;
       if(kind==='frozen-wall')f.sources.mono+=3;
+      if(kind==='slow-wall'){f.sources.wall+=1;f.sources.mono+=4;}
       if(kind==='forward-then-freeze'){f.sources.wall+=10000;f.sources.mono+=1;assert.ok(clock.now()>previous);f.sources.mono+=3;}
       if(kind==='short-write'){f.sources.wall+=101;f.sources.mono+=101;fs.writeSync=()=>1;syncBuiltinESMExports();}
       if(kind==='fsync-failure'){f.sources.wall+=101;f.sources.mono+=101;fs.fsyncSync=()=>{throw Error('synthetic disk failure');};syncBuiltinESMExports();}
@@ -81,6 +82,51 @@ for(const kind of['wall-backward','mono-backward','frozen-wall','forward-then-fr
     }finally{fs.writeSync=originalWrite;fs.fsyncSync=originalSync;syncBuiltinESMExports();}
   });
 }
+
+for(const side of['before-wall','after-wall']){
+  test(`paired clock sampling tolerates healthy preemption ${side} without weakening later freeze detection`,async t=>{
+    const f=await setup(t);let inject=false;
+    const wallNow=()=>{const sampled=f.sources.wall;
+      if(inject){inject=false;f.sources.wall+=10;f.sources.mono+=10;}
+      return side==='before-wall'?f.sources.wall:sampled;};
+    const clock=await f.open({wallNow});const previous=clock.now();
+    inject=true;const observed=clock.now();
+    assert.ok(observed>=previous);assert.ok(observed<=f.sources.wall,'no future verification time');
+    assert.equal(clock.now(),f.sources.wall);
+    f.sources.mono+=3;
+    assert.throws(()=>clock.now(),error=>error.code==='CLOCK_UNAVAILABLE','an earlier wide bracket must not erase the retained lower bound');
+  });
+}
+
+test('paired clock sampling rejects a nonfinite, reversed, or regressing bracket',async t=>{
+  for(const kind of['nonfinite-before','nonfinite-after','reversed','regressing']){
+    const f=await setup(t);let pair;
+    const monotonicNow=()=>pair?.length?pair.shift():f.sources.mono;
+    const clock=await f.open({monotonicNow});clock.now();
+    pair=kind==='nonfinite-before'?[NaN,1000]:kind==='nonfinite-after'?[1000,Infinity]:kind==='reversed'?[1001,1000]:[999,1001];
+    assert.throws(()=>clock.now(),error=>error.code==='CLOCK_UNAVAILABLE',kind);
+  }
+});
+
+test('three uncertain sampling brackets fail closed with bounded work and cannot conceal a frozen wall',async t=>{
+  const f=await setup(t);let uncertain=false,reads=0;
+  const wallNow=()=>{reads++;if(uncertain)f.sources.mono+=10;return f.sources.wall;};
+  const clock=await f.open({wallNow});clock.now();reads=0;uncertain=true;
+  assert.throws(()=>clock.now(),error=>error.code==='CLOCK_UNAVAILABLE');
+  assert.equal(reads,3,'uncertain sampling attempts have a fixed bound');
+  uncertain=false;f.sources.wall+=30;
+  assert.throws(()=>clock.now(),error=>error.code==='CLOCK_UNAVAILABLE','sampling failure stays latched');
+});
+
+test('uncertain sampling retains observed rollback bounds and rejects freeze on the next tight pair',async t=>{
+  for(const kind of['wall-backward','mono-backward','frozen-wall']){
+    const f=await setup(t);let inject=false;
+    const wallNow=()=>{const wall=f.sources.wall;if(inject){inject=false;f.sources.mono+=10;
+      if(kind==='wall-backward')f.sources.wall--;if(kind==='mono-backward')f.sources.mono-=11;}return wall;};
+    const clock=await f.open({wallNow});clock.now();inject=true;
+    assert.throws(()=>clock.now(),error=>error.code==='CLOCK_UNAVAILABLE',kind);
+  }
+});
 
 test('actual second Node process cannot claim an actively locked clock volume',async t=>{
   const f=await setup(t);await f.open();
