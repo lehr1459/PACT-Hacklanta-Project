@@ -17,7 +17,7 @@ const archives=path.join(root,'archives');await fs.mkdir(archives);
 await npm(['pack','--ignore-scripts','--pack-destination',archives],{cwd:path.join(repository,'packages/pact-sdk')});
 const archive=(await fs.readdir(archives)).find(file=>file.endsWith('.tgz'));
 if(!archive)throw Error('SDK pack produced no archive.');
-await fs.writeFile(path.join(root,'package.json'),JSON.stringify({name:'pact-generated-qa-consumer',private:true,type:'module',dependencies:{next:'16.4.0',react:'19.3.0','react-dom':'19.3.0','@pact/sdk':'file:./archives/'+archive},devDependencies:{typescript:'5.9.3','@types/node':'24.10.0','@types/react':'19.3.0','@types/react-dom':'19.3.0','@solana/web3.js':'1.99.0'}}));
+await fs.writeFile(path.join(root,'package.json'),JSON.stringify({name:'pact-generated-qa-consumer',private:true,type:'module',dependencies:{next:'16.4.1',react:'19.3.0','react-dom':'19.3.0','@pact/sdk':'file:./archives/'+archive},devDependencies:{typescript:'5.9.3','@types/node':'24.10.0','@types/react':'19.3.0','@types/react-dom':'19.3.0','@solana/web3.js':'1.99.0'}}));
 await npm(['install','--package-lock-only','--ignore-scripts','--no-audit','--no-fund'],{cwd:root});
 await npm(['ci','--no-audit','--no-fund'],{cwd:root});
 for(const name of ['template','generator']) {

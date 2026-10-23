@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-10-16",
+  "reviewedAt": "2026-10-22",
   "graphs": {
     "sdk": "e253fba5cd90782fe8fab5e3a99e7a4ed43576c15d8eeefb5f2161382b7efb60",
-    "web": "eeb2ed8ba8dc3dddb6d7d2c2674890b04fad5bc53a18682aa0a43f8d485d1fa5",
-    "platform": "0df5ca882311e0dc0723b1ce691b74884fc7c78ec0ee1f9b7c945689f4a3384e",
-    "prism": "11d9c524a877b49bf701c14b204eb5ccb1d8e0f4fef41a599941bc2175d35508"
+    "web": "3fe398e7212c918ba9e75abdb92abe92311a3c6e3324a9a3aae907c200729c1d",
+    "platform": "356449b8c1e9e1d345977258647681cbbf0b31b906ca1788740cf1b531d3887d",
+    "prism": "c531d1cb1779df1501c337e8359995ce2bb85818773b82eb6fa76837c9b4c6a3"
   },
   "exceptions": [
     {
