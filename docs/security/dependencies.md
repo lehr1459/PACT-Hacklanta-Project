@@ -1,5 +1,7 @@
 # Dependency security triage
 
+Runtime update: the overdue October21 review is completed in [the October22 runtime record](RUNTIME_REVIEW_2026-10-22.md). Node24.22.1 replaces24.22.0 for new release validation; next internal review is November5 or earlier on a new advisory/before hosting. The historical runtime section below is retained as prior evidence. Dependency exception scopes and the November15 expiry remain unchanged.
+
 Reviewed: 2026-10-16. Owner: Security and SDK maintainers. Next review: 2026-11-15, or before dependency changes, native-wallet support, new parser/UUID use, or commercial release, whichever occurs first.
 
 This is an advisory and reachability assessment, not a production-security certification. No application dependency was blindly upgraded, downgraded, or overridden to reduce an audit count. Existing Base Sepolia isolation and Solana program semantics are preserved.

@@ -12,7 +12,7 @@ import {loadRuntimePolicy} from '../validation/runtime.mjs';
 import {rpcFixture} from './rpc-fixture.mjs';
 import {Browser} from './browser.mjs';
 
-export const NODE_IMAGE='node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5';
+export const NODE_IMAGE='node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205';
 const fixed=['packages/pact-sdk/package.json','packages/pact-sdk/package-lock.json','packages/pact-sdk/build.mjs','packages/pact-sdk/tsconfig.json',
   'services/pact-api/package.json','services/pact-api/package-lock.json'];
 export function artifactSourceAllowed(relative){
@@ -170,7 +170,7 @@ async function smoke({runtime,directory,log,docker=false,image}){
     assert.equal((await admin.mutate('POST',api+'/credentials/'+issued.data.credential.id+'/revoke',app,'credential.revoke',{credentialId:issued.data.credential.id})).status,200);
     assert.equal((await admin.key(secret)).status,401);
     if(docker)await command('docker',['exec',container,'node','--input-type=module','-e',
-      "import fs from 'node:fs';if(process.getuid()===0)process.exit(1);if(process.version!=='v24.22.0')process.exit(3);let denied=false;try{fs.writeFileSync('/tmp/pact-write-probe','x');}catch(error){denied=error.code==='EROFS';}if(!denied)process.exit(2);"],{log});
+      "import fs from 'node:fs';if(process.getuid()===0)process.exit(1);if(process.version!=='v24.22.1')process.exit(3);let denied=false;try{fs.writeFileSync('/tmp/pact-write-probe','x');}catch(error){denied=error.code==='EROFS';}if(!denied)process.exit(2);"],{log});
     assert.ok(rpc.calls.every(call=>['getGenesisHash','getMultipleAccounts'].includes(call.method)));
     return{status:'passed',transport:'actual-loopback-http',profile:'local-with-native-postgres',scope:docker?'nonroot-readonly-linux-container':'fresh-unpacked-production-install',
       checks:['ready-hardened-reader','live','malformed-key-denied','signed-admin-key-mint','valid-key','graceful-restart-preserves-session-and-key','signed-revoke-denies'],

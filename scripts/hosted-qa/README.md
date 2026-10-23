@@ -33,7 +33,7 @@ For complete Next coverage, first build `examples/pact-hosted-next` in the isola
 
 ## Complete hosted acceptance gate
 
-Use a fresh committed checkout, pinned Node24.22.0/npm11.19.1, no active environment files and the dedicated loopback PostgreSQL fixture. Set `PACT_HOSTED_QA_CLEAN=1`; optionally set `PACT_QA_DATABASE_URL` only to that fixture. Run:
+Use a fresh committed checkout, pinned Node24.22.1/npm11.19.1, no active environment files and the dedicated loopback PostgreSQL fixture. Set `PACT_HOSTED_QA_CLEAN=1`; optionally set `PACT_QA_DATABASE_URL` only to that fixture. Run:
 
 ```text
 node scripts/hosted-qa/run.mjs install

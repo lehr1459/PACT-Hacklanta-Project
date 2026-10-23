@@ -1,6 +1,6 @@
 # PACT hosted API service
 
-Private local implementation using persistent Node 24.22.0/npm 11.19.1, PostgreSQL for hosting, and PGlite for local tests. Existing public PACT deployment and SDK remain untouched. Read the [runtime contract](CONTRACT.md) and [architecture ADR](../../docs/platform/hosted/ADR.md).
+Private local implementation using persistent Node 24.22.1/npm 11.19.1, PostgreSQL for hosting, and PGlite for local tests. Existing public PACT deployment and SDK remain untouched. Read the [runtime contract](CONTRACT.md) and [architecture ADR](../../docs/platform/hosted/ADR.md).
 
 ```powershell
 npm --prefix packages/pact-sdk ci
