@@ -2,6 +2,10 @@
 
 This pass prepares a portable, isolated Linux VM deployment. No provider, account, VM, domain, public certificate, production secret or external service was created/configured. No deployment, publication, main merge, Phantom approval or blockchain transaction was performed. Existing SDK contracts, licensing/API behavior and Solana/Base programs are unchanged. `web/next-env.d.ts` uses canonical production generated references so a clean production build can remain clean; no dirty-source exception/reset was introduced.
 
+Final security review supersedes the inherited PostgreSQL18.4 target with patched **18.6**, for both CI and staging. Read the [PostgreSQL review](../../security/POSTGRES_REVIEW_2026-10-23.md). Earlier18.4 receipts remain historical; the final release record must include the repeated18.6 native/TLS/portable-recovery and exact-commit CI results. No existing server or data directory was upgraded.
+
+The independent new18.6 native cluster repeated **73/73** security/recovery cases without skips, including actual18.6 `pg_dump`/`pg_restore` through packaged API modules/quarantine. Five separate TLS/least-privilege checks also passed against18.6, with six migration checksums unchanged. Sanitized results are under `web/test-results/staging-prep-20261023/native186/`; raw fixtures remain private. Earlier clean web/source/Docker evidence at `eb3078b` is retained; it does not replace the final security-patch commit's artifact/CI binding.
+
 ## Deliverables
 
 - [Commit-bound source artifact tooling](../../../scripts/release/staging-source.mjs): deterministic private ZIP, complete original Git tree/commit and file hashes, independent digest/revision verification, offline clean materialization without history/remotes/hooks.
@@ -23,7 +27,7 @@ Local evidence is private/ignored under `web/test-results/staging-prep-20261023/
 | TLS and least privilege | Separate disposable local TLS/role fixture: six migrations repeated idempotently/checksums verified; runtime schema verification passed; direct DDL/migration-table/clock-update attempts denied with PostgreSQL42501 and API503; verified TLS/fsync/synchronous commits; wrong CA and certificate hostname rejected. No OS trust-store or real provider credential changed. |
 | Artifact/config policy | Source-kit, Compose input and web-context negative tests are wired into the required Node CI lane. Source-kit tests independently passed9/9 and initial preflight tests independently passed4/4 during security review; final aggregate receipts belong to the final exact-commit validation record. |
 
-The PostgreSQL18.6 client ZIP SHA256 was independently checked against the [EDB maintainer confirmation](https://github.com/EnterpriseDB/edb-installers/issues/746) and publisher sidecar before executable use. The server stayed18.4; no runtime/dependency pin was changed by using newer same-major backup clients. The first privilege-fixture assertion expected raw42501 through the API wrapper; corrected verification checks raw SQL42501 directly and the deliberately redacted503 at the API boundary. No application control was weakened.
+The PostgreSQL18.6 archive SHA256 was independently checked against the [EDB maintainer confirmation](https://github.com/EnterpriseDB/edb-installers/issues/746) and publisher sidecar before executable use. Initial rehearsal used18.6 clients with18.4 server. Subsequent security review required the18.6 server/CI/staging correction and a new independent cluster; do not treat initial18.4 evidence as final target acceptance. The first privilege-fixture assertion expected raw42501 through the API wrapper; corrected verification checks raw SQL42501 directly and the deliberately redacted503 at the API boundary. No application control was weakened.
 
 ## Review corrections
 

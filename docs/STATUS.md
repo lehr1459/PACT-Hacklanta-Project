@@ -2,6 +2,8 @@
 
 ## Portable staging preparation — 2026-10-23
 
+Final database security review supersedes the inherited18.4 pin with PostgreSQL18.6 in CI and staging; [review and acceptance requirements](security/POSTGRES_REVIEW_2026-10-23.md). Existing clusters and application/protocol source remain untouched.
+
 The [staging kit](../deployment/staging/README.md) adds a clean commit-bound source artifact, offline materialization, strict web-context build/verification, manually controlled same-host Linux Compose and separate migrator credentials. Provider/domain remain unset. [Evidence and owner gates](platform/hosted/STAGING_PREPARATION_2026-10-23.md) include73 native checks, actual packaged portable backup/restore, TLS and least privilege, independent security review, all-four-check branch protection instructions and D/S/B Phantom workflow. Existing API/SDK/on-chain behavior is preserved; production and Saturday Lights are unchanged. Final origin/image/Linux-host/human acceptance remains separately authorized; a source kit is not hosted release approval. Node reviewNovember5 and exception expiryNovember15 remain unchanged.
 
 ## Release validation preparation — 2026-10-22

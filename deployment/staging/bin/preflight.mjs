@@ -53,7 +53,7 @@ export function validateCompose(compose) {
   assert.equal(compose.services.migrate.volumes.find(v=>v.target==='/pact-clock').read_only, true);
   assert.equal(compose.services.gateway.profiles[0], 'ingress');
   assert.match(compose.services.gateway.image, /^caddy:2\.11\.7@sha256:[a-f0-9]{64}$/);
-  assert.match(compose.services.postgres.image, /^postgres:18\.4-bookworm@sha256:[a-f0-9]{64}$/);
+  assert.match(compose.services.postgres.image, /^postgres:18\.6-bookworm@sha256:[a-f0-9]{64}$/);
   assert.equal(compose.services.web.environment.PACT_NETWORK, 'devnet');
   assert.equal(compose.services.web.environment.PACT_HOSTED_API_INTERNAL_URL, 'http://127.0.0.1:4100');
   return true;

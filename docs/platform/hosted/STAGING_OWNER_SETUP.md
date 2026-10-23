@@ -15,7 +15,7 @@ Create a private operating record containing:
 | Host | Linux distribution, patched kernel, Docker/Compose versions, bounded CPU/memory/disk, single API process, runtime UID/GID, operator and incident contact |
 | Origin | Exact PACT HTTPS origin with no path/trailing slash; separate approved consumer HTTPS origin and exact callback |
 | TLS and DNS | Domain owner, certificate issuance/renewal, DNS access, public TLS policy and absence of alternate direct API ingress |
-| PostgreSQL | Approved PostgreSQL18.4 endpoint/region, verified hostname/CA, encryption at rest, durable commits, role grants, connection and storage budget |
+| PostgreSQL | Approved PostgreSQL18.6 endpoint/region, verified hostname/CA, encryption at rest, durable commits, role grants, connection and storage budget |
 | Secrets | Approved injection mechanism, access roles, DB credentials, fresh API pepper, private Devnet RPC and rotation/revocation procedure |
 | Time and volume | Private local persistent clock volume, ACLs, trustworthy wall time, NTP/suspend policy, disk latency and stopped-owner recovery acceptance |
 | Backups | Backup owner, encrypted destination, schedule, retention, restore test, measured recovery-point objective (RPO) and recovery-time objective (RTO) |
@@ -36,7 +36,7 @@ The API binds only to loopback. A normal Docker `ports:` mapping cannot expose a
 
 ## 3. Configure certificates, roles and the new database
 
-PostgreSQL18.4 is the checked-in native/CI target. Other server versions are not established by a passing18.4 test; the application does not enforce a server-version gate. Pin and verify approved PostgreSQL client tools too. A provider patch/version substitution needs review and a fresh migration/auth/restore drill.
+PostgreSQL18.6 is the staging/CI target after [security review](../../security/POSTGRES_REVIEW_2026-10-23.md); the inherited18.4 target is superseded. Other server versions are not established by a passing18.6 test; the application does not enforce a server-version gate. Pin and verify approved PostgreSQL client tools too. A provider patch/version substitution needs review and a fresh migration/auth/restore drill.
 
 The following is **prepared operator SQL**, not executed provisioning. The kit initializes a new private PostgreSQL cluster with operator `pact_operator`, database `pact_hosted` and loopback port55432. Confirm this is the new empty staging cluster, not an existing database or public deployment. Do not point its data mount at an existing cluster. Run the following through private authenticated operator tooling only after the PostgreSQL service has initialized. Passwords come from the approved secret manager; no password literal belongs in this script, shell history, chat or a receipt.
 
@@ -70,7 +70,7 @@ SHOW synchronous_commit;
 SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid();
 ```
 
-Expect PostgreSQL18.4, `fsync=on`, `synchronous_commit=on`, and `ssl=true`. The last query proves encryption for that session, not hostname verification: also test that a wrong CA/hostname fails without suppressing verification. API pools request synchronous commit on every connection. Provider storage, replica/failover and power-loss guarantees still need owner acceptance. Do not disable durability to achieve a latency target.
+Expect PostgreSQL18.6, `fsync=on`, `synchronous_commit=on`, and `ssl=true`. The last query proves encryption for that session, not hostname verification: also test that a wrong CA/hostname fails without suppressing verification. API pools request synchronous commit on every connection. Provider storage, replica/failover and power-loss guarantees still need owner acceptance. Do not disable durability to achieve a latency target.
 
 ## 4. Inject the API and web configuration privately
 
@@ -191,7 +191,7 @@ The clock persists a100ms ceiling before returning actual wall time; it never fu
 
 Approve RPO/RTO and retention before scheduling backups. A provider snapshot/PITR promise, successful dump or archive listing is not a demonstrated restore. Encrypt backups, restrict access, preserve source/artifact/schema identity and checksum privately, and measure a complete isolated drill. Back up operator role/grant definitions, approved certificate/configuration identities and secret-manager recovery separately. A single-database dump does not contain PostgreSQL roles, VM settings, secret-manager custody or a safe reusable authentication epoch.
 
-The provider commands below are **prepared, not executed on staging**. A separate local Windows/native rehearsal executed PostgreSQL18.6 dump/restore clients against an isolated18.4 server, including packaged quarantine, old-authority denial and fresh authorization. That is not selected-provider/Linux recovery evidence. Use approved PostgreSQL18 client tooling outside the slim application image, which is not assumed to contain `psql`, `pg_dump` or `pg_restore`. Private libpq service aliases resolve host/database/user/TLS settings from the approved service file and password mechanism. `pact_staging_backup` means the authorized source; `pact_staging_restore` must mean the newly provisioned isolated destination as migration authority. Do not put a password or DSN in command arguments. Service names are not secrets, but the associated files are private. See [PostgreSQL service files](https://www.postgresql.org/docs/18/libpq-pgservice.html).
+The provider commands below are **prepared, not executed on staging**. Local Windows/native evidence includes portable dump/restore, packaged quarantine, old-authority denial and fresh authorization; retain the separate final18.6 results in the release record. That is not selected-provider/Linux recovery evidence. Use approved PostgreSQL18.6 client tooling outside the slim application image, which is not assumed to contain `psql`, `pg_dump` or `pg_restore`. Private libpq service aliases resolve host/database/user/TLS settings from the approved service file and password mechanism. `pact_staging_backup` means the authorized source; `pact_staging_restore` must mean the newly provisioned isolated destination as migration authority. Do not put a password or DSN in command arguments. Service names are not secrets, but the associated files are private. See [PostgreSQL service files](https://www.postgresql.org/docs/18/libpq-pgservice.html).
 
 ```sh
 pg_dump --dbname=service=pact_staging_backup --format=custom \
@@ -203,6 +203,8 @@ pg_restore --list /private/backup/pact-approved.dump
 Review warnings and the source identity. `--list` checks the table of contents only. A [custom-format dump](https://www.postgresql.org/docs/18/app-pgdump.html) is a consistent single-database snapshot, not the entire operational recovery plan. The earlier standard native test used a stopped database clone; the new portable local drill closes that file-format gap without establishing provider, PITR or Linux operational recovery.
 
 For recovery, stop/drain **all API and authentication ingress/processes**, provision an explicitly new empty isolated database owned by the migrator, and bind the private restore alias to it. Do not use `--clean` or `--create` against an existing target. Restore only an approved trusted archive; restore executes its SQL. With migration authority:
+
+This kit fixes the runtime endpoint to database `pact_hosted` on same-host loopback55432. Restore rehearsal therefore uses a separate isolated cluster/VM with that database name (or a separately reviewed temporary endpoint). Keep the original cluster preserved and ingress closed. Accept quarantine/rekey/recovery on the isolated target before owner-controlled promotion under the fixed endpoint; do not point the normal runtime wrapper at an arbitrarily renamed restore database or replace a running cluster's files.
 
 ```sh
 pg_restore --dbname=service=pact_staging_restore --no-owner --no-acl \

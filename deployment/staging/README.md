@@ -52,7 +52,7 @@ docker --host=unix:///var/run/docker.sock build --pull=false --file services/pac
 docker --host=unix:///var/run/docker.sock build --pull=false --label org.opencontainers.image.revision=FULL_SOURCE_SHA --label org.pact.staging.origin=https://APPROVED_STAGING_HOSTNAME --tag pact-staging-web:FULL_SOURCE_SHA .deployment-candidates/staging/FULL_SOURCE_SHA/web-context
 docker --host=unix:///var/run/docker.sock image inspect --format '{{.Id}}' pact-staging-api:FULL_SOURCE_SHA
 docker --host=unix:///var/run/docker.sock image inspect --format '{{.Id}}' pact-staging-web:FULL_SOURCE_SHA
-docker --host=unix:///var/run/docker.sock pull postgres:18.4-bookworm@sha256:882236b897e39051d2368c5ccc6cda944904723506b2dfc97f2a8f5bc9afa382
+docker --host=unix:///var/run/docker.sock pull postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
 docker --host=unix:///var/run/docker.sock pull caddy:2.11.7@sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489
 ```
 
