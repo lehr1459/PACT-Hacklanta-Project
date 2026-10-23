@@ -1,5 +1,7 @@
 # API-first integration implementation evidence
 
+Current release validation and October 22 security corrections are recorded in [release preparation](RELEASE_PREPARATION_2026-10-22.md). The source/runtime/counts below remain historical implementation evidence.
+
 Engineering record started 2026-10-19. Phases0–7 and the Phase8 implementation are complete locally; final validation evidence and remaining external gates are distinguished below. Source specification: [master plan](MASTER_PLAN.md). Current branch: `codex/api-first-integrations`. Existing public deployment, Solana program and isolated Base fallback are preserved. Earlier phase sections retain their historical scope and pending items; the final reconciliation supersedes their progress statements.
 
 ## Checkpoints and phase gates

@@ -24,7 +24,7 @@ npm pack ./packages/pact-sdk --pack-destination .
 
 Packing builds the package; it does not publish it. Review package contents and the release evidence before sharing.
 
-Validation targets Node **24.22.0**, npm **11.19.1**, Next.js **16.4.0**, and the Chromium supplied by locked Playwright **1.64.0**. React is an optional peer with range `>=18 <20`; the release consumer matrix checks React 18 and 19 separately. Non-React consumers do not install React. Treat the completed [execution record](EXECUTION.md) as the evidence for exact tested combinations. Recheck Node's announced October 21, 2026 security release before a later release; a pin is not security clearance.
+New release validation targets Node **24.22.1**, npm **11.19.1**, Next.js **16.4.1**, and the Chromium supplied by locked Playwright **1.64.0**. React is an optional peer with range `>=18 <20`; the release consumer matrix checks React 18 and 19 separately. Non-React consumers do not install React. Treat the completed [execution record](EXECUTION.md) as the evidence for exact tested combinations. The [October22 runtime review](../security/RUNTIME_REVIEW_2026-10-22.md) incorporates the security patch; next internal review is November5, earlier on an advisory or before hosting. Prior execution receipts retain their actual older runtime; a pin is not hosted clearance.
 
 ## Choose the boundary
 

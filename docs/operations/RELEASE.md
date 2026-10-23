@@ -2,7 +2,7 @@
 
 The archive tool prepares a customer-reviewable local snapshot. It does not deploy, publish, approve external distribution or configure a production host. No owner-approved hosted origin or custody arrangement is available. Every archive and smoke receipt therefore says `deployable:false`.
 
-Use the pinned Node/npm in `scripts/validation/runtime.json`. The current target is Node 24.22.0/npm 11.19.1. Node's announced October 21, 2026 security update requires review before the recorded deadline; the pin is not security clearance. Existing dependency exceptions expire November 15, 2026. A failed or expired gate cannot be waived by a passing archive check.
+Use the pinned Node/npm in `scripts/validation/runtime.json`. The current target is Node24.22.1/npm11.19.1 after the October22 security patch review; next internal review is November5, earlier on a new advisory or before hosting. The pin is not security clearance. Existing dependency exceptions expire November 15, 2026. A failed or expired gate cannot be waived by a passing archive check.
 
 Prepare a clean committed candidate, build the SDK, and supply an explicit **local marketplace** environment: the reviewed Devnet program, official public Devnet RPC, loopback origin with a fixed port, disabled auth/policy, no default offer, metadata or Base contract. Build the marketplace with that environment. The actual saved Next config must record the current revision and true source-clean, environment-file-absent and public-environment-safe flags.
 

@@ -1,6 +1,6 @@
 # PACT hosted REST integration — private Devnet pilot
 
-Contract1, hosted client0.1.0, Node24.22.0/npm11.19.1, Express5.3.0, Next16.4.0/React19.3.0. No external host is provisioned by these instructions. Use the local [testing guide](LOCAL_TESTING.md) first. The existing `/api/v1`, `@pact/sdk`0.2.0 exports, marketplace, buyer checkout, Solana Devnet program and isolated Base Sepolia implementation remain available.
+Contract 1, hosted client 0.1.0, Node 24.22.1/npm 11.19.1, Express 5.3.0, Next.js 16.4.1/React 19.3.0. No external host is provisioned by these instructions. For local testing, first see `docs/platform/hosted/LOCAL_TESTING.md` in the repository. The existing `/api/v1`, `@pact/sdk`0.2.0 exports, marketplace, buyer checkout, Solana Devnet program and isolated Base Sepolia implementation remain available.
 
 ## Choose your boundary
 

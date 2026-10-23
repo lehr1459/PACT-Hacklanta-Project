@@ -1,6 +1,6 @@
 # Local hosted-platform testing
 
-Use the dedicated `codex/api-first-integrations` branch and the reviewed runtime in `scripts/validation/runtime.json`. These commands do not deploy, publish, push, approve a wallet prompt or submit a transaction. The old public deployment is unchanged. Runtime security review is due **2026-10-21**; dependency exceptions expire **2026-11-15**.
+Use the dedicated `codex/api-first-integrations` branch and the reviewed runtime in `scripts/validation/runtime.json`. These commands do not deploy, publish, push, approve a wallet prompt or submit a transaction. The old public deployment is unchanged. The October22 security patch review selects Node24.22.1; next internal runtime review is due **2026-11-05**; dependency exceptions expire **2026-11-15**.
 
 ## Start the local console
 

@@ -12,6 +12,7 @@ Use the root [README](../README.md) for current startup and repository boundarie
 | [Developer Platform](platform/README.md) / [quickstart](platform/quickstart.md) | SDK v1, REST and backend integration |
 | [API-first integration](platform/hosted/INTEGRATION_GUIDE.md) / [local testing](platform/hosted/LOCAL_TESTING.md) | Developer console, hosted REST, wallet grants and enforcing consumer examples |
 | [API-first evidence](platform/hosted/IMPLEMENTATION_REPORT.md) / [staging and pilot gates](platform/hosted/STAGING_AND_PILOT.md) | Per-phase commits, independent reviews, exact local results and unexecuted owner gates |
+| [October22 release preparation](platform/hosted/RELEASE_PREPARATION_2026-10-22.md) / [Node](security/RUNTIME_REVIEW_2026-10-22.md) / [Next](security/NEXT_REVIEW_2026-10-22.md) reviews | Runtime/framework security corrections, workflow/Docker inspection, fresh replay and exact owner-controlled release steps |
 | [SDK API](../packages/pact-sdk/README.md) | Public exports and consumer examples |
 | [Web guide](../web/README.md) | Configuration, chain behavior and manual wallet testing |
 | [Solana wire specification](../solana/wire-spec.json) / [program guide](../solana/README.md) | Binary interface, pinned build and local program tests |
