@@ -42,15 +42,18 @@ jobs:
           node scripts/validation/run.mjs install
       - name: Install Chromium and Linux browser dependencies
         run: node web/node_modules/@playwright/test/cli.js install --with-deps chromium
-      - name: Node tests, production builds and package contracts
+      - name: Node tests and package contracts from clean source
         run: |
           node scripts/validation/run.mjs node
-          node scripts/validation/run.mjs build
           node scripts/validation/run.mjs packed
           node scripts/validation/run.mjs dependencies
           node scripts/validation/run.mjs artifacts
       - name: Prepare reproducible private SDK candidate (no publication)
         run: node scripts/release/sdk.mjs --consumer-report web/test-results/validation/packed/packed-consumer/report.json
+      - name: Production builds and route smoke
+        # Next type generation can rewrite tracked development references.
+        # Keep clean SDK consumer/provenance checks ahead of that build output.
+        run: node scripts/validation/run.mjs build
       - name: Synthetic browser regressions, sequential shared build directory
         run: |
           node scripts/validation/run.mjs browser-solana
