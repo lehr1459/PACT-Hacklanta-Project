@@ -95,6 +95,7 @@ jobs:
       - name: Check runtime and committed evidence
         run: |
           node scripts/validation/run.mjs environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node scripts/validation/run.mjs artifacts
       - name: Verify pinned tools and execute chain suites
         run: node scripts/validation/run.mjs all-chain
