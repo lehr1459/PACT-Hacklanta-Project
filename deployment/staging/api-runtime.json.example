@@ -1,0 +1,5 @@
+{
+  "PACT_HOSTED_DATABASE_URL": "postgresql://pact_runtime:OWNER_SUPPLIED_ENCODED_PASSWORD@127.0.0.1:55432/pact_hosted?sslmode=verify-full&sslrootcert=/run/pact-postgres-ca.crt",
+  "PACT_HOSTED_PEPPER": "OWNER_SUPPLIED_RANDOM_BASE64URL_32_BYTES",
+  "SOLANA_RPC_URL": "https://OWNER_APPROVED_PRIVATE_DEVNET_RPC"
+}

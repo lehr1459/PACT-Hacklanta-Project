@@ -1,0 +1,36 @@
+{
+    admin off
+    auto_https off
+    log {
+        output discard
+    }
+    servers {
+        protocols h1 h2
+        timeouts {
+            read_header 5s
+            read_body 10s
+            idle 30s
+        }
+    }
+}
+
+# Certificates are supplied by the operator. No automatic ACME/DNS operation.
+http://{$PACT_STAGING_DOMAIN} {
+    respond "HTTPS required" 426
+}
+
+https://{$PACT_STAGING_DOMAIN} {
+    tls /run/pact-gateway-tls/fullchain.pem /run/pact-gateway-tls/privkey.pem
+    # No access log: callback URLs can contain one-use codes.
+    reverse_proxy 127.0.0.1:3000 {
+        header_up Host {$PACT_STAGING_DOMAIN}
+        header_up -Forwarded
+        header_up -X-Forwarded-For
+        header_up -X-Forwarded-Host
+        header_up X-Forwarded-Proto https
+        transport http {
+            dial_timeout 2s
+            response_header_timeout 10s
+        }
+    }
+}

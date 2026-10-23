@@ -19,6 +19,7 @@ export const REQUIRED_VALIDATION_COMMANDS=Object.freeze([
   'sdk-typecheck','sdk-tests','platform-tests','dependency-policy-tests','artifact-policy-tests',
   'deployment-identity-tests','provenance-tests','sdk-release-policy-tests','runtime-review-tests',
   'environment-policy-tests','next-environment-tests','archive-policy-tests',
+  'staging-source-policy-tests','staging-configuration-policy-tests',
   'web-route-types','web-typecheck','web-production-build','production-route-smoke',
   'examples-pact-demo-app-route-types','examples-pact-demo-app-typecheck','examples-pact-demo-app-production-build',
   'examples-pact-platform-app-route-types','examples-pact-platform-app-typecheck','examples-pact-platform-app-production-build',

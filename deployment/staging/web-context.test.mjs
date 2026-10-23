@@ -1,0 +1,14 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import os from 'node:os';import path from 'node:path';import {createHash} from 'node:crypto';
+import {verifyContext} from './bin/verify-web-context.mjs';
+const sha=b=>createHash('sha256').update(b).digest('hex'),revision='a'.repeat(40);
+async function fixture(t) {
+ const directory=await fs.mkdtemp(path.join(os.tmpdir(),'pact-private-web-context-'));t.after(()=>fs.rm(directory,{recursive:true,force:true}));
+ const binding={profile:'test'},env={PACT_BUILD_BINDING_JSON:JSON.stringify(binding),PACT_BUILD_SOURCE_REVISION:revision,PACT_BUILD_SOURCE_CLEAN:'true',PACT_BUILD_ENV_FILES_ABSENT:'true',PACT_BUILD_PUBLIC_ENV_SAFE:'true'};
+ const files={'Dockerfile':'FROM reviewed:fixture','web/next.config.mjs':'export default {}','web/package.json':'{}','web/package-lock.json':'{}','web/.next/BUILD_ID':'fixture-build','web/.next/required-server-files.json':JSON.stringify({config:{env}}),'packages/pact-sdk/package.json':'{}','packages/pact-sdk/package-lock.json':'{}','scripts/validation/environment.mjs':'export {}'};
+ const manifest={schemaVersion:1,sourceRevision:revision,cleanBefore:true,cleanAfter:true,hostedApproved:false,testOnly:true,kind:'private-test-web-context',binding,sourceArchiveSha256:'b'.repeat(64),buildId:'fixture-build',files:[]};
+ for(const [name,text]of Object.entries(files)){await fs.mkdir(path.dirname(path.join(directory,name)),{recursive:true});await fs.writeFile(path.join(directory,name),text);manifest.files.push({path:name,sizeBytes:Buffer.byteLength(text),sha256:sha(text)});}
+ await fs.writeFile(path.join(directory,'web-runtime-manifest.json'),JSON.stringify(manifest));return directory;
+}
+test('rehearsal context verifies only with explicit test permission and cannot become hosted',async t=>{const directory=await fixture(t);await assert.rejects(verifyContext(directory,revision),/Rehearsal/);assert.equal((await verifyContext(directory,revision,{allowRehearsal:true})).testOnly,true);});
+test('tampered runtime file, added environment file and mismatched source fail verification',async t=>{const directory=await fixture(t);await assert.rejects(verifyContext(directory,'c'.repeat(40),{allowRehearsal:true}));await fs.writeFile(path.join(directory,'web/next.config.mjs'),'tampered');await assert.rejects(verifyContext(directory,revision,{allowRehearsal:true}));await fs.writeFile(path.join(directory,'web/.env.production'),'fixture-secret');await assert.rejects(verifyContext(directory,revision,{allowRehearsal:true}));});
+test('extra unlisted members fail even when they are individually valid JSON',async t=>{const directory=await fixture(t);await fs.writeFile(path.join(directory,'extra.json'),'{}');await assert.rejects(verifyContext(directory,revision,{allowRehearsal:true}));});

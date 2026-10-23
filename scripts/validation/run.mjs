@@ -61,6 +61,8 @@ async function lane(name) {
     await command('environment-policy-tests',['--test','scripts/validation/environment.test.mjs']);
     await command('next-environment-tests',['--test','scripts/validation/next-environment.test.mjs']);
     await command('archive-policy-tests',['--test','scripts/release/archive.test.mjs']);
+    await command('staging-source-policy-tests',['--test','scripts/release/staging-source.test.mjs']);
+    await command('staging-configuration-policy-tests',['--test','deployment/staging/preflight.test.mjs','deployment/staging/web-context.test.mjs']);
   } else if(name==='build') {
     const productionEnvironment={NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID:'EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy',NEXT_PUBLIC_SOLANA_RPC_URL:'https://api.devnet.solana.com',NEXT_PUBLIC_PACT_CONTRACT_ADDRESS:'',PACT_AUTH_MODE:'disabled'};
     for(const project of ['web','examples/pact-demo-app','examples/pact-platform-app']) {

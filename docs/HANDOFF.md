@@ -1,5 +1,9 @@
 # Agent handoff
 
+## Portable staging preparation — 2026-10-23
+
+Read [the staging evidence report](platform/hosted/STAGING_PREPARATION_2026-10-23.md), [kit commands](../deployment/staging/README.md) and [owner setup](platform/hosted/STAGING_OWNER_SETUP.md) first. The source artifact materializes the original full commit/tree without remotes/history/hooks and stays source-only. Never promote the test-origin web rehearsal; approved hostname and exact hosted build binding are required. Compose is Linux-host-networked, local-rootful-Docker only, manually started with no automatic crash restart; preserve one API clock owner. Private JSON injection, separate migration role, backup/quarantine/new-pepper/new-clock recovery and actual Linux image acceptance are required. GitHub branch settings are documented, not applied. The user's feature-only CI push permission does not authorize deployment, publication, main merge, provider/settings changes, wallet approvals or transactions. Final artifact digest, clean build and exact CI receipts belong in the release record; ignored raw fixtures/backups are private and must never be uploaded.
+
 ## Release preparation — 2026-10-22
 
 Read [the release-preparation report](platform/hosted/RELEASE_PREPARATION_2026-10-22.md), [Node review](security/RUNTIME_REVIEW_2026-10-22.md), [Next review](security/NEXT_REVIEW_2026-10-22.md) and [owner sequence](platform/hosted/STAGING_AND_PILOT.md) before older entries. Current reviewed source is `d616a5d`: Node 24.22.1/npm 11.19.1 and Next.js 16.4.1 in four apps plus the generated-consumer fixture. All advisory exceptions/source fingerprints and November 15 expiry are preserved. November 5 is the new bounded internal Node review date, not an upstream release announcement.

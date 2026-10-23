@@ -1,5 +1,9 @@
 # Status
 
+## Portable staging preparation — 2026-10-23
+
+The [staging kit](../deployment/staging/README.md) adds a clean commit-bound source artifact, offline materialization, strict web-context build/verification, manually controlled same-host Linux Compose and separate migrator credentials. Provider/domain remain unset. [Evidence and owner gates](platform/hosted/STAGING_PREPARATION_2026-10-23.md) include73 native checks, actual packaged portable backup/restore, TLS and least privilege, independent security review, all-four-check branch protection instructions and D/S/B Phantom workflow. Existing API/SDK/on-chain behavior is preserved; production and Saturday Lights are unchanged. Final origin/image/Linux-host/human acceptance remains separately authorized; a source kit is not hosted release approval. Node reviewNovember5 and exception expiryNovember15 remain unchanged.
+
 ## Release validation preparation — 2026-10-22
 
 Current work is validation/security maintenance of completed `d3a350a`, not new product scope. Commits `1ee25fe`, `17099db` and `d616a5d` update reviewed Node 24.22.1/Docker pins, disable persisted checkout credentials, fix Windows native failure propagation and patch existing Next applications/fixture to 16.4.1. Independent security/backend reviews approve the bounded changes and unchanged exception scopes. Fresh hosted 20/20 acceptance and full original regression (721 Node, 438 active browsers, packed consumer 12, four app builds) pass at `d616a5d`; exact results are recorded in [release preparation](platform/hosted/RELEASE_PREPARATION_2026-10-22.md); the initial new-runtime audit failure is preserved. Prior entries below retain their historical versions/counts and do not validate this patch.

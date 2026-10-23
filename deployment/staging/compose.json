@@ -1,0 +1,405 @@
+{
+  "name": "pact-staging",
+  "services": {
+    "postgres": {
+      "image": "postgres:18.4-bookworm@sha256:882236b897e39051d2368c5ccc6cda944904723506b2dfc97f2a8f5bc9afa382",
+      "pull_policy": "never",
+      "network_mode": "host",
+      "user": "999:999",
+      "restart": "no",
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "stop_grace_period": "30s",
+      "pids_limit": 128,
+      "mem_limit": "1g",
+      "cpus": 1,
+      "environment": {
+        "POSTGRES_USER": "pact_operator",
+        "POSTGRES_DB": "pact_hosted",
+        "POSTGRES_PASSWORD_FILE": "/run/secrets/postgres-password",
+        "POSTGRES_INITDB_ARGS": "--auth-local=scram-sha-256 --auth-host=scram-sha-256",
+        "PGDATA": "/var/lib/postgresql/18/docker",
+        "PGPORT": "55432"
+      },
+      "command": [
+        "postgres",
+        "-c",
+        "config_file=/etc/pact-postgres/postgresql.conf"
+      ],
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "${PACT_PG_DATA:?Set private persistent PostgreSQL directory}",
+          "target": "/var/lib/postgresql",
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${PACT_CONFIG_DIRECTORY:?Set absolute kit directory}/postgres",
+          "target": "/etc/pact-postgres",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${PACT_PRIVATE_DIRECTORY:?Set private operator directory}/postgres-tls",
+          "target": "/run/pact-postgres-tls",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${PACT_PRIVATE_DIRECTORY:?Set private operator directory}/postgres-password",
+          "target": "/run/secrets/postgres-password",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        }
+      ],
+      "tmpfs": [
+        "/tmp:rw,noexec,nosuid,size=32m,mode=1777",
+        "/var/run/postgresql:rw,noexec,nosuid,size=8m,uid=999,gid=999,mode=3775"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "pg_isready",
+          "-h",
+          "127.0.0.1",
+          "-p",
+          "55432",
+          "-U",
+          "pact_operator",
+          "-d",
+          "pact_hosted"
+        ],
+        "interval": "10s",
+        "timeout": "3s",
+        "retries": 3
+      },
+      "logging": {
+        "driver": "none"
+      },
+      "profiles": [
+        "database"
+      ]
+    },
+    "api": {
+      "image": "${PACT_API_IMAGE:?Set locally loaded immutable API image identity}",
+      "pull_policy": "never",
+      "network_mode": "host",
+      "user": "1000:1000",
+      "restart": "no",
+      "init": true,
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "stop_grace_period": "30s",
+      "pids_limit": 128,
+      "mem_limit": "768m",
+      "cpus": 1,
+      "working_dir": "/pact/services/pact-api",
+      "entrypoint": [
+        "node",
+        "/pact-staging/inject-runtime.mjs",
+        "api"
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "PACT_HOSTED_PROFILE": "hosted",
+        "PACT_HOSTED_ORIGIN": "https://${PACT_STAGING_DOMAIN:?Set approved public hostname}",
+        "PACT_HOSTED_PROCESS_MODEL": "single-persistent-process",
+        "PACT_HOSTED_HOST": "127.0.0.1",
+        "PACT_HOSTED_PORT": "4100",
+        "PACT_HOSTED_CLOCK_DIRECTORY": "/pact-clock"
+      },
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "${PACT_CLOCK_DIRECTORY:?Set private persistent API clock directory}",
+          "target": "/pact-clock",
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${PACT_CONFIG_DIRECTORY:?Set absolute kit directory}/bin/inject-runtime.mjs",
+          "target": "/pact-staging/inject-runtime.mjs",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${PACT_PRIVATE_DIRECTORY:?Set private operator directory}/api-runtime.json",
+          "target": "/run/secrets/api-runtime.json",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${PACT_PRIVATE_DIRECTORY:?Set private operator directory}/postgres-tls/ca.crt",
+          "target": "/run/pact-postgres-ca.crt",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        }
+      ],
+      "tmpfs": [
+        "/tmp:rw,noexec,nosuid,size=16m,uid=1000,gid=1000,mode=700"
+      ],
+      "logging": {
+        "driver": "none"
+      },
+      "profiles": [
+        "runtime"
+      ]
+    },
+    "web": {
+      "image": "${PACT_WEB_IMAGE:?Set locally loaded immutable domain-bound web image identity}",
+      "pull_policy": "never",
+      "network_mode": "host",
+      "user": "1000:1000",
+      "restart": "no",
+      "init": true,
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "stop_grace_period": "30s",
+      "pids_limit": 128,
+      "mem_limit": "1g",
+      "cpus": 1,
+      "working_dir": "/pact/web",
+      "entrypoint": [
+        "node",
+        "/pact-staging/inject-runtime.mjs",
+        "web"
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "NEXT_TELEMETRY_DISABLED": "1",
+        "PACT_ENV_PROFILE": "hosted",
+        "PACT_NETWORK": "devnet",
+        "PACT_APP_ORIGIN": "https://${PACT_STAGING_DOMAIN:?Set approved public hostname}",
+        "PACT_AUTH_MODE": "disabled",
+        "PACT_PROCESS_MODEL": "stateless",
+        "PACT_SERVER_POLICY": "disabled",
+        "NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy",
+        "NEXT_PUBLIC_SOLANA_RPC_URL": "${PACT_PUBLIC_RPC_ORIGIN:?Set approved public HTTPS RPC origin}",
+        "NEXT_PUBLIC_RPC_URL": "https://sepolia.base.org",
+        "PACT_HOSTED_API_INTERNAL_URL": "http://127.0.0.1:4100"
+      },
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "${PACT_CONFIG_DIRECTORY:?Set absolute kit directory}/bin/inject-runtime.mjs",
+          "target": "/pact-staging/inject-runtime.mjs",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${PACT_PRIVATE_DIRECTORY:?Set private operator directory}/web-runtime.json",
+          "target": "/run/secrets/web-runtime.json",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        }
+      ],
+      "tmpfs": [
+        "/tmp:rw,noexec,nosuid,size=32m,uid=1000,gid=1000,mode=700",
+        "/pact/web/.next/cache:rw,noexec,nosuid,size=64m,uid=1000,gid=1000,mode=700"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "--input-type=module",
+          "-e",
+          "const r=await fetch('http://127.0.0.1:3000/integrate/developer',{signal:AbortSignal.timeout(2000)});if(!r.ok)process.exit(1)"
+        ],
+        "interval": "30s",
+        "timeout": "3s",
+        "retries": 3
+      },
+      "logging": {
+        "driver": "none"
+      },
+      "profiles": [
+        "runtime"
+      ]
+    },
+    "gateway": {
+      "image": "caddy:2.11.7@sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489",
+      "pull_policy": "never",
+      "network_mode": "host",
+      "user": "1000:1000",
+      "restart": "no",
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "cap_add": [
+        "NET_BIND_SERVICE"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "stop_grace_period": "15s",
+      "pids_limit": 64,
+      "mem_limit": "256m",
+      "cpus": 0.5,
+      "environment": {
+        "PACT_STAGING_DOMAIN": "${PACT_STAGING_DOMAIN:?Set approved public hostname}"
+      },
+      "command": [
+        "caddy",
+        "run",
+        "--config",
+        "/etc/caddy/Caddyfile",
+        "--adapter",
+        "caddyfile"
+      ],
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "${PACT_CONFIG_DIRECTORY:?Set absolute kit directory}/Caddyfile",
+          "target": "/etc/caddy/Caddyfile",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${PACT_PRIVATE_DIRECTORY:?Set private operator directory}/gateway-tls",
+          "target": "/run/pact-gateway-tls",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        }
+      ],
+      "tmpfs": [
+        "/tmp:rw,noexec,nosuid,size=16m,uid=1000,gid=1000,mode=700",
+        "/config:rw,noexec,nosuid,size=8m,uid=1000,gid=1000,mode=700",
+        "/data:rw,noexec,nosuid,size=8m,uid=1000,gid=1000,mode=700"
+      ],
+      "logging": {
+        "driver": "none"
+      },
+      "profiles": [
+        "ingress"
+      ]
+    },
+    "migrate": {
+      "image": "${PACT_API_IMAGE:?Set locally loaded immutable API image identity}",
+      "pull_policy": "never",
+      "network_mode": "host",
+      "user": "1000:1000",
+      "restart": "no",
+      "init": true,
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "stop_grace_period": "30s",
+      "pids_limit": 128,
+      "mem_limit": "768m",
+      "cpus": 1,
+      "working_dir": "/pact/services/pact-api",
+      "entrypoint": [
+        "node",
+        "/pact-staging/inject-runtime.mjs",
+        "migrate"
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "PACT_HOSTED_PROFILE": "hosted",
+        "PACT_HOSTED_ORIGIN": "https://${PACT_STAGING_DOMAIN:?Set approved public hostname}",
+        "PACT_HOSTED_PROCESS_MODEL": "single-persistent-process",
+        "PACT_HOSTED_HOST": "127.0.0.1",
+        "PACT_HOSTED_PORT": "4100",
+        "PACT_HOSTED_CLOCK_DIRECTORY": "/pact-clock"
+      },
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "${PACT_CLOCK_DIRECTORY:?Set private persistent API clock directory}",
+          "target": "/pact-clock",
+          "bind": {
+            "create_host_path": false
+          },
+          "read_only": true
+        },
+        {
+          "type": "bind",
+          "source": "${PACT_CONFIG_DIRECTORY:?Set absolute kit directory}/bin/inject-runtime.mjs",
+          "target": "/pact-staging/inject-runtime.mjs",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${PACT_PRIVATE_DIRECTORY:?Set private operator directory}/api-migrate.json",
+          "target": "/run/secrets/api-runtime.json",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${PACT_PRIVATE_DIRECTORY:?Set private operator directory}/postgres-tls/ca.crt",
+          "target": "/run/pact-postgres-ca.crt",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        }
+      ],
+      "tmpfs": [
+        "/tmp:rw,noexec,nosuid,size=16m,uid=1000,gid=1000,mode=700"
+      ],
+      "logging": {
+        "driver": "none"
+      },
+      "profiles": [
+        "operations"
+      ]
+    }
+  }
+}
