@@ -9,20 +9,82 @@ import {proxyHostedRequest} from '../../web/lib/hosted-gateway.mjs';
 
 async function until(predicate){for(let i=0;i<100;i++){if(await predicate())return;await delay(10);}throw Error('Expected owned work to settle');}
 function partial(url){return new Promise((resolve,reject)=>{
- let drip;
+ let drip,ceiling;
  const pending=httpRequest(url,{method:'POST',headers:{'content-type':'application/json','content-length':'100'}},response=>{
-  clearInterval(drip);let body='';response.on('data',bytes=>body+=bytes);response.on('end',()=>resolve({status:response.statusCode,headers:response.headers,data:JSON.parse(body)}));
- });pending.on('error',error=>{clearInterval(drip);reject(error);});pending.setTimeout(11000,()=>pending.destroy(Error('Fixture transport ceiling exceeded')));pending.write('{');
- // Keep the socket active so this measures the absolute request deadline,
- // independently of the shorter five-second idle-connection ceiling.
+  clearInterval(drip);clearTimeout(ceiling);let body='';response.on('data',bytes=>body+=bytes);response.on('end',()=>resolve({status:response.statusCode,headers:response.headers,data:JSON.parse(body)}));
+ });pending.on('error',error=>{clearInterval(drip);clearTimeout(ceiling);reject(error);});ceiling=setTimeout(()=>pending.destroy(Error('Owned short-body transport ceiling exceeded')),2500);pending.write('{');
+ // Keep the body incomplete; the short application guard must win while the
+ // independent native receipt timeout remains seven seconds.
  drip=setInterval(()=>pending.write(' '),500);
 });}
 
-test('Phase7 native HTTP default seven-second budget bounds incomplete bodies and releases admission',{timeout:15000},async t=>{
- const c=await accessFixture();t.after(()=>c.close());const started=performance.now(),response=await partial(c.base+'/v1/developer/auth/challenge');
+test('Phase7 native seven-second receipt guard returns verified408 for an incomplete body and releases admission',{timeout:15000},async t=>{
+ let armed=false,challengeWrites=0;
+ const c=await accessFixture({wrapDatabase:native=>({...native,query:async(sql,values)=>{
+  if(armed&&sql.startsWith('INSERT INTO admin_challenges'))challengeWrites++;return native.query(sql,values);
+ }})});
+ let socket,serverSocket,incoming,drip,ceiling,headersTimer,bodyDrips=0,clientClosed=false,serverClosed=false;
+ const serverErrors=[];
+ const observeConnection=peer=>{serverSocket=peer;peer.once('close',()=>serverClosed=true);};
+ const observeRequest=req=>{if(req.url==='/v1/developer/auth/challenge')incoming=req;};
+ const observeError=(error,peer)=>{if(peer===serverSocket)serverErrors.push(error.code==='ERR_HTTP_REQUEST_TIMEOUT'?'ERR_HTTP_REQUEST_TIMEOUT':'OTHER');};
+ const server=c.service.server.server;server.once('connection',observeConnection);server.on('request',observeRequest);server.on('clientError',observeError);
+ t.after(async()=>{clearInterval(drip);clearTimeout(ceiling);clearTimeout(headersTimer);socket?.destroy();server.off('connection',observeConnection);server.off('request',observeRequest);server.off('clientError',observeError);await c.close();});
+ assert.equal(server.headersTimeout,5000);assert.equal(server.requestTimeout,7000);assert.equal(server.connectionsCheckingInterval,250);
+ assert.equal(c.service.server.initialConfig.handlerTimeout,7000);
+ armed=true;const address=new URL(c.base),started=performance.now();let firstBytesObserved=false,admissionObserved=false;
+ const response=await new Promise((resolve,reject)=>{
+  let data='';socket=connectSocket({host:address.hostname,port:Number(address.port)});
+  socket.on('data',bytes=>{data+=bytes.toString('utf8');if(data.length>4096){socket.destroy();reject(Error('Owned receipt response exceeded bound'));}});
+  socket.on('error',()=>reject(Error('Owned receipt transport failed')));
+  socket.on('close',()=>{clientClosed=true;clearInterval(drip);resolve(data);});
+  ceiling=setTimeout(()=>{socket.destroy();reject(Error('Owned receipt transport ceiling exceeded'));},11000);
+  socket.on('connect',()=>{
+   socket.write('POST /v1/developer/auth/challenge HTTP/1.1\r\nHost: '+address.host+'\r\nContent-Type: application/json\r\nContent-Length: 100\r\nX-Split: ');
+   void(async()=>{
+    // Observe server receipt without inspecting payload. Valid delayed headers
+    // separate the native and application start times; no server limit changes.
+    await until(()=>serverSocket?.bytesRead>0);firstBytesObserved=true;
+    await new Promise(resolve=>{headersTimer=setTimeout(resolve,1500);});
+    socket.write('verified\r\n\r\n{');drip=setInterval(()=>{
+     socket.write(' ');if(++bodyDrips===4)clearInterval(drip);
+    },500);
+    // Stop writes before408 can arrive, avoiding a client-write/reset race.
+    // The last body byte is still less than5s before the native7s deadline.
+    await until(()=>incoming&&c.service.diagnostics().http.active===1);admissionObserved=true;
+   })().catch(reject);
+  });
+ });clearTimeout(ceiling);
+ const elapsed=performance.now()-started,split=response.indexOf('\r\n\r\n');assert.ok(split>0);
+ const headers=response.slice(0,split),body=JSON.parse(response.slice(split+4));
+ assert.match(headers,/^HTTP\/1\.1 408 Request Timeout\r\n/);assert.match(headers,/\r\nContent-Type: application\/json(?:\r\n|$)/i);
+ assert.deepEqual(body,{error:'Request Timeout',message:'Client Timeout',statusCode:408});
+ assert.equal(firstBytesObserved,true);assert.equal(admissionObserved,true);assert.equal(bodyDrips,4);assert.deepEqual(serverErrors,['ERR_HTTP_REQUEST_TIMEOUT']);
+ assert.ok(elapsed>=6500&&elapsed<10500,'default deadline must be real and bounded');
+ await until(()=>clientClosed&&serverClosed&&incoming?.aborted===true&&c.service.diagnostics().http.active===0);
+ assert.equal(incoming.complete,false);assert.equal(challengeWrites,0,'incomplete body must not reach authentication effects');
+ assert.equal((await new Browser(c.base).request('GET','/v1/health/live')).status,200);
+ t.diagnostic(JSON.stringify({kind:'verified-native-body-timeout',status:408,nativeTimeoutObserved:true,elapsedMs:Math.round(elapsed),admissionAfter:0,challengeWrites,firstBytesObserved,clientClosed,serverClosed,rawDiagnosticsRecorded:false}));
+});
+
+test('Phase7 short application deadline independently returns503 for an incomplete body',{timeout:10000},async t=>{
+ let armed=false,challengeWrites=0;
+ const c=await accessFixture({serviceOptions:{requestDeadlineMs:200},wrapDatabase:native=>({...native,query:async(sql,values)=>{
+  if(armed&&sql.startsWith('INSERT INTO admin_challenges'))challengeWrites++;return native.query(sql,values);
+ }})});t.after(()=>c.close());
+ const server=c.service.server.server,serverErrors=[];let incoming;
+ const observeError=error=>serverErrors.push(error.code==='ERR_HTTP_REQUEST_TIMEOUT'?'ERR_HTTP_REQUEST_TIMEOUT':'OTHER');
+ const observeRequest=req=>{if(req.url==='/v1/developer/auth/challenge')incoming=req;};
+ server.on('clientError',observeError);server.on('request',observeRequest);t.after(()=>{server.off('clientError',observeError);server.off('request',observeRequest);});
+ assert.equal(server.requestTimeout,7000);assert.equal(server.headersTimeout,5000);assert.equal(c.service.server.initialConfig.handlerTimeout,200);
+ armed=true;const started=performance.now(),response=await partial(c.base+'/v1/developer/auth/challenge');
  assert.equal(response.status,503);assert.equal(response.data.error.code,'REQUEST_DEADLINE');assert.equal(response.headers.connection,'close');
- const elapsed=performance.now()-started;assert.ok(elapsed>=6500&&elapsed<10500,'default deadline must be real and bounded');
- await until(()=>c.service.diagnostics().http.active===0);assert.equal((await new Browser(c.base).request('GET','/v1/health/live')).status,200);
+ const elapsed=performance.now()-started;assert.ok(elapsed>=150&&elapsed<2000,'short application deadline must not wait for native receipt timeout');
+ assert.deepEqual(serverErrors,[]);assert.equal(challengeWrites,0,'incomplete body must not reach authentication effects');
+ await until(()=>incoming?.socket.destroyed===true&&c.service.diagnostics().http.active===0);
+ assert.equal(incoming.complete,false);
+ assert.equal((await new Browser(c.base).request('GET','/v1/health/live')).status,200);
+ t.diagnostic(JSON.stringify({kind:'verified-application-body-timeout',status:503,code:'REQUEST_DEADLINE',elapsedMs:Math.round(elapsed),nativeTimeoutObserved:false,admissionAfter:0,challengeWrites,rawDiagnosticsRecorded:false}));
 });
 
 test('Phase7 actual incomplete headers close within the independent five-second header ceiling',{timeout:12000},async t=>{
