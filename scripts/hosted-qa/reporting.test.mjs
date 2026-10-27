@@ -20,11 +20,33 @@ test('hosted reporter omits raw matcher errors, output, proof material and attac
   process.stdout.write=function(chunk){output+=String(chunk);return true;};
   reporter.onStdOut(Buffer.from(sensitive.join('\n')));reporter.onStdErr(Buffer.from(sensitive.join('\n')));reporter.onError(new Error(sensitive.join('\n')));
   reporter.onTestEnd({id:'safe-id',title:'diagnostic '+key,location:{file:'public.spec.ts',line:1},parent:{project:()=>({name:'project '+grant})}},
-   {status:'failed',duration:1,errors:[{message:sensitive.join('\n'),stack:sensitive.join('\n')}],attachments:[{body:Buffer.from(key)}]});
+   {status:'failed',duration:1,errors:[{message:sensitive.join('\n'),stack:sensitive.join('\n'),location:{file:'/private/'+grant+'/console.spec.ts',line:42,column:9}}],attachments:[{body:Buffer.from(key)}]});
   await reporter.onEnd({status:'failed'});
  }finally{process.stdout.write=write;if(binding!==undefined)process.env.PACT_HOSTED_QA_RUN_ID=binding;}
  const file=await readFile(path.join(directory,'results.json'),'utf8');for(const secret of sensitive)assert.ok(!output.includes(secret)&&!file.includes(secret),'sensitive test values must not be recorded');
  const receipt=JSON.parse(file);assert.equal(receipt.status,'failed');assert.equal(receipt.stats.unexpected,1);assert.equal(receipt.runnerErrors,1);assert.equal(receipt.rawDiagnosticsRecorded,false);
+ assert.deepEqual(receipt.tests[0].failureLocations,[{file:'console.spec.ts',line:42,column:9}]);
+});
+
+test('hosted failure coordinates allow only bounded known source locations and omit raw stack text',async()=>{
+ const require=createRequire(new URL('../../web/package.json',import.meta.url)),ts=require('typescript');
+ const source=await readFile(path.join(root,'web/tests/hosted/console-reporter.ts'),'utf8');
+ const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+ const {failureLocations}=await import('data:text/javascript;base64,'+Buffer.from(compiled).toString('base64'));
+ const secret='pact_grant_'+randomBytes(32).toString('base64url');
+ const structured={location:{file:'C:\\private\\'+secret+'\\console.spec.ts',line:42,column:9},
+  message:secret,stack:`Error: ${secret}\n    at helper (/private/connect.spec.ts:99:3)`};
+ assert.deepEqual(failureLocations([structured]),[{file:'console.spec.ts',line:42,column:9}],'structured location takes precedence over a stack');
+ const errors=[structured,structured,{message:secret,stack:`Error: ${secret}\nconsole.spec.ts:1:1\n at caller (/private/${secret}/console-fixtures.ts:17:5)\n at /private/connect.spec.ts:33:7\n at /private/secret.ts:1:1\n at /private/console.spec.ts:0:1\n at /private/console.spec.ts:100001:1\n at /private/console.spec.ts:1:10001\n at /private/console.spec.ts:4:5 ${secret}`}];
+ const result=failureLocations(errors);
+ assert.deepEqual(result,[{file:'console.spec.ts',line:42,column:9},{file:'console-fixtures.ts',line:17,column:5},{file:'connect.spec.ts',line:33,column:7}]);
+ assert.ok(!JSON.stringify(result).includes(secret));
+ for(const [line,column]of [[NaN,1],[Infinity,1],[1.5,1],['2',1],[1,-1],[1,0],[1,'2']])
+  assert.deepEqual(failureLocations([{location:{file:'console.spec.ts',line,column}}]),[]);
+ assert.deepEqual(failureLocations([{location:{file:'console.spec.ts?private='+secret,line:1,column:1}}]),[]);
+ const many=Array.from({length:30},(_,i)=>({stack:` at /private/console.spec.ts:${i+1}:1`}));
+ assert.equal(failureLocations(many).length,8,'bounded output');
+ assert.deepEqual(failureLocations([{stack:'x'.repeat(65536)+'\n at /private/console.spec.ts:1:1'}]),[],'bounded stack input');
 });
 test('hosted browser configurations forbid recording and failure page snapshots',async()=>{
  for(const file of['console.config.ts','playwright.config.ts']){

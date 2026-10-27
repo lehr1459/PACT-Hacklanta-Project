@@ -10,6 +10,29 @@ export function browserReceipt(r,{revision,runId,lane}){
   ||r.status!=='passed'||r.stats?.unexpected!==0||r.stats?.skipped!==0||r.stats?.expected!==(lane==='console'?16:12)||r.runnerErrors!==0)throw Error('Incomplete or stale browser acceptance');
  return true;
 }
+// Failure diagnosis must never export matcher values, messages, paths or stdout.
+export function browserFailureReceipt(r,{revision,runId,lane}){
+ const maximum=lane==='console'?16:lane==='connect'?12:0;
+ const integer=(value,limit)=>Number.isSafeInteger(value)&&value>=0&&value<=limit;
+ if(!maximum||r?.schemaVersion!==1||r.kind!=='hosted-browser-receipt'||r.rawDiagnosticsRecorded!==false
+  ||r.revision!==revision||r.buildRevision!==revision||r.runId!==runId||r.buildRunId!==runId
+  ||!['failed','timedout','interrupted'].includes(r.status)||!Array.isArray(r.tests)||r.tests.length>maximum
+  ||!integer(r.runnerErrors,100)||!['expected','unexpected','skipped'].every(key=>integer(r.stats?.[key],maximum))
+  ||r.stats.expected+r.stats.unexpected+r.stats.skipped!==r.tests.length)throw Error('Ineligible browser failure summary');
+ const projects=lane==='console'?['desktop-console','narrow-console']:['desktop-connect','narrow-connect'];
+ const files=['console.spec.ts','console-fixtures.ts','connect.spec.ts'];
+ const cases=r.tests.filter(item=>item.status!=='passed'&&item.status!=='skipped').map(item=>{
+  if(item.file!==lane+'.spec.ts'||!projects.includes(item.project)||!['failed','timedOut','interrupted'].includes(item.status)
+   ||!integer(item.line,100000)||item.line<1||!integer(item.durationMs,600000))throw Error('Ineligible browser case');
+  const locations=item.failureLocations??[];
+  if(!Array.isArray(locations)||locations.length>8)throw Error('Ineligible browser locations');
+  return{project:projects.indexOf(item.project),testLine:item.line,status:item.status,durationMs:item.durationMs,locations:locations.map(location=>{
+   if(!files.includes(location?.file)||!integer(location.line,100000)||location.line<1||!integer(location.column,10000)||location.column<1)throw Error('Ineligible browser location');
+   return{file:files.indexOf(location.file),line:location.line,column:location.column};
+  })};
+ });
+ return{kind:'hosted-browser-failure-summary',revision,runId,lane,status:r.status,stats:{expected:r.stats.expected,unexpected:r.stats.unexpected,skipped:r.stats.skipped},runnerErrors:r.runnerErrors,cases,rawDiagnosticsRecorded:false};
+}
 export const developerDemoNames=Object.freeze([
  'packedPackagesInstalledOutsideRepository','installedRegistryDependenciesMatchReviewedLock','threeDistinctSyntheticWalletIdentities',
  'publicHttpRegistrationAndWalletAuthentication','foreignSellerBindingDenied','sellerOwnershipVerifiedAndResourceBound',

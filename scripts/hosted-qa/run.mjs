@@ -6,7 +6,7 @@ import {mkdir,writeFile,open,access,readdir,readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {root,npmCli,validationEnv} from '../validation/common.mjs';
 import {loadRuntimePolicy} from '../validation/runtime.mjs';
-import {nodeReceipt,browserReceipt,developerDemoReceipt,matrixReceipt,generatedReferences} from './acceptance.mjs';
+import {nodeReceipt,browserReceipt,browserFailureReceipt,developerDemoReceipt,matrixReceipt,generatedReferences} from './acceptance.mjs';
 const mode=process.argv[2]??'all';
 if(!['install','all','portable'].includes(mode))throw Error('Use hosted run.mjs install|all|portable');
 const directory=path.join(root,'web/test-results/hosted-ci');await mkdir(directory,{recursive:true});
@@ -24,7 +24,18 @@ async function command(name,args,{cwd=root,env={},testReceipt=false,minimumTests
    const child=spawn(process.execPath,args,{cwd,env:validationEnv({PACT_HOSTED_QA_CLEAN:'1',PACT_HOSTED_QA_RUN_ID:runId,PACT_HOSTED_QA_REVISION:revision,...(qa?{PACT_QA_DATABASE_URL:qa}:{}),...env}),windowsHide:true,stdio:['ignore',log.fd,log.fd]});
    child.once('error',reject);child.once('close',code=>resolve(code??1));
   });
-  if(code!==0)throw Error('Hosted check failed: '+name);
+  if(code!==0){
+   if(['browser-console','browser-connect'].includes(name)){
+    try{
+     const lane=name.slice('browser-'.length),bytes=await readFile(path.join(root,'web/test-results/hosted-'+lane+'/results.json'));
+     if(bytes.length>65536)throw Error();
+     const safe=browserFailureReceipt(JSON.parse(bytes.toString('utf8')),{revision,runId,lane});
+     await writeFile(path.join(directory,name+'-failure.json'),JSON.stringify(safe)+'\n');
+     process.stdout.write(JSON.stringify(safe)+'\n');
+    }catch{process.stdout.write('Bounded browser failure summary unavailable; raw diagnostics remain private.\n');}
+   }
+   throw Error('Hosted check failed: '+name);
+  }
   if(testReceipt){
    const output=await readFile(path.join(directory,name+'.log'),'utf8');
    nodeReceipt(output,minimumTests);

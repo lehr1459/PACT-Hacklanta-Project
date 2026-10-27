@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {nodeReceipt,browserReceipt,developerDemoNames,developerDemoReceipt,matrixReceipt,matrixNames,generatedReferences} from './acceptance.mjs';
+import {nodeReceipt,browserReceipt,browserFailureReceipt,developerDemoNames,developerDemoReceipt,matrixReceipt,matrixNames,generatedReferences} from './acceptance.mjs';
 import {readFile} from 'node:fs/promises';
+test('browser failure summaries export only bound status and numeric source locations',()=>{
+ const binding={revision:'a'.repeat(40),runId:'fixture-run',lane:'console'},secret='sensitive-matcher-value';
+ const receipt={schemaVersion:1,kind:'hosted-browser-receipt',rawDiagnosticsRecorded:false,...binding,buildRevision:binding.revision,buildRunId:binding.runId,status:'failed',stats:{expected:0,unexpected:1,skipped:0},runnerErrors:0,tests:[{file:'console.spec.ts',line:84,project:'desktop-console',status:'failed',durationMs:42,title:secret,error:secret,stdout:secret,failureLocations:[{file:'console-fixtures.ts',line:73,column:4,secret}]}]};
+ const result=browserFailureReceipt(receipt,binding);assert.equal(result.cases.length,1);assert.equal(JSON.stringify(result).includes(secret),false);assert.deepEqual(result.cases[0].locations,[{file:1,line:73,column:4}]);
+ for(const patch of[{revision:'b'.repeat(40)},{rawDiagnosticsRecorded:true},{status:'passed'},{runnerErrors:-1},{tests:[{...receipt.tests[0],failureLocations:[{file:secret,line:73,column:4}]}]},{tests:[{...receipt.tests[0],line:100001}]}])assert.throws(()=>browserFailureReceipt({...receipt,...patch},binding));
+});
 test('independent demonstration requires complete clean-source packed-consumer evidence',()=>{
  const revision='a'.repeat(40),valid={schemaVersion:1,kind:'independent-packed-developer-demo',sourceRevision:revision,trackedWorkingTreeClean:true,status:'PASS',synthetic:true,blockchainPurchases:0,networkTransactions:0,externalPublication:false,checkCount:17,checks:Object.fromEntries(developerDemoNames.map(name=>[name,'PASS'])),archives:Object.fromEntries(['client','engine','express'].map(name=>[name,{sha256:'b'.repeat(64)}]))};
  valid.sourceArchiveSha256='d'.repeat(64);
