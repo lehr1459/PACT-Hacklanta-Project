@@ -6,7 +6,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
-export const nativeMinimumTests=86;
+export const nativeMinimumTests=87;
 export const nativeFiles=Object.freeze(['gateway','gateway-integration','phase1','phase2','phase3','phase4','phase6-client','phase6-contract','phase6-consumer','phase7-clock','phase7-deadline-usage','phase7-maintenance','phase7-restore','load'].map(name=>`scripts/hosted-qa/${name}.test.mjs`));
 const sourceFiles=Object.freeze([...nativeFiles,
   ...['helpers','browser','access-fixture','phase7-clock-fixture','rpc-fixture'].map(name=>`scripts/hosted-qa/${name}.mjs`),

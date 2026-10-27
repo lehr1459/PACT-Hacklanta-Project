@@ -191,3 +191,60 @@ test('Phase1 quotas remain atomic under concurrent app creation and key rotation
    credentialId:keyId,expiresAt:Date.now()+3600000,overlapSeconds:0})).status,200,'zero-overlap rotation must be possible at quota');
  });
 });
+
+test('Phase1 concurrent reauthentication and signed mutation acquire account before session',{timeout:15000},async t=>{
+ const connectionString=await prepareDatabase(),native=await createDatabase({connectionString,profile:'test'});await migrate(native);
+ const observer=new Client({connectionString});await observer.connect();
+ let armedLogin=false,watchMutation=false,loginPid,mutationPid,deadlocks=0,releaseLogin,markLogin,markMutation;
+ const held=new Promise(resolve=>releaseLogin=resolve),loginEntered=new Promise(resolve=>markLogin=resolve),mutationEntered=new Promise(resolve=>markMutation=resolve),pending=[];
+ const db={...native,transaction:work=>native.transaction(async tx=>{
+  if(watchMutation){mutationPid=Number((await tx.query('SELECT pg_backend_pid() AS pid')).rows[0].pid);markMutation();}
+  return work({query:async(sql,values)=>{
+   let result;try{result=await tx.query(sql,values);}catch(error){if(error?.code==='40P01')deadlocks++;throw error;}
+   if(armedLogin&&sql.startsWith('SELECT * FROM developer_accounts WHERE wallet=')){
+    armedLogin=false;loginPid=Number((await tx.query('SELECT pg_backend_pid() AS pid')).rows[0].pid);markLogin();await held;
+   }
+   return result;
+  }});
+ })};
+ const wall=Date.now(),service=await createService({database:db,origin,pepper:randomBytes(32).toString('base64url'),profile:'test',
+  now:()=>wall,monotonicNow:()=>0,rateLimit:1000,clockDirectory:await clockDirectory()});
+ const base=await service.server.listen({port:0,host:'127.0.0.1'});
+ t.after(async()=>{releaseLogin();await Promise.allSettled(pending);await observer.end();await service.close();await native.close();});
+ async function bounded(promise){let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Owned account/session SQL barrier did not progress')),2000);})]);}finally{clearTimeout(timer);}}
+ const admin=new Browser(base);await admin.login();
+ let response=await admin.request('GET','/v1/developer/auth/session');const ownerId=response.data.account.id;
+ response=await admin.request('POST','/v1/developer/apps',{name:'Concurrent reauthentication fixture',description:'Original saved description',framework:'rest'});assert.equal(response.status,200);
+ const appId=response.data.app.id,appPath='/v1/developer/apps/'+appId,payload={description:'Must not survive retired administrator session'},proof=await admin.proof(appId,'app.update',payload);
+ const signingIn=new Browser(base);signingIn.wallet=admin.wallet;signingIn.jar=new Map(admin.jar);signingIn.csrf=admin.csrf;
+ response=await signingIn.request('POST','/v1/developer/auth/challenge',{walletAddress:signingIn.wallet.address});assert.equal(response.status,200);
+ const loginProof={challengeId:response.data.challengeId,signatureBase64:signingIn.wallet.sign(response.data.message)};
+ armedLogin=true;const login=signingIn.request('POST','/v1/developer/auth/verify',loginProof);pending.push(login);await bounded(loginEntered);
+ watchMutation=true;const mutation=admin.request('PATCH',appPath,{payload,proof});pending.push(mutation);await bounded(mutationEntered);watchMutation=false;
+ let actualWait=false,waitedOnSessionJoin=false,waitedOnOwner=false;const deadline=performance.now()+1500;
+ while(performance.now()<deadline){
+  const row=(await observer.query(`SELECT wait_event_type='Lock' AND $1::integer=ANY(pg_blocking_pids(pid)) AS blocked,
+    query LIKE 'SELECT s.token_hash,s.expires_at FROM admin_sessions%FOR UPDATE OF s,a' AS session_join,
+    query LIKE 'SELECT%developer_accounts%FOR UPDATE%' AND query NOT LIKE 'SELECT s.token_hash%' AS owner_first
+    FROM pg_stat_activity WHERE pid=$2::integer`,[loginPid,mutationPid])).rows[0];
+  if(row?.blocked===true){actualWait=true;waitedOnSessionJoin=row.session_join;waitedOnOwner=row.owner_first;break;}
+  await new Promise(resolve=>setTimeout(resolve,10));
+ }
+ assert.equal(actualWait,true,'signed mutation must actually wait on the held account authority');
+ // A separate observer avoids deadlocking the observation behind either of the
+ // two occupied service-pool sockets. This probe never retains a session lock.
+ let oldSessionAlreadyLocked=false;await observer.query('BEGIN');
+ try{await observer.query('SELECT token_hash FROM admin_sessions WHERE account_id=$1 AND revoked_at IS NULL FOR UPDATE NOWAIT',[ownerId]);}
+ catch(error){if(error?.code==='55P03')oldSessionAlreadyLocked=true;else throw error;}
+ finally{await observer.query('ROLLBACK');}
+ releaseLogin();const [authenticated,changed]=await Promise.all([login,mutation]);
+ t.diagnostic(JSON.stringify({kind:'account-session-lock-order-regression',actualAccountLockWait:actualWait,waitedOnSessionJoin,waitedOnOwner,
+  oldSessionAlreadyLocked,sqlDeadlocks:deadlocks,loginHttpStatus:authenticated.status,mutationHttpStatus:changed.status}));
+ assert.equal(deadlocks,0,'reauthentication and owner mutation must not form an account/session deadlock');
+ assert.equal(authenticated.status,200,'held account owner must finish reauthentication');
+ assert.equal(changed.status,401,'the earlier administrator session was revoked before its mutation could lock authority');
+ assert.equal(changed.data.error.code,'AUTH_REQUIRED');
+ assert.equal((await admin.request('GET',appPath)).status,401,'old administrator authority remains retired');
+ const saved=await signingIn.request('GET',appPath);assert.equal(saved.status,200);assert.equal(saved.data.app.description,'Original saved description');
+ assert.equal((await signingIn.request('PATCH',appPath,{payload,proof})).status,401,'old-session signed proof cannot migrate to fresh authority');
+});

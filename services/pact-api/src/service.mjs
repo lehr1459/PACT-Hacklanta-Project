@@ -208,9 +208,15 @@ export async function createService(options) {
     if(!Number.isSafeInteger(expiresAt)||expiresAt<=now())fail('AUTH_REQUIRED',401);
   }
   async function lockSession(tx,principal) {
-    const row=(await tx.query(`SELECT s.token_hash,s.expires_at FROM admin_sessions s JOIN developer_accounts a ON a.id=s.account_id
-      WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>$2 AND a.status='active' FOR UPDATE OF s,a`,
-      [principal.token_hash,now()])).rows[0];
+    // Reauthentication locks the account before retiring its prior session.
+    // Lock each parent explicitly in that order; a joined row lock can take
+    // the session first and deadlock a legitimate concurrent signed action.
+    const account=(await tx.query(`SELECT id FROM developer_accounts WHERE id=$1 AND status='active' FOR UPDATE`,
+      [principal.account_id])).rows[0];
+    if(!account)fail('AUTH_REQUIRED',401);
+    const row=(await tx.query(`SELECT token_hash,expires_at FROM admin_sessions
+      WHERE token_hash=$1 AND account_id=$2 AND revoked_at IS NULL AND expires_at>$3 FOR UPDATE`,
+      [principal.token_hash,principal.account_id,now()])).rows[0];
     if(!row)fail('AUTH_REQUIRED',401);
     adminLease(row);return row;
   }

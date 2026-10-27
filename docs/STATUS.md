@@ -1,5 +1,9 @@
 # Status
 
+## Concurrency corrections during final acceptance
+
+Final CI exposed a real PostgreSQL telemetry/access deadlock; independent review reproduced a second reauthentication/session cycle. Both have deterministic native regressions and canonical account-first locking fixes, with authorization and freshness controls preserved. See [causes, corrections and evidence boundaries](platform/hosted/CONCURRENCY_REVIEW_2026-10-26.md). The native gate now requires87 cases. Final clean-source local/CI acceptance and deployment-isolation checks remain mandatory before the authorized ordinary merge; no hosting or wallet action is implied.
+
 ## Final engineering acceptance and conditional merge — 2026-10-26
 
 The owner now authorizes the ordinary pull-request/merge workflow after all required engineering gates pass. This supersedes earlier feature-push-only handoffs, without authorizing deployment, package publication, provider changes, wallet approval or transactions. The existing public deployment remains isolated.
