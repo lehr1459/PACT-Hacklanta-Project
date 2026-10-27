@@ -6,6 +6,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
+export const nativeMinimumTests=86;
 export const nativeFiles=Object.freeze(['gateway','gateway-integration','phase1','phase2','phase3','phase4','phase6-client','phase6-contract','phase6-consumer','phase7-clock','phase7-deadline-usage','phase7-maintenance','phase7-restore','load'].map(name=>`scripts/hosted-qa/${name}.test.mjs`));
 const sourceFiles=Object.freeze([...nativeFiles,
   ...['helpers','browser','access-fixture','phase7-clock-fixture','rpc-fixture'].map(name=>`scripts/hosted-qa/${name}.mjs`),
@@ -81,7 +82,7 @@ export async function collectNodeFailures(events,identity){
   const complete=finales===1&&finale?.counts!==null&&typeof finale?.success==='boolean';
   return{schemaVersion:1,kind:'hosted-node-failure-summary',...id,sourceFingerprint,
     status:!complete?'incomplete':finale.success&&failureEvents===0?'passed':'failed',
-    counts:complete?finale.counts:null,minimumTests:85,minimumMet:complete&&finale.counts.tests>=85,
+    counts:complete?finale.counts:null,minimumTests:nativeMinimumTests,minimumMet:complete&&finale.counts.tests>=nativeMinimumTests,
     failureEvents,omittedFailures:failureEvents-failures.length,failures,rawDiagnosticsRecorded:false};
 }
 // Reconstruct on the parent side before printing: reject stale identity/source
@@ -90,12 +91,12 @@ export function nodeFailureReceipt(receipt,identity){
   const id=binding(identity);
   if(receipt?.schemaVersion!==1||receipt.kind!=='hosted-node-failure-summary'||receipt.revision!==id.revision||receipt.runId!==id.runId
     ||receipt.sourceFingerprint!==sourceFingerprint||receipt.rawDiagnosticsRecorded!==false
-    ||!['passed','failed','incomplete'].includes(receipt.status)||receipt.minimumTests!==85
+    ||!['passed','failed','incomplete'].includes(receipt.status)||receipt.minimumTests!==nativeMinimumTests
     ||!integer(receipt.failureEvents)||!Array.isArray(receipt.failures)||receipt.failures.length>32
     ||receipt.omittedFailures!==receipt.failureEvents-receipt.failures.length||receipt.omittedFailures<0)throw Error('INELIGIBLE_NODE_FAILURE_SUMMARY');
   const safeCounts=receipt.counts===null?null:counts(receipt.counts);
   if(receipt.counts!==null&&safeCounts===null||receipt.status!=='incomplete'&&safeCounts===null
-    ||receipt.minimumMet!==(safeCounts!==null&&safeCounts.tests>=85))throw Error('INELIGIBLE_NODE_FAILURE_SUMMARY');
+    ||receipt.minimumMet!==(safeCounts!==null&&safeCounts.tests>=nativeMinimumTests))throw Error('INELIGIBLE_NODE_FAILURE_SUMMARY');
   const safeFailures=receipt.failures.map(item=>{
     const check=(location,nativeOnly=false)=>{
       if(!location||nativeOnly&&!nativeFiles.includes(location.file))throw Error('INELIGIBLE_NODE_FAILURE_LOCATION');
@@ -107,7 +108,7 @@ export function nodeFailureReceipt(receipt,identity){
       ...(Object.hasOwn(item,'httpStatus')?{httpStatus:item.httpStatus}:{}),locations:item.locations.map(location=>check(location))};
   });
   return{schemaVersion:1,kind:'hosted-node-failure-summary',...id,sourceFingerprint,status:receipt.status,
-    counts:safeCounts,minimumTests:85,minimumMet:receipt.minimumMet,failureEvents:receipt.failureEvents,
+    counts:safeCounts,minimumTests:nativeMinimumTests,minimumMet:receipt.minimumMet,failureEvents:receipt.failureEvents,
     omittedFailures:receipt.omittedFailures,failures:safeFailures,rawDiagnosticsRecorded:false};
 }
 export default async function* reporter(events){

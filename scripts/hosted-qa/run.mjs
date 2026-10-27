@@ -8,7 +8,7 @@ import {pathToFileURL} from 'node:url';
 import {root,npmCli,validationEnv} from '../validation/common.mjs';
 import {loadRuntimePolicy} from '../validation/runtime.mjs';
 import {nodeReceipt,browserReceipt,browserFailureReceipt,developerDemoReceipt,matrixReceipt,generatedReferences} from './acceptance.mjs';
-import {nodeFailureReceipt} from './node-reporter.mjs';
+import {nodeFailureReceipt,nativeMinimumTests} from './node-reporter.mjs';
 const mode=process.argv[2]??'all';
 if(!['install','all','portable'].includes(mode))throw Error('Use hosted run.mjs install|all|portable');
 const directory=path.join(root,'web/test-results/hosted-ci');await mkdir(directory,{recursive:true});
@@ -88,7 +88,7 @@ try{
    await npm('next-production-build','examples/pact-hosted-next',['run','build']);
    await command('console-production-build',['scripts/hosted-qa/build-web.mjs']);
    const files=['gateway','gateway-integration','phase1','phase2','phase3','phase4','phase6-client','phase6-contract','phase6-consumer','phase7-clock','phase7-deadline-usage','phase7-maintenance','phase7-restore','load'].map(f=>'scripts/hosted-qa/'+f+'.test.mjs');
-   await tests('native-postgres-http',files,{minimumTests:85,env:{PACT_QA_NEXT_EXAMPLE_BUILD:path.join(root,'examples/pact-hosted-next')}});
+   await tests('native-postgres-http',files,{minimumTests:nativeMinimumTests,env:{PACT_QA_NEXT_EXAMPLE_BUILD:path.join(root,'examples/pact-hosted-next')}});
    await command('independent-developer-demo',['scripts/hosted-qa/developer-demo.mjs'],{demoReceipt:true});
    for(const lane of['console','connect']){
     await command('browser-'+lane,['web/node_modules/@playwright/test/cli.js','test','--config','web/tests/hosted/'+(lane==='console'?'console.config.ts':'playwright.config.ts')]);

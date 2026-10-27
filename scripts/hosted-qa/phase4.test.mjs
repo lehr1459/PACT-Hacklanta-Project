@@ -200,6 +200,53 @@ test('Phase4 readiness verifies actual chain and complete migration checksums',a
  assert.equal((await c.admin.request('GET','/v1/health/ready')).status,200);
 });
 
+test('Phase4 telemetry parent locks cannot deadlock legitimate protected access',{timeout:15000},async t=>{
+ let armed=false,probe=false,telemetryPid,protectedPid,deadlocks=0;
+ let releaseTelemetry,markTelemetry,markProtected;
+ const held=new Promise(resolve=>releaseTelemetry=resolve),telemetryEntered=new Promise(resolve=>markTelemetry=resolve),protectedEntered=new Promise(resolve=>markProtected=resolve);
+ const pending=[];
+ async function bounded(promise){let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Owned SQL barrier did not progress')),2000);})]);}finally{clearTimeout(timer);}}
+ const c=await accessFixture({wrapDatabase:native=>{
+  const transaction=(lane,control)=>work=>lane.transaction(async tx=>{
+   if(!control&&probe){protectedPid=Number((await tx.query('SELECT pg_backend_pid() AS pid')).rows[0].pid);markProtected();}
+   return work({query:async(sql,values)=>{
+    let result;
+    try{result=await tx.query(sql,values);}catch(error){if(error?.code==='40P01')deadlocks++;throw error;}
+    if(control&&armed&&sql.startsWith('INSERT INTO usage_aggregates')){
+     armed=false;telemetryPid=Number((await tx.query('SELECT pg_backend_pid() AS pid')).rows[0].pid);markTelemetry();await held;
+    }
+    return result;
+   }});
+  });
+  return{...native,transaction:transaction(native,true),protected:{...native.protected,transaction:transaction(native.protected,false)}};
+ }});
+ t.after(async()=>{releaseTelemetry();await Promise.allSettled(pending);await c.close();});
+ c.license();armed=true;
+ const first=c.check();pending.push(first);
+ await bounded(telemetryEntered);
+ assert.equal((await bounded(first)).status,200,'initial fresh access must succeed before the held telemetry transaction');
+ probe=true;const second=c.check();pending.push(second);await bounded(protectedEntered);
+ // Observe an actual PostgreSQL lock wait, not a scheduler delay. Before the
+ // fix this waits on app after owner; afterward it safely waits on owner first.
+ let blocked=false,blockedOnOwner=false,blockedOnApplication=false;const deadline=performance.now()+1500;
+ while(performance.now()<deadline){
+  const row=(await c.native.query(`SELECT wait_event_type='Lock' AND $1::integer=ANY(pg_blocking_pids(pid)) AS blocked,
+    query LIKE 'SELECT id,status FROM developer_accounts%FOR UPDATE' AS owner_wait,
+    query LIKE 'SELECT * FROM developer_applications%FOR UPDATE' AS app_wait
+    FROM pg_stat_activity WHERE pid=$2::integer`,[telemetryPid,protectedPid])).rows[0];
+  if(row?.blocked===true){blocked=true;blockedOnOwner=row.owner_wait;blockedOnApplication=row.app_wait;break;}
+  await new Promise(resolve=>setTimeout(resolve,10));
+ }
+ assert.equal(blocked,true,'protected transaction must actually wait on the held telemetry parent lock');
+ releaseTelemetry();const response=await second;await c.service.flushTelemetry();
+ t.diagnostic(JSON.stringify({kind:'telemetry-parent-lock-regression',actualParentLockWait:blocked,blockedOnOwner,blockedOnApplication,sqlDeadlocks:deadlocks,
+  protectedHttpStatus:response.status,telemetryFailures:c.service.telemetry.diagnostics().failures}));
+ assert.equal(response.status,200,'legitimate protected access must survive concurrent telemetry');
+ assert.equal(response.data.decision,'ALLOW');assert.equal(response.data.reason,'ACTIVE_LICENSE');
+ assert.equal(deadlocks,0,'owner/application parent locking must not form a PostgreSQL deadlock');
+ assert.equal(c.service.telemetry.diagnostics().failures,0,'telemetry must commit rather than win by being discarded');
+});
+
 test('Phase4 independent key and app quotas deny excess requests without chain work',async t=>{
  const c=await fixture(t),keys=[c.own.key];
  for(let i=0;i<2;i++){

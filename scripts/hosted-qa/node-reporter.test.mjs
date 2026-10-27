@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {validationEnv} from '../validation/common.mjs';
-import reporter,{collectNodeFailures,nodeFailureReceipt,nativeFiles,sourceFingerprint} from './node-reporter.mjs';
+import reporter,{collectNodeFailures,nodeFailureReceipt,nativeFiles,nativeMinimumTests,sourceFingerprint} from './node-reporter.mjs';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const identity={revision:'a'.repeat(40),runId:'12345678-1234-4123-8123-123456789abc'};
@@ -15,7 +15,7 @@ const testFile=nativeFiles[5],absolute=path.join(root,testFile);
 const source=(await readFile(absolute,'utf8')).split(/\r?\n/);
 const line=source.findIndex(value=>value.includes('assert.'))+1;
 assert.ok(line>0);
-const summary=(overrides={})=>({type:'test:summary',data:{success:false,counts:{tests:85,passed:84,failed:1,cancelled:0,skipped:0,todo:0},...overrides}});
+const summary=(overrides={})=>({type:'test:summary',data:{success:false,counts:{tests:nativeMinimumTests,passed:nativeMinimumTests-1,failed:1,cancelled:0,skipped:0,todo:0},...overrides}});
 const failed=(overrides={})=>({type:'test:fail',data:{name:sentinel,file:absolute,line,column:1,details:{error:{code:'ERR_TEST_FAILURE',message:sentinel,
   stack:`Error: ${sentinel}\n    at PRIVATE_FN (${pathToFileURL(absolute).href}:${line}:2)`,
   cause:{code:'ERR_ASSERTION',actual:sentinel,expected:sentinel,message:sentinel,stack:`AssertionError: ${sentinel}\n    at PRIVATE_FN (${pathToFileURL(absolute).href}:${line}:3)`}}},...overrides}});
@@ -23,7 +23,7 @@ async function collect(events){return collectNodeFailures(events,identity);}
 
 test('Node failure receipt preserves exact allowlisted declaration/assertion coordinates without raw diagnostics',async()=>{
   const result=await collect([failed(),summary()]);
-  assert.equal(result.status,'failed');assert.equal(result.minimumMet,true);assert.equal(result.counts.tests,85);
+  assert.equal(result.status,'failed');assert.equal(result.minimumMet,true);assert.equal(result.counts.tests,nativeMinimumTests);
   assert.equal(result.sourceFingerprint,sourceFingerprint);
   assert.deepEqual(result.failures[0].declaration,{file:testFile,line,column:1});
   assert.equal(result.failures[0].code,'ERR_ASSERTION');
@@ -35,7 +35,7 @@ test('Node failure receipt preserves exact allowlisted declaration/assertion coo
 test('Node reporter ignores messages, stdout, stderr, diagnostics and per-file summaries',async()=>{
   const malicious=['test:stdout','test:stderr','test:diagnostic','test:log'].map(type=>({type,data:{message:sentinel,tests:99999}}));
   const result=await collect([...malicious,summary({file:absolute,counts:{tests:99999}}),failed(),summary()]);
-  assert.equal(result.counts.tests,85);assert.equal(JSON.stringify(result).includes(sentinel),false);
+  assert.equal(result.counts.tests,nativeMinimumTests);assert.equal(JSON.stringify(result).includes(sentinel),false);
   assert.equal((await collect([failed(),summary({file:absolute})])).status,'incomplete');
   assert.equal((await collect([failed(),summary(),summary()])).status,'incomplete');
 });
@@ -89,9 +89,11 @@ test('malformed or incomplete counts cannot make diagnostic output an accepted c
     const result=await collect([failed(),summary({counts})]);assert.equal(result.status,'incomplete');assert.equal(result.counts,null);assert.equal(result.minimumMet,false);
   }
   const early=await collect([failed(),summary({counts:{tests:1,passed:0,failed:1,cancelled:0,skipped:0,todo:0}})]);
-  assert.equal(early.status,'failed');assert.equal(early.minimumMet,false);assert.equal(early.minimumTests,85);
-  const passed=await collect([summary({success:true,counts:{tests:85,passed:85,failed:0,cancelled:0,skipped:0,todo:0}})]);
+  assert.equal(early.status,'failed');assert.equal(early.minimumMet,false);assert.equal(early.minimumTests,nativeMinimumTests);
+  const passed=await collect([summary({success:true,counts:{tests:nativeMinimumTests,passed:nativeMinimumTests,failed:0,cancelled:0,skipped:0,todo:0}})]);
   assert.equal(passed.status,'passed');assert.equal(passed.failures.length,0);
+  const below=await collect([summary({success:true,counts:{tests:nativeMinimumTests-1,passed:nativeMinimumTests-1,failed:0,cancelled:0,skipped:0,todo:0}})]);
+  assert.equal(below.minimumMet,false,'the original cases cannot substitute for the new concurrency regressions');
 });
 
 test('failure storage and exported bytes stay bounded under repeated hostile events',async()=>{

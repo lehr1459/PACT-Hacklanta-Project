@@ -9,6 +9,9 @@ export function createAccessTelemetry(database,now){
     let timestamp;try{timestamp=observedAt??now();if(!Number.isSafeInteger(timestamp)||timestamp<0)throw Error();}catch{failures=increment(failures);return;}
     const bucket=Math.floor(timestamp/3600000)*3600000;
     const task=Promise.resolve().then(()=>database.transaction(async tx=>{
+      // Usage FKs lock the app before the audit FK reaches its owner. Acquire
+      // the owner first, matching protected/control owner-to-app lock order.
+      await tx.query('SELECT id FROM developer_accounts WHERE id=$1 FOR KEY SHARE',[ownerId]);
       const allowed=decision==='ALLOW'?1:0,error=status>=500?1:0,denied=allowed||error?0:1;
       await tx.query(`INSERT INTO usage_aggregates(app_id,bucket,requests,allowed,denied,errors,latency_total_ms,latency_max_ms)
         VALUES($1,$2,1,$3,$4,$5,$6,$6) ON CONFLICT(app_id,bucket) DO UPDATE SET
