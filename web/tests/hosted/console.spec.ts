@@ -1,7 +1,7 @@
 import {test,expect,type Page} from '@playwright/test';
 import {createHash} from 'node:crypto';
 import {CONSUMER,installAdmin,stats,knownOffer,fixturePost,revealedSecret,validateCredential,
- exerciseAccess,recordProofHashes,sanitizedScreenshot} from './console-fixtures';
+ exerciseAccess,recordProofHashes,sanitizedScreenshot,observeApiFailures,finishApiFailures,failureDiagnosticSnapshot} from './console-fixtures';
 
 const PATH='/integrate/developer';
 function canonical(value:unknown):string{
@@ -56,8 +56,10 @@ async function noPersistence(page:Page){
  const clean=await page.evaluate(()=>!/pact_sk_dev_key_[a-f0-9]{32}_[A-Za-z0-9_-]{43}|pact_grant_[A-Za-z0-9_-]{43}/.test(JSON.stringify({...localStorage,...sessionStorage})));
  expect(clean).toBe(true);
 }
+test.beforeEach(async({page})=>{observeApiFailures(page);});
 test.afterEach(async({page},info)=>{
  if(info.status!==info.expectedStatus){
+  info.annotations.push({type:'pact-safe-failure-v1',description:JSON.stringify(await failureDiagnosticSnapshot(page))});
   const diagnostics=await page.evaluate(()=>({
    selectLabels:[...document.querySelectorAll('select')].map(el=>({labels:[...(el.labels??[])].map(label=>label.textContent?.slice(0,300)),ariaLabel:el.getAttribute('aria-label')})),
    activeTag:document.activeElement?.tagName,
@@ -68,7 +70,7 @@ test.afterEach(async({page},info)=>{
   const safe=JSON.stringify(diagnostics).replace(/pact_sk_dev_key_[a-f0-9]{32}_[A-Za-z0-9_-]{43}/g,'[REDACTED_KEY]').replace(/Browser\/session binding: [a-f0-9]{64}/g,'[REDACTED_BINDING]');
   console.log('SAFE_UI_FAILURE_DIAGNOSTICS '+safe);
   for(const select of await page.getByRole('combobox').all())console.log('SAFE_SELECT_ACCESSIBILITY '+await select.ariaSnapshot());
- }
+ }else await finishApiFailures(page);
  await recordProofHashes(info);
 });
 

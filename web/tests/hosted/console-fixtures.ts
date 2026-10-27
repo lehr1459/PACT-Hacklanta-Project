@@ -1,9 +1,55 @@
 import {generateKeyPairSync,sign,createHash} from 'node:crypto';
 import {mkdir,writeFile} from 'node:fs/promises';
 import path from 'node:path';
-import {expect,type Page,type TestInfo} from '@playwright/test';
+import {expect,type Page,type TestInfo,type Response} from '@playwright/test';
+import {browserFailureCodes,browserFailureDiagnostics} from '../../../scripts/hosted-qa/acceptance.mjs';
 
 export const CONSUMER='http://127.0.0.1:3113';
+const API_FAILURE_CODES=new Set(browserFailureCodes);
+export function safeApiFailureCode(value:unknown):string{return typeof value==='string'&&API_FAILURE_CODES.has(value)?value:'UNCLASSIFIED';}
+const object=(value:unknown):value is Record<string,unknown>=>Boolean(value)&&typeof value==='object'&&!Array.isArray(value);
+export function safeServiceDiagnostics(value:unknown){
+ try{return browserFailureDiagnostics({schemaVersion:1,apiFailures:{entries:[],dropped:0},service:value}).service;}
+ catch{return{available:false as const};}
+}
+type ApiFailure={code:string;status:number;count:number};
+const failureCaptures=new WeakMap<Page,{finish():Promise<{entries:ApiFailure[];dropped:number}>}>();
+export function observeApiFailures(page:Page){
+ const slots:{code:string;status:number}[]=[],pending=new Set<Promise<void>>();let dropped=0,closed=false;
+ const listener=(response:Response)=>{
+  const status=response.status();if(!Number.isInteger(status)||status<400||status>599)return; // Never read a successful API response.
+  let url:URL;try{url=new URL(response.url());}catch{return;}
+  if(url.origin!=='http://127.0.0.1:3112'||!url.pathname.startsWith('/v1/'))return;
+  if(closed||pending.size>=16||slots.length>=64){dropped=Math.min(9999,dropped+1);return;}
+  // Allocate in response-event order, not asynchronous body-completion order.
+  const slot={code:'UNCLASSIFIED',status};slots.push(slot);
+  const work=(async()=>{try{
+   if(!/^application\/json(?:;|$)/i.test(response.headers()['content-type']??''))return;
+   const body:unknown=await response.json();
+   if(!closed&&object(body)&&object(body.error))slot.code=safeApiFailureCode(body.error.code);
+  }catch{/* Only the fixed UNCLASSIFIED value survives an unreadable response. */}})();
+  pending.add(work);void work.finally(()=>pending.delete(work));
+ };
+ page.on('response',listener);
+ failureCaptures.set(page,{async finish(){
+  page.off('response',listener);let timer:ReturnType<typeof setTimeout>|undefined;
+  try{await Promise.race([Promise.allSettled([...pending]),new Promise(resolve=>{timer=setTimeout(resolve,500);})]);}finally{clearTimeout(timer);closed=true;}
+  const groups=new Map<string,ApiFailure>();for(const slot of slots){const key=slot.code+':'+slot.status,group=groups.get(key);
+   if(group)group.count=Math.min(9999,group.count+1);else if(groups.size<16)groups.set(key,{code:slot.code,status:slot.status,count:1});else dropped=Math.min(9999,dropped+1);
+  }
+  return{entries:[...groups.values()],dropped};
+ }});
+}
+export async function finishApiFailures(page:Page){const capture=failureCaptures.get(page);failureCaptures.delete(page);return capture?capture.finish():{entries:[],dropped:0};}
+export async function failureDiagnosticSnapshot(page:Page){
+ try{
+ const [apiFailures,service]=await Promise.all([finishApiFailures(page),(async()=>{try{
+  const response=await page.request.get(CONSUMER+'/qa/diagnostics',{timeout:1000});
+  return response.status()===200?safeServiceDiagnostics(await response.json()):{available:false as const};
+ }catch{return{available:false as const};}})()]);
+ return browserFailureDiagnostics({schemaVersion:1,apiFailures,service});
+ }catch{return browserFailureDiagnostics({schemaVersion:1,apiFailures:{entries:[],dropped:0},service:{available:false}});}
+}
 export const proofHashes=new Set<string>();
 export function signer(){
  const {privateKey,publicKey}=generateKeyPairSync('ed25519');

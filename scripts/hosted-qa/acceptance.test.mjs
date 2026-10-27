@@ -1,7 +1,35 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {nodeReceipt,browserReceipt,browserFailureReceipt,developerDemoNames,developerDemoReceipt,matrixReceipt,matrixNames,generatedReferences} from './acceptance.mjs';
+import {nodeReceipt,browserReceipt,browserFailureReceipt,browserFailureDiagnostics,developerDemoNames,developerDemoReceipt,matrixReceipt,matrixNames,generatedReferences} from './acceptance.mjs';
 import {readFile} from 'node:fs/promises';
+const safeDiagnosis=()=>({schemaVersion:1,apiFailures:{entries:[{code:'DATABASE_UNAVAILABLE',status:503,count:2}],dropped:0},service:{available:true,
+ clock:{available:false,windowMs:100,writes:12,totalWriteMs:2.5,maxWriteMs:0.5},http:{active:1,access:0,auth:1,control:0},
+ database:{pending:1,protectedPending:0,maxPending:8,perLaneLimit:4,closed:false}}});
+test('browser failure diagnosis reconstructs only fixed codes and bounded observational metrics',()=>{
+ const value=safeDiagnosis(),secret='private-diagnostic-material';
+ for(const object of[value,value.apiFailures,value.apiFailures.entries[0],value.service,value.service.clock,value.service.http,value.service.database])object.extra=secret;
+ assert.deepEqual(browserFailureDiagnostics(value),safeDiagnosis());assert.equal(JSON.stringify(browserFailureDiagnostics(value)).includes(secret),false);
+ assert.deepEqual(browserFailureDiagnostics({...value,service:{available:false,clock:secret,extra:secret}}),{schemaVersion:1,apiFailures:{entries:[{code:'DATABASE_UNAVAILABLE',status:503,count:2}],dropped:0},service:{available:false}});
+ const invalid=[null,[],{...value,schemaVersion:2},{...value,service:{available:'true'}}];
+ for(const [key,bad]of[['status',399],['status',600],['status','503'],['count',0],['count',10000],['count',NaN],['code',secret]]){
+  const next=safeDiagnosis();next.apiFailures.entries[0][key]=bad;invalid.push(next);
+ }
+ for(const bad of[-1,10000,Infinity,'0']){const next=safeDiagnosis();next.apiFailures.dropped=bad;invalid.push(next);}
+ const duplicate=safeDiagnosis();duplicate.apiFailures.entries.push({...duplicate.apiFailures.entries[0]});invalid.push(duplicate);
+ const tooMany=safeDiagnosis();tooMany.apiFailures.entries=Array.from({length:17},(_,i)=>({code:'UNCLASSIFIED',status:400+i,count:1}));invalid.push(tooMany);
+ for(const [section,key,bad]of[['clock','windowMs',101],['clock','available',1],['clock','writes',1.5],['clock','writes',1e9+1],['clock','totalWriteMs',NaN],['clock','maxWriteMs',Infinity],['http','active',129],['http','auth',-1],['database','pending',65],['database','maxPending',1],['database','perLaneLimit',33],['database','closed',0]]){
+  const next=safeDiagnosis();next.service[section][key]=bad;invalid.push(next);
+ }
+ for(const next of invalid)assert.throws(()=>browserFailureDiagnostics(next),/Ineligible bounded browser diagnosis/);
+});
+test('parent browser failure receipt independently revalidates diagnostics and omits passing case diagnostics',()=>{
+ const binding={revision:'a'.repeat(40),runId:'fixture-run',lane:'console'},secret='sensitive-matcher-value';
+ const receipt={schemaVersion:1,kind:'hosted-browser-receipt',rawDiagnosticsRecorded:false,...binding,buildRevision:binding.revision,buildRunId:binding.runId,status:'failed',stats:{expected:1,unexpected:1,skipped:0},runnerErrors:0,
+ tests:[{file:'console.spec.ts',line:84,project:'desktop-console',status:'failed',durationMs:42,failureDiagnostics:{...safeDiagnosis(),extra:secret}},
+  {file:'console.spec.ts',line:85,project:'desktop-console',status:'passed',durationMs:1,failureDiagnostics:{secret}}]};
+ const result=browserFailureReceipt(receipt,binding);assert.equal(result.cases.length,1);assert.deepEqual(result.cases[0].diagnostics,safeDiagnosis());assert.equal(JSON.stringify(result).includes(secret),false);
+ receipt.tests[0].failureDiagnostics.apiFailures.entries[0].code=secret;assert.throws(()=>browserFailureReceipt(receipt,binding));
+});
 test('browser failure summaries export only bound status and numeric source locations',()=>{
  const binding={revision:'a'.repeat(40),runId:'fixture-run',lane:'console'},secret='sensitive-matcher-value';
  const receipt={schemaVersion:1,kind:'hosted-browser-receipt',rawDiagnosticsRecorded:false,...binding,buildRevision:binding.revision,buildRunId:binding.runId,status:'failed',stats:{expected:0,unexpected:1,skipped:0},runnerErrors:0,tests:[{file:'console.spec.ts',line:84,project:'desktop-console',status:'failed',durationMs:42,title:secret,error:secret,stdout:secret,failureLocations:[{file:'console-fixtures.ts',line:73,column:4,secret}]}]};

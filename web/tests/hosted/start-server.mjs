@@ -11,6 +11,7 @@ import {Browser} from '../../../scripts/hosted-qa/browser.mjs';
 import {validationEnv} from '../../../scripts/validation/common.mjs';
 import {rpcFixture} from '../../../scripts/hosted-qa/rpc-fixture.mjs';
 import {clockDirectory} from '../../../scripts/hosted-qa/phase7-clock-fixture.mjs';
+import {browserFailureDiagnostics} from '../../../scripts/hosted-qa/acceptance.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
 if(process.env.PACT_HOSTED_QA_CLEAN!=='1')throw Error('Run only in an explicitly approved isolated clean test checkout');
@@ -43,10 +44,22 @@ async function backend(route,body){
 }
 function sessionId(req){return (req.headers.cookie??'').split(';').map(x=>x.trim()).find(x=>x.startsWith('qa_consumer_sid='))?.slice(16);}
 function json(res,value,status=200){res.writeHead(status,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(value));}
+function failureDiagnostics(){
+ try{
+  const clock=service.clockAuthority.diagnostics(),state=service.diagnostics(),http=state.http,database=state.database;
+  return browserFailureDiagnostics({schemaVersion:1,apiFailures:{entries:[],dropped:0},service:{available:true,
+   clock:{available:clock.available,windowMs:clock.windowMs,writes:clock.writes,totalWriteMs:clock.totalWriteMs,maxWriteMs:clock.maxWriteMs},
+   http:{active:http.active,access:http.access,auth:http.auth,control:http.control},
+   database:{pending:database.pending,protectedPending:database.protectedPending,maxPending:database.maxPending,perLaneLimit:database.perLaneLimit,closed:database.closed}}}).service;
+ }catch{return{available:false};}
+}
 const consumer=createServer(async(req,res)=>{
  try{
   const url=new URL(req.url,CONSUMER);
   if(url.pathname==='/qa/ready')return json(res,{ready},ready?200:503);
+  // Fixture-only loopback observation; never calls clock.now, resets authority,
+  // returns successful API bodies, or exposes durable clock/credential details.
+  if(req.method==='GET'&&url.pathname==='/qa/diagnostics'&&!url.search)return json(res,failureDiagnostics());
   if(req.method==='POST'&&['/qa/seller-offer','/qa/rpc-state','/qa/expire-admin','/qa/validate-key','/qa/exercise-access'].includes(url.pathname)){
    let bytes='';for await(const chunk of req){bytes+=chunk;if(bytes.length>4096)throw Error('Fixture request too large');}
    const body=JSON.parse(bytes);

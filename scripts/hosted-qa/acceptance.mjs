@@ -10,6 +10,43 @@ export function browserReceipt(r,{revision,runId,lane}){
   ||r.status!=='passed'||r.stats?.unexpected!==0||r.stats?.skipped!==0||r.stats?.expected!==(lane==='console'?16:12)||r.runnerErrors!==0)throw Error('Incomplete or stale browser acceptance');
  return true;
 }
+// Test-only failure observations. No arbitrary server strings cross this boundary.
+export const browserFailureCodes=Object.freeze(['UNCLASSIFIED','AUTH_REQUIRED','AUTH_INVALID','AUTH_PROOF_INVALID','ACTION_PROOF_INVALID',
+ 'API_KEY_INVALID','API_KEY_SCOPE_DENIED','GRANT_INVALID','ORIGIN_DENIED','CSRF_DENIED','INVALID_INPUT','NOT_FOUND',
+ 'SERVICE_UNAVAILABLE','DATABASE_UNAVAILABLE','REQUEST_DEADLINE','OVERLOADED','RATE_LIMITED',
+ 'CLOCK_UNAVAILABLE','CLOCK_STORAGE_UNAVAILABLE','CLOCK_STORAGE_OVERRUN','CLOCK_RECORD_INVALID','CLOCK_BINDING_MISMATCH',
+ 'CLOCK_CONTEXT_MISMATCH','CLOCK_RESTART_QUARANTINED','CLOCK_OWNER_LOCKED','CLOCK_DATABASE_DURABILITY_REQUIRED','CLOCK_DIRECTORY_REQUIRED','CLOCK_CONFIGURATION_REQUIRED',
+ 'CHAIN_UNAVAILABLE','STALE_CHAIN','APP_DISABLED','POLICY_CHANGED','RESOURCE_NOT_FOUND','RESOURCE_DISABLED','LICENSE_REQUIRED','EXPIRED']);
+export function browserFailureDiagnostics(value){
+ const reject=()=>{throw Error('Ineligible bounded browser diagnosis');};
+ const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
+ const integer=(v,min,max)=>Number.isSafeInteger(v)&&v>=min&&v<=max;
+ const boolean=v=>{if(typeof v!=='boolean')reject();return v;};
+ const fields=(v,names,max)=>{
+  if(!object(v))reject();const result={};
+  for(const name of names){if(!integer(v[name],0,max))reject();result[name]=v[name];}return result;
+ };
+ if(!object(value)||value.schemaVersion!==1||!object(value.apiFailures)||!Array.isArray(value.apiFailures.entries)
+  ||value.apiFailures.entries.length>16||!integer(value.apiFailures.dropped,0,9999)||!object(value.service))reject();
+ const seen=new Set(),entries=value.apiFailures.entries.map(entry=>{
+  if(!object(entry)||!browserFailureCodes.includes(entry.code)||!integer(entry.status,400,599)||!integer(entry.count,1,9999))reject();
+  const id=entry.code+':'+entry.status;if(seen.has(id))reject();seen.add(id);
+  return{code:entry.code,status:entry.status,count:entry.count};
+ });
+ let service={available:boolean(value.service.available)};
+ if(service.available){
+  const clock=value.service.clock,database=value.service.database;
+  if(!object(clock)||clock.windowMs!==100||!integer(clock.writes,0,1e9)||!object(database))reject();
+  const times={};for(const name of['totalWriteMs','maxWriteMs']){
+   if(typeof clock[name]!=='number'||!Number.isFinite(clock[name])||clock[name]<0||clock[name]>1e9)reject();times[name]=clock[name];
+  }
+  if(!integer(database.maxPending,2,64)||!integer(database.perLaneLimit,1,32))reject();
+  service={available:true,clock:{available:boolean(clock.available),windowMs:100,writes:clock.writes,...times},
+   http:fields(value.service.http,['active','access','auth','control'],128),
+   database:{...fields(database,['pending','protectedPending'],64),maxPending:database.maxPending,perLaneLimit:database.perLaneLimit,closed:boolean(database.closed)}};
+ }
+ return{schemaVersion:1,apiFailures:{entries,dropped:value.apiFailures.dropped},service};
+}
 // Failure diagnosis must never export matcher values, messages, paths or stdout.
 export function browserFailureReceipt(r,{revision,runId,lane}){
  const maximum=lane==='console'?16:lane==='connect'?12:0;
@@ -26,7 +63,8 @@ export function browserFailureReceipt(r,{revision,runId,lane}){
    ||!integer(item.line,100000)||item.line<1||!integer(item.durationMs,600000))throw Error('Ineligible browser case');
   const locations=item.failureLocations??[];
   if(!Array.isArray(locations)||locations.length>8)throw Error('Ineligible browser locations');
-  return{project:projects.indexOf(item.project),testLine:item.line,status:item.status,durationMs:item.durationMs,locations:locations.map(location=>{
+  return{project:projects.indexOf(item.project),testLine:item.line,status:item.status,durationMs:item.durationMs,
+   ...(Object.hasOwn(item,'failureDiagnostics')?{diagnostics:browserFailureDiagnostics(item.failureDiagnostics)}:{}),locations:locations.map(location=>{
    if(!files.includes(location?.file)||!integer(location.line,100000)||location.line<1||!integer(location.column,10000)||location.column<1)throw Error('Ineligible browser location');
    return{file:files.indexOf(location.file),line:location.line,column:location.column};
   })};

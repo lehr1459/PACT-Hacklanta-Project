@@ -1,10 +1,19 @@
 import type {Reporter,TestCase,TestResult,FullResult,TestError} from '@playwright/test/reporter';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import path from 'node:path';
+import {browserFailureDiagnostics,type BrowserFailureDiagnostics} from '../../../scripts/hosted-qa/acceptance.mjs';
 // Do not serialize matcher errors, stacks, attachments, steps or test stdout:
 // those can contain one-time responses before a failed assertion is redacted.
 function safeTitle(value:string){return value.replace(/pact_sk_dev_key_[a-f0-9]{32}_[A-Za-z0-9_-]{43}|pact_(?:grant|code)_[A-Za-z0-9_-]{43}|pact-domain-verification=[A-Za-z0-9_-]{43}|Browser\/session binding: [a-f0-9]{64}|[A-Za-z0-9+/]{86}==|[A-Za-z0-9_-]{43,}/g,'[REDACTED]');}
 type FailureLocation={file:string;line:number;column:number};
+export function annotationDiagnostics(annotations:readonly {type:string;description?:string}[]=[]):BrowserFailureDiagnostics|undefined{
+ if(!Array.isArray(annotations)||annotations.length>64)return;
+ const matches=annotations.filter(value=>value?.type==='pact-safe-failure-v1');
+ if(matches.length!==1)return;
+ const description=matches[0].description;
+ if(typeof description!=='string'||Buffer.byteLength(description)>8192)return;
+ try{return browserFailureDiagnostics(JSON.parse(description));}catch{return;}
+}
 const failureFiles=new Set(['console.spec.ts','console-fixtures.ts','connect.spec.ts']);
 // Export only source coordinates, never an error message, path prefix or stack.
 export function failureLocations(errors:readonly TestError[]=[]):FailureLocation[]{
@@ -29,16 +38,17 @@ export function failureLocations(errors:readonly TestError[]=[]):FailureLocation
  return locations;
 }
 export default class ConsoleReceipt implements Reporter{
- private results=new Map<string,{title:string;status:string;durationMs:number;file:string;line:number;project:string;failureLocations?:FailureLocation[]}>();
+ private results=new Map<string,{title:string;status:string;durationMs:number;file:string;line:number;project:string;failureLocations?:FailureLocation[];failureDiagnostics?:BrowserFailureDiagnostics}>();
  private runnerErrors=0;private suppressedOutput=0;
  constructor(private options:{outputFile:string}){}
  onStdOut(){this.suppressedOutput++;}
  onStdErr(){this.suppressedOutput++;}
  onError(){this.runnerErrors++;process.stdout.write('Hosted browser runner error; raw diagnostics suppressed.\n');}
  onTestEnd(test:TestCase,result:TestResult){
+  const failed=['failed','timedOut','interrupted'].includes(result.status),diagnostics=failed?annotationDiagnostics(result.annotations):undefined;
   const item={title:safeTitle(test.title),status:result.status,durationMs:result.duration,
    file:path.basename(test.location.file),line:test.location.line,project:safeTitle(test.parent.project()?.name??''),
-   ...(['failed','timedOut','interrupted'].includes(result.status)?{failureLocations:failureLocations(result.errors)}:{})};
+   ...(failed?{failureLocations:failureLocations(result.errors),...(diagnostics?{failureDiagnostics:diagnostics}:{})}:{})};
   this.results.set(test.id,item);process.stdout.write(`${item.status}: ${item.project} / ${item.title}\n`);
  }
  async onEnd(result:FullResult){
