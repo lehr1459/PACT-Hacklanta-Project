@@ -2,7 +2,7 @@
 
 An independent application with an actual server-enforced GET `/api/protected` and POST `/api/action`. Browser code calls its own backend and never receives an API key or wallet grant. This is the hosted REST path; the existing `pact-platform-app` customer-hosted SDK example is unchanged.
 
-Versions: Node **24.22.0**, npm **11.19.1**, Express **5.3.0**, private `@pact/hosted-client` **0.1.0**. Run from the PACT repository root:
+Versions: Node **24.22.1**, npm **11.19.1**, Express **5.3.0**, private `@pact/hosted-client` **0.1.0**. Run from the PACT repository root:
 
 ```text
 npm --prefix packages/pact-hosted-client ci

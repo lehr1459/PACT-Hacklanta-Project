@@ -1,8 +1,44 @@
-# Human Phantom acceptance for isolated PACT staging
+# Human Phantom acceptance for local PACT and isolated staging
 
 Prepared October23, 2026. Every step is **pending human/owner execution**. Automated tests use disposable signers and do not establish Phantom extension/device, message-prompt or transaction acceptance. No agent may approve a wallet prompt, sign/broadcast a transaction, receive a seed/private key, invite testers or change wallet settings on a person's behalf. Use Solana Devnet only. The old public PACT deployment and Saturday Lights remain unchanged.
 
-Before starting, complete [owner setup](STAGING_OWNER_SETUP.md), approve the exact staging/artifact revision and establish separate HTTPS PACT and consumer origins. Record approved desktop/browser/Phantom versions and any separately approved mobile device. Synthetic320px browser coverage is not mobile Phantom handoff acceptance. Use a private acceptance record without keys, grants, callback query strings, signed messages, cookies, private RPC URLs or screenshots of proof material.
+## Local message-only acceptance variant
+
+Added October26, 2026. This variant requires no purchased domain, external host, deployment, new offer or purchase. **Human wallet acceptance is pending.** Before requesting any Phantom message, the owner must authorize the named human operator and exact local origins for message-only acceptance. The human reviews and approves or rejects each prompt personally. This document and automated testing do not grant permission to sign, approve or broadcast a blockchain transaction. If a transaction prompt appears during this variant, reject it and stop.
+
+Use a clean checkout of the approved source revision with the reviewed Node/npm versions from `scripts/validation/runtime.json`, installed dependencies, and no copied workstation environment files. Follow [LOCAL_TESTING](LOCAL_TESTING.md) to install/build the SDK, install the API/web dependencies and start these owned local processes. Do not stop an unrelated listener to free a port.
+
+Terminal one, from the checkout root:
+
+```text
+npm --prefix services/pact-api run dev
+```
+
+Terminal two, PowerShell, from the same checkout root:
+
+```powershell
+$env:PACT_HOSTED_API_INTERNAL_URL = 'http://127.0.0.1:4100'
+$env:PACT_APP_ORIGIN = 'http://localhost:3000'
+$env:NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID = 'EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy'
+npm --prefix web run dev -- --hostname localhost --port 3000
+```
+
+The local-only API uses ignored PGlite SQL/pepper/clock data and reads real Devnet RPC. This is interactive acceptance, not native PostgreSQL hosting acceptance; deterministic native PostgreSQL coverage is separate. Preserve API SQL, pepper and clock together for normal restarts; do not delete clock files to bypass a failure. Confirm `http://localhost:3000/v1/health/live` and `/v1/health/ready` succeed before continuing. Readiness is not an entitlement or deployed-binary attestation.
+
+1. Record the approved source SHA, desktop browser/Phantom versions and public D/S/B identities under the evidence policy. Use three distinct human-controlled accounts and separate browser profiles, or explicitly log out before each account switch. Select Solana Devnet in Phantom personally. The PACT issuer is exactly **`http://localhost:3000`**; `127.0.0.1:3000` is a different issuer. Loopback HTTP is the explicit local exception; external operation requires HTTPS.
+2. The owner supplies an **existing active Devnet offer controlled by S**, its public address and seller-exact metadata/buyer link. Verify the selected seller and offer in the actual PACT interface. If the owner cannot supply a controllable existing offer, stop the resource-binding case as BLOCKED; do not create an offer automatically or substitute a synthetic account into human evidence. Existing binary provenance is reviewed separately in [Solana release assurance](../../development/SOLANA_RELEASE.md).
+3. Open `http://localhost:3000/integrate/developer`. As D, reject an initial admin-login message and confirm no session appears. Obtain a fresh challenge, inspect the exact origin, account, purpose and expiry, and approve the message manually if authorized. Register app D. Attempt the signed bind of S's offer to a resource in D's app: expect403 `OFFER_OWNERSHIP_REQUIRED`. Verify no resource was created. This denial is required; there is no delegated seller authority.
+4. Log D out. Switch to S, obtain a fresh admin proof and register app S. Bind S's own offer to resource **`premium-features`**. Inspect/sign the exact payload; a new resource is enabled at version1. Register callback **`http://127.0.0.1:4010/api/login/callback`** and website **`http://127.0.0.1:4010`**. Loopback registration is allowed locally without external DNS provisioning. Mint a short-lived backend key with `connect:write` and `access:check`, then activate app S through the signed action.
+5. Install the existing independent consumer with `npm --prefix packages/pact-hosted-client ci` and `npm --prefix examples/pact-hosted-express ci`. Copy only its committed `.env.example` to its own private `.env.local`. Set `PACT_CONSUMER_ORIGIN=http://127.0.0.1:4010`, **`PACT_API_BASE_URL=http://localhost:3000`**, app S's public ID and `PACT_RESOURCE_KEY=premium-features`. Enter the once-revealed key privately in that server-only file, never in chat, command arguments, screenshots or browser settings. Keep the API base equal to the configured localhost issuer; do not substitute127.0.0.1. Dismiss the console secret reveal.
+6. In terminal three run `npm --prefix examples/pact-hosted-express start`, then open **`http://127.0.0.1:4010`** in the buyer profile. Protected content/action must deny before login. Select B and choose Continue with PACT. Inspect the actual localhost PACT page, app S, callback website, Devnet identity and exact message. Reject once and confirm the consumer remains unauthenticated; start a fresh flow and approve manually only under the message authorization. Return to a clean consumer root URL. No grant or API secret may appear in browser storage or response bodies.
+7. For B without a qualifying license, both Read protected content and Perform protected action must still deny after successful login. The marketplace link is informational; do not purchase during this variant. If the owner already controls a buyer identity with an existing unexpired entitlement for this exact offer, a separately recorded message-only login may test fresh protected allowance with that identity. Otherwise mark **real-chain licensed allowance BLOCKED**, retaining the deterministic synthetic allowance receipt separately. Do not edit SQL/chain fixtures or claim a purchase to fill this gap.
+8. Verify consumer logout denies a subsequent protected request, account switch requires fresh login, callback replay cannot create authority, key rotation/revocation denies superseded credentials, and consumer restart loses its process-local session. API graceful restart with its preserved local state has different persistence semantics. Record each case's actual outcome. Stop only the three owned local processes when finished. Do not include secrets, signed messages, cookies, grants or callback query strings in evidence.
+
+Wallet control is the supported account identity. Lost-wallet recovery, delegated organizations, refresh tokens and distributed consumer sessions are unsupported. Purchases are explicit fixed-price, time-limited, non-recurring entitlements; no subscription billing or automatic renewal is implemented. Offer deactivation stops new sales while preserving existing unexpired entitlements. A wallet login is not a license; an entitlement is not copyright ownership. Actual Phantom mobile/hardware-device behavior remains unverified unless independently exercised.
+
+## Staging prerequisites
+
+For the staging sections below, complete [owner setup](STAGING_OWNER_SETUP.md), approve the exact staging/artifact revision and establish separate HTTPS PACT and consumer origins. Record approved desktop/browser/Phantom versions and any separately approved mobile device. Synthetic320px browser coverage is not mobile Phantom handoff acceptance. Use a private acceptance record without keys, grants, callback query strings, signed messages, cookies, private RPC URLs or screenshots of proof material.
 
 ## 1. Assign three distinct identities and decide the successful seller path
 

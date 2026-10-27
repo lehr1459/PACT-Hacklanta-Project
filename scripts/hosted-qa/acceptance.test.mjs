@@ -1,7 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {nodeReceipt,browserReceipt,matrixReceipt,matrixNames,generatedReferences} from './acceptance.mjs';
+import {nodeReceipt,browserReceipt,developerDemoNames,developerDemoReceipt,matrixReceipt,matrixNames,generatedReferences} from './acceptance.mjs';
 import {readFile} from 'node:fs/promises';
+test('independent demonstration requires complete clean-source packed-consumer evidence',()=>{
+ const revision='a'.repeat(40),valid={schemaVersion:1,kind:'independent-packed-developer-demo',sourceRevision:revision,trackedWorkingTreeClean:true,status:'PASS',synthetic:true,blockchainPurchases:0,networkTransactions:0,externalPublication:false,checkCount:17,checks:Object.fromEntries(developerDemoNames.map(name=>[name,'PASS'])),archives:Object.fromEntries(['client','engine','express'].map(name=>[name,{sha256:'b'.repeat(64)}]))};
+ valid.sourceArchiveSha256='d'.repeat(64);
+ assert.equal(developerDemoReceipt(valid,revision),true);
+ for(const patch of [{sourceRevision:'c'.repeat(40)},{sourceArchiveSha256:''},{trackedWorkingTreeClean:false},{checks:{}},{checkCount:16},{synthetic:false},{networkTransactions:1},{archives:{}},{status:'FAIL'}])assert.throws(()=>developerDemoReceipt({...valid,...patch},revision));
+ const substituted=structuredClone(valid);delete substituted.checks[developerDemoNames[0]];substituted.checks.unrelatedCheck='PASS';assert.throws(()=>developerDemoReceipt(substituted,revision));
+});
 test('zero exit cannot substitute for complete mandatory Node cases',()=>{
  const output='# tests 3\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n';
  assert.deepEqual(nodeReceipt(output,3),{tests:3,passed:3});assert.deepEqual(nodeReceipt(output.replaceAll('#','ℹ'),3),{tests:3,passed:3});

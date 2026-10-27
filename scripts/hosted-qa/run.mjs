@@ -6,7 +6,7 @@ import {mkdir,writeFile,open,access,readdir,readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {root,npmCli,validationEnv} from '../validation/common.mjs';
 import {loadRuntimePolicy} from '../validation/runtime.mjs';
-import {nodeReceipt,browserReceipt,matrixReceipt,generatedReferences} from './acceptance.mjs';
+import {nodeReceipt,browserReceipt,developerDemoReceipt,matrixReceipt,generatedReferences} from './acceptance.mjs';
 const mode=process.argv[2]??'all';
 if(!['install','all','portable'].includes(mode))throw Error('Use hosted run.mjs install|all|portable');
 const directory=path.join(root,'web/test-results/hosted-ci');await mkdir(directory,{recursive:true});
@@ -16,7 +16,7 @@ const summary={schemaVersion:1,kind:'hosted-local-matrix',revision,runId,mode,st
 const record=()=>writeFile(path.join(directory,'results.json'),JSON.stringify(summary,null,2)+'\n');
 const qa=process.env.PACT_QA_DATABASE_URL;
 if(qa){const u=new URL(qa);if(u.hostname!=='127.0.0.1'||u.pathname!=='/pact_hosted_qa')throw Error('Dedicated loopback QA database required');}
-async function command(name,args,{cwd=root,env={},testReceipt=false,minimumTests=1}={}){
+async function command(name,args,{cwd=root,env={},testReceipt=false,minimumTests=1,demoReceipt=false}={}){
  const item={name,status:'running',durationMs:0};summary.results.push(item);await record();const started=performance.now();
  const log=await open(path.join(directory,name+'.log'),'w');
  try{
@@ -29,6 +29,7 @@ async function command(name,args,{cwd=root,env={},testReceipt=false,minimumTests
    const output=await readFile(path.join(directory,name+'.log'),'utf8');
    nodeReceipt(output,minimumTests);
   }
+  if(demoReceipt)developerDemoReceipt(JSON.parse(await readFile(path.join(directory,name+'.log'),'utf8')),revision);
   item.status='passed';
  }catch(error){item.status='failed';throw error;}
  finally{item.durationMs=Math.round(performance.now()-started);await log.close();await record();process.stdout.write(name+': '+item.status+'\n');}
@@ -63,6 +64,7 @@ try{
    await command('console-production-build',['scripts/hosted-qa/build-web.mjs']);
    const files=['gateway','gateway-integration','phase1','phase2','phase3','phase4','phase6-client','phase6-contract','phase6-consumer','phase7-clock','phase7-deadline-usage','phase7-maintenance','phase7-restore','load'].map(f=>'scripts/hosted-qa/'+f+'.test.mjs');
    await tests('native-postgres-http',files,{minimumTests:85,env:{PACT_QA_NEXT_EXAMPLE_BUILD:path.join(root,'examples/pact-hosted-next')}});
+   await command('independent-developer-demo',['scripts/hosted-qa/developer-demo.mjs'],{demoReceipt:true});
    for(const lane of['console','connect']){
     await command('browser-'+lane,['web/node_modules/@playwright/test/cli.js','test','--config','web/tests/hosted/'+(lane==='console'?'console.config.ts':'playwright.config.ts')]);
     const r=JSON.parse(await readFile(path.join(root,'web/test-results/hosted-'+lane+'/results.json'),'utf8'));
