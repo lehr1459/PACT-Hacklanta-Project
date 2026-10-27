@@ -8,6 +8,7 @@ solana/toolchain.json text eol=lf
 contracts/src/PactLicensing.sol text eol=lf
 contracts/abi/PactLicensing.json text eol=crlf
 solana/artifacts/*.so binary
+solana/artifacts/evidence.json text eol=crlf
 # Published SDK bytes must not depend on host checkout line endings.
 packages/pact-sdk/src/** text eol=lf
 packages/pact-sdk/package.json text eol=lf
