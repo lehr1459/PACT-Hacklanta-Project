@@ -24,7 +24,8 @@ test('Phase8 finite four-concurrent two-app HTTP load preserves fresh authority 
  function fresh(response,target){
   const reported=response.data?.error?.code??response.data?.reason;
   const diagnostic=typeof reported==='string'&&/^[A-Z][A-Z_]{0,63}$/.test(reported)?reported:'UNCLASSIFIED';
-  assert.equal(response.status,200,'bounded legitimate load must allow: '+diagnostic);
+  try{assert.equal(response.status,200,'bounded legitimate load must allow: '+diagnostic);}
+  catch(error){error.cause={code:diagnostic,httpStatus:response.status};throw error;}
   const r=response.data,f=r.freshness,wall=Date.now();
   assert.equal(r.decision==='ALLOW'&&r.reason==='ACTIVE_LICENSE',true,'supported positive decision required');
   assert.equal(r.schemaVersion===1&&typeof r.requestId==='string',true);

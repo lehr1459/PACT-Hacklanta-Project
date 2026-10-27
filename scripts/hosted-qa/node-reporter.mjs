@@ -15,8 +15,14 @@ const sources=new Map(sourceFiles.map(file=>{
   return[file,{lines:bytes.toString('utf8').split(/\r?\n/),hash:createHash('sha256').update(bytes).digest('hex')}];
 }));
 export const sourceFingerprint=createHash('sha256').update(JSON.stringify([...sources].map(([file,s])=>[file,s.hash]))).digest('hex');
-const codes=Object.freeze(['ERR_ASSERTION','ERR_TEST_FAILURE','CLOCK_UNAVAILABLE','CLOCK_RESTART_QUARANTINED','CLOCK_OWNER_LOCKED','CLOCK_STORAGE_OVERRUN','CLOCK_STORAGE_UNAVAILABLE']);
+const codes=Object.freeze(['ERR_ASSERTION','ERR_TEST_FAILURE',
+  'CLOCK_UNAVAILABLE','CLOCK_RESTART_QUARANTINED','CLOCK_OWNER_LOCKED','CLOCK_STORAGE_OVERRUN','CLOCK_STORAGE_UNAVAILABLE',
+  'CLOCK_RECORD_INVALID','CLOCK_BINDING_MISMATCH','CLOCK_CONTEXT_MISMATCH','CLOCK_DATABASE_DURABILITY_REQUIRED','CLOCK_DIRECTORY_REQUIRED','CLOCK_CONFIGURATION_REQUIRED',
+  'REQUEST_DEADLINE','DATABASE_UNAVAILABLE','OVERLOADED','RATE_LIMITED','CHAIN_UNAVAILABLE','STALE_CHAIN','SERVICE_UNAVAILABLE',
+  'AUTH_INVALID','API_KEY_INVALID','API_KEY_SCOPE_DENIED','GRANT_INVALID','APP_DISABLED','POLICY_CHANGED','INVALID_INPUT','RESOURCE_NOT_FOUND',
+  'RESOURCE_DISABLED','LICENSE_REQUIRED','EXPIRED','BODY_TOO_LARGE']);
 const integer=(value,max=100000)=>Number.isSafeInteger(value)&&value>=0&&value<=max;
+const httpStatus=value=>Number.isSafeInteger(value)&&value>=100&&value<=599;
 function binding({revision,runId}={}){
   if(!/^[a-f0-9]{40}$/.test(revision??'')||!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(runId??''))throw Error('NODE_FAILURE_BINDING_REQUIRED');
   return{revision,runId};
@@ -38,10 +44,11 @@ function coordinate(file,line,column){
 }
 function failure(data){
   const file=fixedFile(data?.file),declaration=nativeFiles.includes(file)?coordinate(file,data.line,data.column):null;
-  const locations=[],seen=new Set(),errors=new Set();let error=data?.details?.error,code=null;
+  const locations=[],seen=new Set(),errors=new Set();let error=data?.details?.error,code=null,status=null;
   for(let depth=0;depth<4&&error&&typeof error==='object'&&!errors.has(error);depth++,error=error.cause){
     errors.add(error);
     if(codes.includes(error.code)&&(code===null||error.code!=='ERR_TEST_FAILURE'))code=error.code;
+    if(httpStatus(error.httpStatus))status=error.httpStatus;
     if(typeof error.stack!=='string'||error.stack.length>32768)continue;
     // Ignore the message/first line and all non-frame diagnostics. Never emit
     // the frame text, function name, assertion operands or arbitrary file path.
@@ -53,7 +60,7 @@ function failure(data){
       const key=JSON.stringify(location);if(!seen.has(key)&&locations.length<8){seen.add(key);locations.push(location);}
     }
   }
-  return{declaration,code,locations};
+  return{declaration,code,...(status!==null?{httpStatus:status}:{}),locations};
 }
 function counts(data){
   const labels=['tests','passed','failed','cancelled','skipped','todo'],result={};
@@ -94,8 +101,10 @@ export function nodeFailureReceipt(receipt,identity){
       if(!location||nativeOnly&&!nativeFiles.includes(location.file))throw Error('INELIGIBLE_NODE_FAILURE_LOCATION');
       const result=coordinate(location.file,location.line,location.column);if(!result)throw Error('INELIGIBLE_NODE_FAILURE_LOCATION');return result;
     };
-    if(!item||item.code!==null&&!codes.includes(item.code)||!Array.isArray(item.locations)||item.locations.length>8)throw Error('INELIGIBLE_NODE_FAILURE_LOCATION');
-    return{declaration:item.declaration===null?null:check(item.declaration,true),code:item.code,locations:item.locations.map(location=>check(location))};
+    if(!item||item.code!==null&&!codes.includes(item.code)||!Array.isArray(item.locations)||item.locations.length>8
+      ||Object.hasOwn(item,'httpStatus')&&!httpStatus(item.httpStatus))throw Error('INELIGIBLE_NODE_FAILURE_LOCATION');
+    return{declaration:item.declaration===null?null:check(item.declaration,true),code:item.code,
+      ...(Object.hasOwn(item,'httpStatus')?{httpStatus:item.httpStatus}:{}),locations:item.locations.map(location=>check(location))};
   });
   return{schemaVersion:1,kind:'hosted-node-failure-summary',...id,sourceFingerprint,status:receipt.status,
     counts:safeCounts,minimumTests:85,minimumMet:receipt.minimumMet,failureEvents:receipt.failureEvents,

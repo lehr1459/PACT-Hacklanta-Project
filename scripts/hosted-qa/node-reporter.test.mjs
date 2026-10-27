@@ -63,6 +63,26 @@ test('only fixed enum error codes and bounded cause/stack locations are retained
   assert.deepEqual(large.failures[0].locations,[]);assert.equal(large.failures[0].code,null);
 });
 
+test('structured HTTP causes retain only fixed error enums and integer status100 through599',async()=>{
+  for(const code of['CLOCK_STORAGE_OVERRUN','CLOCK_STORAGE_UNAVAILABLE','REQUEST_DEADLINE','DATABASE_UNAVAILABLE','OVERLOADED','RATE_LIMITED','CHAIN_UNAVAILABLE','STALE_CHAIN','SERVICE_UNAVAILABLE']){
+    const event=failed();event.data.details.error.cause.cause={code,httpStatus:503,message:sentinel,actual:sentinel};
+    const result=await collect([event,summary()]);
+    assert.equal(result.failures[0].code,code);assert.equal(result.failures[0].httpStatus,503);
+    assert.equal(JSON.stringify(nodeFailureReceipt(result,identity)).includes(sentinel),false);
+  }
+  for(const status of[99,600,503.5,'503',NaN,Infinity,null]){
+    const event=failed();event.data.details.error.cause.cause={code:sentinel,httpStatus:status,message:sentinel};
+    const result=await collect([event,summary()]);
+    assert.equal(result.failures[0].code,'ERR_ASSERTION');assert.equal(Object.hasOwn(result.failures[0],'httpStatus'),false);
+    const invalid={...result,failures:[{...result.failures[0],httpStatus:status}]};
+    assert.throws(()=>nodeFailureReceipt(invalid,identity),/INELIGIBLE_NODE_FAILURE_LOCATION/);
+  }
+  for(const status of[100,599]){
+    const event=failed();event.data.details.error.cause.cause={code:sentinel,httpStatus:status};
+    const result=await collect([event,summary()]);assert.equal(result.failures[0].code,'ERR_ASSERTION');assert.equal(result.failures[0].httpStatus,status);
+  }
+});
+
 test('malformed or incomplete counts cannot make diagnostic output an accepted complete run',async()=>{
   for(const counts of[{tests:85},{tests:NaN,passed:0,failed:0,cancelled:0,skipped:0,todo:0},
     {tests:1,passed:2,failed:0,cancelled:0,skipped:0,todo:0}]){
@@ -98,7 +118,7 @@ test('actual pinned Node reporter keeps failing child exit, final counts and cod
   const directory=await mkdtemp(path.join(tmpdir(),'pact-node-reporter-test-'));
   t.after(async()=>{assert.ok(directory.startsWith(path.join(tmpdir(),'pact-node-reporter-test-')));await rm(directory,{recursive:true,force:true});});
   const fixture=path.join(directory,'failure.test.mjs');
-  await writeFile(fixture,`import test from 'node:test';import {fail} from ${JSON.stringify(pathToFileURL(path.join(root,'services/pact-api/src/security.mjs')).href)};import {Browser} from ${JSON.stringify(pathToFileURL(path.join(root,'scripts/hosted-qa/browser.mjs')).href)};test(${JSON.stringify(sentinel)},()=>{console.log(${JSON.stringify(sentinel)});console.error(${JSON.stringify(sentinel)});fail('CLOCK_UNAVAILABLE');});test('synthetic helper assertion',async()=>Browser.prototype.login.call({request:async()=>({status:418})}));`);
+  await writeFile(fixture,`import test from 'node:test';import assert from 'node:assert/strict';import {fail} from ${JSON.stringify(pathToFileURL(path.join(root,'services/pact-api/src/security.mjs')).href)};import {Browser} from ${JSON.stringify(pathToFileURL(path.join(root,'scripts/hosted-qa/browser.mjs')).href)};test(${JSON.stringify(sentinel)},()=>{console.log(${JSON.stringify(sentinel)});console.error(${JSON.stringify(sentinel)});fail('CLOCK_UNAVAILABLE');});test('synthetic helper assertion',async()=>Browser.prototype.login.call({request:async()=>({status:418})}));test('synthetic structured HTTP assertion',()=>{try{assert.equal(503,200,${JSON.stringify(sentinel)});}catch(error){error.cause={code:'CLOCK_STORAGE_OVERRUN',httpStatus:503,message:${JSON.stringify(sentinel)}};throw error;}});`);
   const result=await new Promise((resolve,reject)=>{
     const env=validationEnv({PACT_HOSTED_QA_REVISION:identity.revision,PACT_HOSTED_QA_RUN_ID:identity.runId});
     const child=spawn(process.execPath,['--test','--test-reporter='+new URL('./node-reporter.mjs',import.meta.url).href,fixture],{
@@ -107,13 +127,14 @@ test('actual pinned Node reporter keeps failing child exit, final counts and cod
   });
   assert.equal(result.code,1);assert.equal(result.stdout.includes(sentinel),false);assert.equal(result.stderr.includes(sentinel),false);
   const receipt=nodeFailureReceipt(JSON.parse(result.stdout),identity);
-  assert.equal(receipt.status,'failed');assert.equal(receipt.counts.tests,2);assert.equal(receipt.counts.failed,2);
+  assert.equal(receipt.status,'failed');assert.equal(receipt.counts.tests,3);assert.equal(receipt.counts.failed,3);
   assert.equal(receipt.minimumMet,false);assert.equal(receipt.failures[0].code,'CLOCK_UNAVAILABLE');
   assert.equal(receipt.failures[0].declaration,null);assert.ok(receipt.failures[0].locations.some(location=>location.file==='services/pact-api/src/security.mjs'&&location.line===9));
   assert.equal(receipt.failures[1].code,'ERR_ASSERTION');
   const helperLines=(await readFile(path.join(root,'scripts/hosted-qa/browser.mjs'),'utf8')).split(/\r?\n/);
   const assertionLine=helperLines.findIndex(value=>value.includes("this.request('GET','/v1/developer/auth/session');assert.equal"))+1;
   assert.ok(assertionLine>0);assert.ok(receipt.failures[1].locations.some(location=>location.file==='scripts/hosted-qa/browser.mjs'&&location.line===assertionLine));
+  assert.equal(receipt.failures[2].code,'CLOCK_STORAGE_OVERRUN');assert.equal(receipt.failures[2].httpStatus,503);
 });
 
 test('async generator emits one reconstructed JSON record and no raw event text',async()=>{
