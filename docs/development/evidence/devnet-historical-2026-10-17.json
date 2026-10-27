@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "read-only-devnet-deployment-identity",
+  "sampledAt": "2026-10-17T04:44:26.776Z",
+  "network": "solana-devnet",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "commitment": "finalized",
+  "program": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy",
+  "programData": "4oeQ43DP6oUXparT8cYT3niBgdJCaFitj61mVXQfy9cX",
+  "contextSlot": 511956601,
+  "lastModifiedSlot": "509663811",
+  "upgradeAuthority": "CVN3suQneZtAb1RMuHf3BVYYEtAuNqNdSoiDQagQ7xzh",
+  "artifactSha256": "d13828b060327ef9f702b076b8681e4b9e1e8c04f961191d1df17b2babf52a62",
+  "artifactBytes": 35784,
+  "programDataPayloadBytes": 35784,
+  "zeroPaddingBytes": 0,
+  "payloadSha256": "d13828b060327ef9f702b076b8681e4b9e1e8c04f961191d1df17b2babf52a62",
+  "artifactMatches": {
+    "current": false,
+    "historical": true
+  },
+  "networkTransactions": 0,
+  "expectedArtifact": "historical",
+  "inspectionToolRevision": "bdaee6ff0e5b396610afe35317d318d1386dadd7",
+  "trackedWorkingTreeClean": true
+}

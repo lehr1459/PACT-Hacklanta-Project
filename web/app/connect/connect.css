@@ -1,0 +1,30 @@
+.hosted-connect { max-width: 880px; margin: 0 auto; padding: 0 24px 56px; }
+.hosted-connect .topbar { gap: 20px; }
+.hosted-connect-card { margin: 28px auto; padding: clamp(22px, 5vw, 44px); }
+.hosted-connect-card h1 { font-size: clamp(30px, 5vw, 44px); letter-spacing: -1.4px; line-height: 1.15; margin: 18px 0; }
+.hosted-connect-card .muted { line-height: 1.85; font-size: 14px; }
+.hosted-connect-details { margin: 26px 0; border-top: 1px solid var(--line); }
+.hosted-connect-details > div { display: grid; grid-template-columns: minmax(110px, .6fr) minmax(0, 1fr); align-items: start; gap: 16px; padding: 16px 0; }
+.hosted-connect-details dt { font-size: 12px; }
+.hosted-connect-details dd { margin: 0; text-align: left; overflow-wrap: anywhere; font-size: 13px; line-height: 1.7; }
+.hosted-connect-details small { display: block; color: var(--muted); font: 11px/1.8 monospace; overflow-wrap: anywhere; }
+.hosted-connect-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.hosted-connect .button { min-height: 44px; white-space: normal; text-decoration: none; }
+.hosted-connect-status { min-height: 2em; line-height: 1.8; font-size: 13px; color: #335780; overflow-wrap: anywhere; }
+.hosted-connect-message { margin: 25px 0; padding: 22px; background: #edf3fb; border: 1px solid #cbd9ee; border-radius: 10px; }
+.hosted-connect-message h2 { font-size: 22px; margin-top: 0; }
+.hosted-connect-message textarea { width: 100%; min-width: 0; resize: vertical; border-radius: 6px; padding: 14px; font: 12px/1.7 monospace; color: #e4edfc; background: #101b2d; white-space: pre; overflow: auto; }
+.hosted-connect .fine { line-height: 1.85; }
+.hosted-connect-secondary { margin: 22px 0; padding-top: 20px; border-top: 1px solid var(--line); }
+.hosted-connect button:focus-visible, .hosted-connect a:focus-visible, .hosted-connect textarea:focus { outline: 3px solid #4073c6; outline-offset: 4px; }
+.hosted-connect .notice { overflow-wrap: anywhere; }
+@media (max-width: 540px) {
+  .hosted-connect { padding: 0 16px 32px; }
+  .hosted-connect .topbar { flex-wrap: wrap; }
+  .hosted-connect-details > div { grid-template-columns: 1fr; gap: 6px; }
+  .hosted-connect .hosted-connect-actions > * { width: 100%; justify-content: center; }
+  .hosted-connect-message { padding: 16px; }
+}
+@media (forced-colors: active) {
+  .hosted-connect button:focus-visible, .hosted-connect a:focus-visible, .hosted-connect textarea:focus { outline-color: Highlight; }
+}

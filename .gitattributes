@@ -1,0 +1,27 @@
+# Preserve the exact bytes covered by committed artifact evidence.
+solana/src/lib.rs text eol=lf
+solana/Cargo.lock text eol=lf
+solana/Cargo.toml text eol=lf
+solana/wire-spec.json text eol=lf
+solana/scripts/build.ps1 text eol=lf
+solana/toolchain.json text eol=lf
+contracts/src/PactLicensing.sol text eol=lf
+contracts/abi/PactLicensing.json text eol=crlf
+solana/artifacts/*.so binary
+solana/artifacts/evidence.json text eol=crlf
+# Published SDK bytes must not depend on host checkout line endings.
+packages/pact-sdk/src/** text eol=lf
+packages/pact-sdk/package.json text eol=lf
+packages/pact-sdk/build.mjs text eol=lf
+packages/pact-sdk/tsconfig.json text eol=lf
+packages/pact-sdk/*.md text eol=lf
+# Durable migrations are checksum-bound across Windows and Linux checkouts.
+services/pact-api/migrations/*.sql text eol=lf
+services/pact-api/openapi.json text eol=lf
+web/public/developer/openapi.json text eol=lf
+packages/pact-hosted-client/** text eol=lf
+docs/platform/hosted/INTEGRATION_GUIDE.md text eol=lf
+web/public/developer/guide.md text eol=lf
+web/public/fonts/*.ttf binary
+services/pact-api/Dockerfile text eol=lf
+services/pact-api/Dockerfile.dockerignore text eol=lf

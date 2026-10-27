@@ -36,7 +36,9 @@ export type RawAccount = {data:[string,string];owner:string;executable:boolean;l
 const LOADERS = new Set(['BPFLoaderUpgradeab1e11111111111111111111111','BPFLoader2111111111111111111111111111111111','LoaderV411111111111111111111111111111111111']);
 function accountBytes(account: RawAccount, owner: string, description: string): Buffer {
   if (!account || account.owner !== owner || account.executable !== false || !Array.isArray(account.data) || account.data[1] !== 'base64' || typeof account.data[0] !== 'string' || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(account.data[0])) throw new Error(`${description} owner or encoding is invalid.`);
-  return Buffer.from(account.data[0],'base64');
+  const bytes=Buffer.from(account.data[0],'base64');
+  if(bytes.toString('base64')!==account.data[0])throw new Error(`${description} encoding is not canonical.`);
+  return bytes;
 }
 export function assertProgramAccount(account: RawAccount | null) {if (!account || account.executable !== true || !LOADERS.has(account.owner)) throw new Error('No executable PACT program exists at the configured Devnet address.');}
 export async function assertProgram(source: RpcSource = rpc) {
@@ -45,15 +47,17 @@ export async function assertProgram(source: RpcSource = rpc) {
   const result = await source('getAccountInfo',[programId.toBase58(),{encoding:'base64',commitment:'confirmed'}]) as {value:RawAccount|null};
   assertProgramAccount(result?.value); return programId;
 }
-export type SolanaSnapshot = {program:string;offerAddress:string;holder:string;licenseAddress:string;session:number;slot:bigint;clockSlot:bigint;chainTimestamp:bigint;expiry:bigint;offer:SolanaOffer;valid:boolean;startedAtMs:number;receivedAtMs:number};
-export async function acquireSolanaSnapshot({program,offerAddress,holder,session,clock,source=rpc,minContextSlot}: {program:PublicKey;offerAddress:string;holder:string;session:number;clock:()=>number;source?:RpcSource;minContextSlot?:number}):Promise<SolanaSnapshot> {
+export type LicenseBaseline = {kind:'missing'|'initialized';expiry:string;data:string|null};
+export type SolanaSnapshot = {program:string;offerAddress:string;holder:string;licenseAddress:string;session:number;slot:bigint;clockSlot:bigint;chainTimestamp:bigint;expiry:bigint;licenseBaseline:LicenseBaseline;commitment:'confirmed'|'finalized';offer:SolanaOffer;valid:boolean;startedAtMs:number;receivedAtMs:number};
+export async function acquireSolanaSnapshot({program,offerAddress,holder,session,clock,source=rpc,minContextSlot,commitment='confirmed'}: {program:PublicKey;offerAddress:string;holder:string;session:number;clock:()=>number;source?:RpcSource;minContextSlot?:number;commitment?:'confirmed'|'finalized'}):Promise<SolanaSnapshot> {
   const offerKey=parsePublicKey(offerAddress);const buyer=parsePublicKey(holder);
   if (!offerKey || !buyer) throw new Error('Enter a canonical offer address and wallet public key.');
+  if(!['confirmed','finalized'].includes(commitment)||(minContextSlot!==undefined&&(!Number.isSafeInteger(minContextSlot)||minContextSlot<0)))throw new Error('Invalid snapshot commitment or minimum context slot.');
   const startedAtMs=clock(); let timer: ReturnType<typeof setTimeout>;
   return Promise.race([(async () => {
     await assertDevnet(source);
     const [license]=deriveLicense(program,offerKey,buyer);
-    const config:Record<string,unknown>={encoding:'base64',commitment:'confirmed'};if(minContextSlot!==undefined)config.minContextSlot=minContextSlot;
+    const config:Record<string,unknown>={encoding:'base64',commitment};if(minContextSlot!==undefined)config.minContextSlot=minContextSlot;
     const result=await source('getMultipleAccounts',[[offerAddress,license.toBase58(),CLOCK_ADDRESS.toBase58(),program.toBase58()],config]) as {context:{slot:number};value:(RawAccount|null)[]};
     if (!result?.context || !Number.isSafeInteger(result.context.slot) || result.context.slot<0 || !Array.isArray(result.value) || result.value.length!==4) throw new Error('Invalid account snapshot context.');
     if (minContextSlot !== undefined && result.context.slot < minContextSlot) throw new Error('The RPC returned a snapshot below the required context slot.');
@@ -67,13 +71,17 @@ export async function acquireSolanaSnapshot({program,offerAddress,holder,session
     if (chainTimestamp<0n || clockSlot!==slot) throw new Error('Clock sysvar is inconsistent with the account context slot.');
     // Rust can initialize a canonical PDA that was pre-funded with SOL. An empty
     // system-owned account is uninitialized, never evidence of an entitlement.
-    let expiry=0n;
+    let expiry=0n;let licenseBaseline:LicenseBaseline={kind:'missing',expiry:'0',data:null};
     if(licenseAccount){
       if(licenseAccount.owner===SystemProgram.programId.toBase58()){
         if(accountBytes(licenseAccount,SystemProgram.programId.toBase58(),'Uninitialized license').length!==0)throw new Error('Uninitialized license account must be empty.');
-      }else expiry=decodeLicense(accountBytes(licenseAccount,program.toBase58(),'License'),program,license,offerKey,buyer);
+      }else {
+        const bytes=accountBytes(licenseAccount,program.toBase58(),'License');
+        expiry=decodeLicense(bytes,program,license,offerKey,buyer);
+        licenseBaseline={kind:'initialized',expiry:expiry.toString(),data:bytes.toString('base64')};
+      }
     }
-    return {program:program.toBase58(),offerAddress,holder,licenseAddress:license.toBase58(),session,slot,clockSlot,chainTimestamp,expiry,offer,valid:expiry>chainTimestamp,startedAtMs,receivedAtMs:clock()};
+    return {program:program.toBase58(),offerAddress,holder,licenseAddress:license.toBase58(),session,slot,clockSlot,chainTimestamp,expiry,licenseBaseline,commitment,offer,valid:expiry>chainTimestamp,startedAtMs,receivedAtMs:clock()};
   })(),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('Devnet check timed out. Access is closed until a fresh snapshot succeeds.')),READ_TIMEOUT_MS);})]).finally(()=>clearTimeout(timer));
 }
 export function snapshotHasAccess(snapshot:SolanaSnapshot,now:number,lastProgress:number){const age=now-snapshot.startedAtMs;if(!Number.isFinite(age)||age<0||age>=FRESHNESS_MS||now-lastProgress>=SLOT_PROGRESS_MS)return false;return snapshot.valid&&snapshot.expiry>snapshot.chainTimestamp+BigInt(Math.floor(age/1000));}

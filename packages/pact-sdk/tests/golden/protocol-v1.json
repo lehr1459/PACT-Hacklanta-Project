@@ -1,0 +1,306 @@
+{
+  "format": "pact-independent-protocol-v1",
+  "provenance": {
+    "pdaAndMessageCompiler": "solders 0.29.0 (Rust Solana SDK bindings)",
+    "binaryEncoding": "Python struct little-endian; discriminators Python hashlib SHA-256 namespace:name[:8]",
+    "metadataHashing": "cast Version: 1.8.5",
+    "generation": "Offline public fixtures; no PACT JavaScript implementation imported; no signatures or broadcasts"
+  },
+  "program": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "seller": "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi",
+  "buyer": "8qbHbw2BbbTHBW1sbeqakYXVKRQM8Ne7pLK7m6CVfeR",
+  "blockhash": "CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8",
+  "lastValidBlockHeight": 200,
+  "clock": {
+    "slot": 100,
+    "timestamp": "1000",
+    "dataHex": "6400000000000000000000000000000000000000000000000000000000000000e803000000000000"
+  },
+  "metadataBoundary": {
+    "base": {
+      "schema": "pact-solana-license-v1",
+      "title": "Byte boundary",
+      "terms": "",
+      "priceLamports": "1",
+      "durationSeconds": "1"
+    },
+    "fillCharacter": "é",
+    "fillCount": 32712,
+    "asciiSuffix": "",
+    "utf8Bytes": 65536,
+    "keccak256": "0xb6d7aa9b854ca645a3c1336a092a4bcaeeeba82495fcd353d4cba48d808f70a5"
+  },
+  "vectors": [
+    {
+      "name": "ordinary",
+      "nonce": "1",
+      "priceLamports": "1000000",
+      "durationSeconds": "60",
+      "metadataJson": "{\"schema\":\"pact-solana-license-v1\",\"title\":\"Golden terms\",\"terms\":\"Public test fixture only.\",\"priceLamports\":\"1000000\",\"durationSeconds\":\"60\"}",
+      "metadataUtf8Hex": "7b22736368656d61223a22706163742d736f6c616e612d6c6963656e73652d7631222c227469746c65223a22476f6c64656e207465726d73222c227465726d73223a225075626c696320746573742066697874757265206f6e6c792e222c2270726963654c616d706f727473223a2231303030303030222c226475726174696f6e5365636f6e6473223a223630227d",
+      "metadataKeccak256": "0xf28cd9764c9fdf4fc92a7bd6dc1b0dfa57da646e31d86e2fa5c54732ff7a0c51",
+      "metadataWithTrailingSpaceKeccak256": "0xb1cffb1ca72b72914b4142a1a65509d5a0e1ad4ac2d56f8116f2a617be0cb54f",
+      "offer": "CKHw4R7GpKAPCJCHPq4EodFzK259FuidG19FM79nYQ2N",
+      "offerBump": 255,
+      "license": "7gJus9hTbdQ95qrW5bcWemGgeBffoXEesrf8X9yRq9yW",
+      "licenseBump": 254,
+      "offerDataHex": "d7583c47aaa249e50101010101010101010101010101010101010101010101010101010101010101010000000000000040420f00000000003c00000000000000f28cd9764c9fdf4fc92a7bd6dc1b0dfa57da646e31d86e2fa5c54732ff7a0c5101ff",
+      "licenseDataHex": {
+        "active": "f898c364b96cb0e7a82027e7f304a8baa31841324650e5f33c35b698567a595549330164e8809fb302020202020202020202020202020202020202020202020202020202020202022404000000000000fe",
+        "equal": "f898c364b96cb0e7a82027e7f304a8baa31841324650e5f33c35b698567a595549330164e8809fb30202020202020202020202020202020202020202020202020202020202020202e803000000000000fe",
+        "expired": "f898c364b96cb0e7a82027e7f304a8baa31841324650e5f33c35b698567a595549330164e8809fb30202020202020202020202020202020202020202020202020202020202020202e703000000000000fe",
+        "maximum": "f898c364b96cb0e7a82027e7f304a8baa31841324650e5f33c35b698567a595549330164e8809fb30202020202020202020202020202020202020202020202020202020202020202ffffffffffffff7ffe"
+      },
+      "instructions": {
+        "create": {
+          "dataHex": "ede9c0a8f807f9f1010000000000000040420f00000000003c00000000000000f28cd9764c9fdf4fc92a7bd6dc1b0dfa57da646e31d86e2fa5c54732ff7a0c51",
+          "accounts": [
+            {
+              "address": "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi",
+              "signer": true,
+              "writable": true
+            },
+            {
+              "address": "CKHw4R7GpKAPCJCHPq4EodFzK259FuidG19FM79nYQ2N",
+              "signer": false,
+              "writable": true
+            },
+            {
+              "address": "11111111111111111111111111111111",
+              "signer": false,
+              "writable": false
+            }
+          ]
+        },
+        "buy": {
+          "dataHex": "ff518198a9c9e869",
+          "accounts": [
+            {
+              "address": "8qbHbw2BbbTHBW1sbeqakYXVKRQM8Ne7pLK7m6CVfeR",
+              "signer": true,
+              "writable": true
+            },
+            {
+              "address": "CKHw4R7GpKAPCJCHPq4EodFzK259FuidG19FM79nYQ2N",
+              "signer": false,
+              "writable": false
+            },
+            {
+              "address": "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi",
+              "signer": false,
+              "writable": true
+            },
+            {
+              "address": "7gJus9hTbdQ95qrW5bcWemGgeBffoXEesrf8X9yRq9yW",
+              "signer": false,
+              "writable": true
+            },
+            {
+              "address": "11111111111111111111111111111111",
+              "signer": false,
+              "writable": false
+            }
+          ]
+        },
+        "deactivate": {
+          "dataHex": "e95f0b2f84316a43",
+          "accounts": [
+            {
+              "address": "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi",
+              "signer": true,
+              "writable": false
+            },
+            {
+              "address": "CKHw4R7GpKAPCJCHPq4EodFzK259FuidG19FM79nYQ2N",
+              "signer": false,
+              "writable": true
+            }
+          ]
+        }
+      },
+      "unsignedCreateBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBqCAn5/MEqLqjGEEyRlDl8zw1tphWellVSTMBZOiAn7MAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAy9fpSTgH5QtsR7g1m8kTLvihepvzCN/UXqCzx8zveTADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAAUCQA0DAAMACQMAAAAAAAAAAAQDAAECQO3pwKj4B/nxAQAAAAAAAABAQg8AAAAAADwAAAAAAAAA8ozZdkyf30/JKnvW3BsN+lfaZG4x2G4vpcVHMv96DFEA",
+      "unsignedBuyBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAEBwICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQFjOAaR6U/sEPojpJvJmPm3n2IlvLCI3mG/AkvsQIQl7QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAACoICfn8wSouqMYQTJGUOXzPDW2mFZ6WVVJMwFk6ICfs8vX6Uk4B+ULbEe4NZvJEy74oXqb8wjf1F6gs8fM73kwAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDBAAFAkANAwAEAAkDAAAAAAAAAAAGBQAFAQIDCP9RgZipyehpAA=="
+    },
+    {
+      "name": "minimum",
+      "nonce": "0",
+      "priceLamports": "1",
+      "durationSeconds": "1",
+      "metadataJson": "{\"schema\":\"pact-solana-license-v1\",\"title\":\"Minimum\",\"terms\":\"One second.\",\"priceLamports\":\"1\",\"durationSeconds\":\"1\"}",
+      "metadataUtf8Hex": "7b22736368656d61223a22706163742d736f6c616e612d6c6963656e73652d7631222c227469746c65223a224d696e696d756d222c227465726d73223a224f6e65207365636f6e642e222c2270726963654c616d706f727473223a2231222c226475726174696f6e5365636f6e6473223a2231227d",
+      "metadataKeccak256": "0x80e78e14d3e767e1e37695bcb18d4b4b9ebe266dbea2addb2fb0ef99592e729f",
+      "metadataWithTrailingSpaceKeccak256": "0x03f7ff342bc9e93df421af42a37878946cfcd79c6c6c9af439421e404b33becd",
+      "offer": "84jWFqA8MTaedFVMyXhpqCbHJQ22fGgdDbYTkkS9oFG",
+      "offerBump": 254,
+      "license": "9E5krCMzWXk1uRrQhHegHH8way94vveiT72wkJE3QDSP",
+      "licenseBump": 255,
+      "offerDataHex": "d7583c47aaa249e5010101010101010101010101010101010101010101010101010101010101010100000000000000000100000000000000010000000000000080e78e14d3e767e1e37695bcb18d4b4b9ebe266dbea2addb2fb0ef99592e729f01fe",
+      "licenseDataHex": {
+        "active": "f898c364b96cb0e701cf49510eda1ec2cfc7f590071a80b61cfe4b13bf158778e7fab18cf2e4aa2302020202020202020202020202020202020202020202020202020202020202022404000000000000ff",
+        "equal": "f898c364b96cb0e701cf49510eda1ec2cfc7f590071a80b61cfe4b13bf158778e7fab18cf2e4aa230202020202020202020202020202020202020202020202020202020202020202e803000000000000ff",
+        "expired": "f898c364b96cb0e701cf49510eda1ec2cfc7f590071a80b61cfe4b13bf158778e7fab18cf2e4aa230202020202020202020202020202020202020202020202020202020202020202e703000000000000ff",
+        "maximum": "f898c364b96cb0e701cf49510eda1ec2cfc7f590071a80b61cfe4b13bf158778e7fab18cf2e4aa230202020202020202020202020202020202020202020202020202020202020202ffffffffffffff7fff"
+      },
+      "instructions": {
+        "create": {
+          "dataHex": "ede9c0a8f807f9f100000000000000000100000000000000010000000000000080e78e14d3e767e1e37695bcb18d4b4b9ebe266dbea2addb2fb0ef99592e729f",
+          "accounts": [
+            {
+              "address": "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi",
+              "signer": true,
+              "writable": true
+            },
+            {
+              "address": "84jWFqA8MTaedFVMyXhpqCbHJQ22fGgdDbYTkkS9oFG",
+              "signer": false,
+              "writable": true
+            },
+            {
+              "address": "11111111111111111111111111111111",
+              "signer": false,
+              "writable": false
+            }
+          ]
+        },
+        "buy": {
+          "dataHex": "ff518198a9c9e869",
+          "accounts": [
+            {
+              "address": "8qbHbw2BbbTHBW1sbeqakYXVKRQM8Ne7pLK7m6CVfeR",
+              "signer": true,
+              "writable": true
+            },
+            {
+              "address": "84jWFqA8MTaedFVMyXhpqCbHJQ22fGgdDbYTkkS9oFG",
+              "signer": false,
+              "writable": false
+            },
+            {
+              "address": "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi",
+              "signer": false,
+              "writable": true
+            },
+            {
+              "address": "9E5krCMzWXk1uRrQhHegHH8way94vveiT72wkJE3QDSP",
+              "signer": false,
+              "writable": true
+            },
+            {
+              "address": "11111111111111111111111111111111",
+              "signer": false,
+              "writable": false
+            }
+          ]
+        },
+        "deactivate": {
+          "dataHex": "e95f0b2f84316a43",
+          "accounts": [
+            {
+              "address": "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi",
+              "signer": true,
+              "writable": false
+            },
+            {
+              "address": "84jWFqA8MTaedFVMyXhpqCbHJQ22fGgdDbYTkkS9oFG",
+              "signer": false,
+              "writable": true
+            }
+          ]
+        }
+      },
+      "unsignedCreateBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAc9JUQ7aHsLPx/WQBxqAthz+SxO/FYd45/qxjPLkqiMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAy9fpSTgH5QtsR7g1m8kTLvihepvzCN/UXqCzx8zveTADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAAUCQA0DAAMACQMAAAAAAAAAAAQDAAECQO3pwKj4B/nxAAAAAAAAAAABAAAAAAAAAAEAAAAAAAAAgOeOFNPnZ+HjdpW8sY1LS56+Jm2+oq3bL7DvmVkucp8A",
+      "unsignedBuyBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAEBwICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQF6N2xuXyDqhDUCvPJ5GWxkqkgX20aUUct9q6JcU6gmCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAc9JUQ7aHsLPx/WQBxqAthz+SxO/FYd45/qxjPLkqiMDBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAMvX6Uk4B+ULbEe4NZvJEy74oXqb8wjf1F6gs8fM73kwAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDBQAFAkANAwAFAAkDAAAAAAAAAAAGBQAEAQIDCP9RgZipyehpAA=="
+    },
+    {
+      "name": "maximum",
+      "nonce": "18446744073709551615",
+      "priceLamports": "18446744073709551615",
+      "durationSeconds": "31536000",
+      "metadataJson": "{\"schema\":\"pact-solana-license-v1\",\"title\":\"Unicode café 🎨\",\"terms\":\"Exact UTF-8.\\nPreserve whitespace.\",\"priceLamports\":\"18446744073709551615\",\"durationSeconds\":\"31536000\"}",
+      "metadataUtf8Hex": "7b22736368656d61223a22706163742d736f6c616e612d6c6963656e73652d7631222c227469746c65223a22556e69636f646520636166c3a920f09f8ea8222c227465726d73223a224578616374205554462d382e5c6e507265736572766520776869746573706163652e222c2270726963654c616d706f727473223a223138343436373434303733373039353531363135222c226475726174696f6e5365636f6e6473223a223331353336303030227d",
+      "metadataKeccak256": "0xdd472edef7777a50c4a696c8a3f54f702155e3cc1231446d61c862b89fdf7064",
+      "metadataWithTrailingSpaceKeccak256": "0xc39f671080aaabda6969e7e315ffc727452aefcd16be48ed8699931fd716fdb4",
+      "offer": "6vkGcne2NUD9G8qKC3hPXY7LLCBdLrgYdjeYeofniqqk",
+      "offerBump": 255,
+      "license": "F7W2yYJaMZPuUDxMJKyWZTfBsXnbuf19NnFXTKyTnAVr",
+      "licenseBump": 254,
+      "offerDataHex": "d7583c47aaa249e50101010101010101010101010101010101010101010101010101010101010101ffffffffffffffffffffffffffffffff8033e10100000000dd472edef7777a50c4a696c8a3f54f702155e3cc1231446d61c862b89fdf706401ff",
+      "licenseDataHex": {
+        "active": "f898c364b96cb0e7580f2468831751c1ad5b1a3a066fe803822e40636e2c8053d950d092275230c302020202020202020202020202020202020202020202020202020202020202022404000000000000fe",
+        "equal": "f898c364b96cb0e7580f2468831751c1ad5b1a3a066fe803822e40636e2c8053d950d092275230c30202020202020202020202020202020202020202020202020202020202020202e803000000000000fe",
+        "expired": "f898c364b96cb0e7580f2468831751c1ad5b1a3a066fe803822e40636e2c8053d950d092275230c30202020202020202020202020202020202020202020202020202020202020202e703000000000000fe",
+        "maximum": "f898c364b96cb0e7580f2468831751c1ad5b1a3a066fe803822e40636e2c8053d950d092275230c30202020202020202020202020202020202020202020202020202020202020202ffffffffffffff7ffe"
+      },
+      "instructions": {
+        "create": {
+          "dataHex": "ede9c0a8f807f9f1ffffffffffffffffffffffffffffffff8033e10100000000dd472edef7777a50c4a696c8a3f54f702155e3cc1231446d61c862b89fdf7064",
+          "accounts": [
+            {
+              "address": "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi",
+              "signer": true,
+              "writable": true
+            },
+            {
+              "address": "6vkGcne2NUD9G8qKC3hPXY7LLCBdLrgYdjeYeofniqqk",
+              "signer": false,
+              "writable": true
+            },
+            {
+              "address": "11111111111111111111111111111111",
+              "signer": false,
+              "writable": false
+            }
+          ]
+        },
+        "buy": {
+          "dataHex": "ff518198a9c9e869",
+          "accounts": [
+            {
+              "address": "8qbHbw2BbbTHBW1sbeqakYXVKRQM8Ne7pLK7m6CVfeR",
+              "signer": true,
+              "writable": true
+            },
+            {
+              "address": "6vkGcne2NUD9G8qKC3hPXY7LLCBdLrgYdjeYeofniqqk",
+              "signer": false,
+              "writable": false
+            },
+            {
+              "address": "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi",
+              "signer": false,
+              "writable": true
+            },
+            {
+              "address": "F7W2yYJaMZPuUDxMJKyWZTfBsXnbuf19NnFXTKyTnAVr",
+              "signer": false,
+              "writable": true
+            },
+            {
+              "address": "11111111111111111111111111111111",
+              "signer": false,
+              "writable": false
+            }
+          ]
+        },
+        "deactivate": {
+          "dataHex": "e95f0b2f84316a43",
+          "accounts": [
+            {
+              "address": "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi",
+              "signer": true,
+              "writable": false
+            },
+            {
+              "address": "6vkGcne2NUD9G8qKC3hPXY7LLCBdLrgYdjeYeofniqqk",
+              "signer": false,
+              "writable": true
+            }
+          ]
+        }
+      },
+      "unsignedCreateBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADBQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBWA8kaIMXUcGtWxo6Bm/oA4IuQGNuLIBT2VDQkidSMMMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAy9fpSTgH5QtsR7g1m8kTLvihepvzCN/UXqCzx8zveTADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAAUCQA0DAAMACQMAAAAAAAAAAAQDAAECQO3pwKj4B/nx/////////////////////4Az4QEAAAAA3Ucu3vd3elDEppbIo/VPcCFV48wSMURtYchiuJ/fcGQA",
+      "unsignedBuyBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAEBwICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQHRre5EHbZpXNle7pi7sWb350BIvOBta1bGqMT0MgNr9QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAABYDyRogxdRwa1bGjoGb+gDgi5AY24sgFPZUNCSJ1Iww8vX6Uk4B+ULbEe4NZvJEy74oXqb8wjf1F6gs8fM73kwAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDBAAFAkANAwAEAAkDAAAAAAAAAAAGBQAFAQIDCP9RgZipyehpAA=="
+    }
+  ]
+}

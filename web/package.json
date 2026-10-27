@@ -1,6 +1,6 @@
 {
   "name": "pact-web",
-  "description": "Next.js frontend for PACT Hacklanta Project.",
+  "description": "PACT digital licensing web application.",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -20,7 +20,7 @@
     "@solana/web3.js": "1.99.0",
     "@tanstack/react-query": "5.104.1",
     "buffer": "6.0.3",
-    "next": "16.4.0",
+    "next": "16.4.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "viem": "2.57.4",

@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {mkdir,mkdtemp,readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import path from 'node:path';
+import {root,execute,npmCli} from '../validation/common.mjs';
+const base=path.join(root,'web/test-results/hosted-packed-client');await mkdir(base,{recursive:true});
+const output=await mkdtemp(path.join(base,'run-'));
+const hashes=[];
+for(const name of['pack-a','pack-b']){
+ const dir=path.join(output,name);await mkdir(dir);
+ const result=await execute(process.execPath,[npmCli(),'pack','.','--ignore-scripts','--json','--pack-destination',dir],{cwd:path.join(root,'packages/pact-hosted-client')});
+ assert.equal(result.code,0);const tarball=await readFile(path.join(dir,'pact-hosted-client-0.1.0.tgz'));hashes.push(createHash('sha256').update(tarball).digest('hex'));
+}
+assert.equal(hashes[0],hashes[1],'private client archive bytes must reproduce');
+const consumer=path.join(output,'consumer');await mkdir(consumer);
+await writeFile(path.join(consumer,'package.json'),JSON.stringify({name:'pact-private-packed-client-probe',version:'0.0.0',private:true,type:'module',dependencies:{'@pact/hosted-client':'file:../pack-a/pact-hosted-client-0.1.0.tgz'}}));
+assert.equal((await execute(process.execPath,[npmCli(),'install','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer})).code,0);
+await writeFile(path.join(consumer,'probe.mjs'),`import assert from 'node:assert/strict';
+import {randomBytes} from 'node:crypto';
+import {createPactClient} from '@pact/hosted-client';
+const client=createPactClient({origin:'http://127.0.0.1:4000',appId:'app_'+'a'.repeat(32),apiKey:'pact_sk_dev_key_'+'b'.repeat(32)+'_'+randomBytes(32).toString('base64url')});
+assert.equal(typeof client.checkAccess,'function');assert.ok(Object.isFrozen(client));
+await assert.rejects(import('@pact/hosted-client/index.mjs'),{code:'ERR_PACKAGE_PATH_NOT_EXPORTED'});
+console.log('Private packed client exports PASS');
+`);
+assert.equal((await execute(process.execPath,['probe.mjs'],{cwd:consumer})).code,0);
+let browserOutput='';const browser=await execute(process.execPath,['--conditions=browser','--input-type=module','-e',"await import('@pact/hosted-client')"],{cwd:consumer,onOutput:chunk=>{browserOutput+=chunk;}});
+assert.notEqual(browser.code,0);assert.match(browserOutput,/Node backend/);
+await writeFile(path.join(output,'receipt.json'),JSON.stringify({status:'PASS',archiveSha256:hashes[0],reproducible:true,installedArchive:true,nodeExports:true,browserDenied:true,publication:false},null,2)+'\n');
+console.log('Private client packed-consumer PASS; no publication.');

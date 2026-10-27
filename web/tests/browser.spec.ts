@@ -12,6 +12,23 @@ async function sustainedClosed(page: Page, timeout=10_000) {
   }),{timeout,intervals:[100]}).toBe(true);
 }
 
+test('@accessibility Base focused validation and keyboard verification expose text states',async({page})=>{
+ test.skip(process.env.PACT_QA_MODE==='setup');await installFixtures(page);await page.goto('/base');
+ const id=page.getByLabel('Offer ID',{exact:true});await id.fill('-1');
+ await expect(id).toBeFocused();await expect(id).toHaveAttribute('aria-invalid','true');
+ await expect(id).toHaveAccessibleDescription('Enter a nonnegative integer offer ID.');await expect(page.locator('#base-offer-error')).toBeVisible();
+ await id.fill('0');const editor=page.getByLabel('Seller metadata JSON');await editor.fill('{');
+ await expect(editor).toBeFocused();await expect(editor).toHaveAttribute('aria-invalid','true');
+ await expect(editor).toHaveAccessibleDescription(/Metadata is invalid or does not match/);await expect(page.locator('#base-metadata-feedback .field-validation')).toBeVisible();
+ await editor.fill(metadata);await expect(editor).toHaveAttribute('aria-invalid','false');
+ const verify=page.getByRole('button',{name:/Verify access/});await verify.focus();await page.keyboard.press('Enter');
+ await page.getByLabel('Wallet address').fill(BUYER);await page.getByRole('button',{name:/Verify on chain/}).focus();await page.keyboard.press('Enter');
+ await expect(page.getByRole('form',{name:'Public entitlement verification'})).toHaveAttribute('aria-busy','false');
+ await expect(page.locator('#base-verification-status')).toHaveAttribute('role','status');
+ await expect(page.locator('#base-verification-status')).toContainText('Entitlement valid.');
+ await expect(page.getByTestId('verification-result')).toContainText(BUYER);
+});
+
 test.describe('Mocked local browser acceptance - no signing or broadcast', () => {
   test.skip(() => process.env.PACT_QA_MODE === 'setup', 'These scenarios require the local fixture contract');
   const externalPosts=new WeakMap<Page,string[]>();

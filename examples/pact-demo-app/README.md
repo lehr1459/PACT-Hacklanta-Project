@@ -4,9 +4,11 @@ A separate, read-only Next.js application that imports the public `@pact/sdk` pa
 
 ## Run locally
 
-From `C:\Hackathon\PACT Hacklanta Project` in PowerShell:
+From your actual PACT checkout root in PowerShell:
 
 ```powershell
+$env:PACT_ENV_PROFILE='local'
+$env:PACT_APP_ORIGIN='http://localhost:3004'
 Push-Location packages/pact-sdk
 npm ci
 npm run build
@@ -20,7 +22,7 @@ npm start
 
 Open **http://localhost:3004/**. `npm run dev` also uses port 3004. The existing PACT marketplace stays on port 3003. QA browser tests use port 3005: `npm run test:browser` after a production build. The tests use synthetic read-only account fixtures and a synthetic Phantom connect API; they do not demonstrate real wallet ownership or purchases.
 
-Copy `.env.example` to `.env.local` only if changing public settings, then rebuild. Defaults target Solana Devnet, the deployed SDK program `EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy`, and offer `7EdfowQEZyVyyp7bYdQyzmprZtVU9mVba8cysHm2Ardh`. `NEXT_PUBLIC_PACT_MARKETPLACE_URL` is a normal HTTP(S) purchase link; `NEXT_PUBLIC_PACT_OFFER` selects an offer, never an authenticated wallet. No credentials are needed by this app.
+Preserve the same profile/public settings at build and start. Copy `.env.example` to a new `.env.local` only if changing settings, preserving an existing file. Local defaults target Solana Devnet, the reviewed SDK program `EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy`, and historical demo offer `7EdfowQEZyVyyp7bYdQyzmprZtVU9mVba8cysHm2Ardh`; they do not establish current entitlement or deployment identity. `NEXT_PUBLIC_PACT_MARKETPLACE_URL` is a normal HTTP(S) purchase link; `NEXT_PUBLIC_PACT_OFFER` selects an offer, never an authenticated wallet. No credentials are needed by this app. Strict externally configured profiles require explicit nonfixture settings; see [environment profiles](../../docs/operations/ENVIRONMENTS.md).
 
 ## Integration
 

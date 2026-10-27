@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 // Mocked local acceptance only. No RPC, signing or broadcast reaches a real chain.
 export default defineConfig({
   testDir: './tests',
-  testIgnore: ['**/solana/**', '**/integration/**'],
+  testIgnore: ['**/solana/**', '**/integration/**', '**/platform/**', '**/hosted/**'],
   fullyParallel: false,
   workers: 1,
   outputDir: process.env.PACT_QA_MODE === 'setup' ? './test-results/setup' : './test-results/fixture',

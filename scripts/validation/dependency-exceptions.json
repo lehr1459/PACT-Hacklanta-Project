@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-22",
+  "graphs": {
+    "sdk": "e253fba5cd90782fe8fab5e3a99e7a4ed43576c15d8eeefb5f2161382b7efb60",
+    "web": "3fe398e7212c918ba9e75abdb92abe92311a3c6e3324a9a3aae907c200729c1d",
+    "platform": "356449b8c1e9e1d345977258647681cbbf0b31b906ca1788740cf1b531d3887d",
+    "prism": "c531d1cb1779df1501c337e8359995ce2bb85818773b82eb6fa76837c9b4c6a3"
+  },
+  "exceptions": [
+    {
+      "package": "braces",
+      "advisory": "GHSA-vfj7-8cjw-p6xm",
+      "severity": "high",
+      "versions": [
+        "3.0.3"
+      ],
+      "projects": [
+        "web"
+      ],
+      "owner": "Security and SDK maintainers",
+      "expires": "2026-11-15",
+      "reason": "Transitive Metro/native build path is unused in supported Next browser/Node integrations. No patched braces release. Re-review before native support, dependency changes or commercial release. See docs/security/dependencies.md."
+    },
+    {
+      "package": "uuid",
+      "advisory": "GHSA-w5hq-g745-h8pq",
+      "severity": "moderate",
+      "versions": [
+        "8.3.2",
+        "9.0.1"
+      ],
+      "projects": [
+        "web",
+        "sdk",
+        "platform"
+      ],
+      "owner": "Security and SDK maintainers",
+      "expires": "2026-11-15",
+      "reason": "Reviewed transitive calls use v4 without caller-supplied buffers, rather than the affected APIs. Cross-major override requires independent upstream compatibility assessment. See docs/security/dependencies.md."
+    },
+    {
+      "package": "stream-json",
+      "advisory": "GHSA-528h-pc64-c93x",
+      "severity": "moderate",
+      "versions": [
+        "1.9.1"
+      ],
+      "projects": [
+        "web",
+        "sdk",
+        "platform"
+      ],
+      "owner": "Security and SDK maintainers",
+      "expires": "2026-11-15",
+      "reason": "The supported web3 browser JSON-RPC client does not import the jayson TCP/stream parser. Patched major changes module format and import paths. See docs/security/dependencies.md."
+    },
+    {
+      "package": "stream-json",
+      "advisory": "GHSA-hqr4-qq8f-hg3x",
+      "severity": "moderate",
+      "versions": [
+        "1.9.1"
+      ],
+      "projects": [
+        "web",
+        "sdk",
+        "platform"
+      ],
+      "owner": "Security and SDK maintainers",
+      "expires": "2026-11-15",
+      "reason": "The affected JSONC parser is outside supported runtime imports. Patched major changes module format and import paths. See docs/security/dependencies.md."
+    },
+    {
+      "package": "stream-json",
+      "advisory": "GHSA-mjw6-4jj6-33hc",
+      "severity": "moderate",
+      "versions": [
+        "1.9.1"
+      ],
+      "projects": [
+        "web",
+        "sdk",
+        "platform"
+      ],
+      "owner": "Security and SDK maintainers",
+      "expires": "2026-11-15",
+      "reason": "The affected stream Assembler is outside supported runtime imports. Patched major changes module format and import paths. See docs/security/dependencies.md."
+    }
+  ]
+}

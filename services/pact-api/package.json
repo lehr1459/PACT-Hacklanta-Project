@@ -1,0 +1,19 @@
+{
+  "name": "@pact/hosted-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.22.0 <25" },
+  "packageManager": "npm@11.19.1",
+  "scripts": {
+    "dev": "node src/dev.mjs",
+    "start": "node src/start.mjs",
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "migrate": "node src/migrate.mjs",
+    "openapi": "node scripts/openapi.mjs",
+    "openapi:check": "node scripts/openapi.mjs --check",
+    "maintain": "node src/maintenance-cli.mjs"
+  },
+  "dependencies": { "@pact/sdk": "file:../../packages/pact-sdk", "fastify": "5.12.7", "pg": "8.23.1" },
+  "devDependencies": { "@electric-sql/pglite": "0.5.10" }
+}

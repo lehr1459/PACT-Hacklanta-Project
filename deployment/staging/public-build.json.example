@@ -1,0 +1,4 @@
+{
+  "PACT_APP_ORIGIN": "https://OWNER_APPROVED_STAGING_DOMAIN",
+  "NEXT_PUBLIC_SOLANA_RPC_URL": "https://api.devnet.solana.com"
+}

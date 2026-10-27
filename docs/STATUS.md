@@ -1,5 +1,45 @@
 # Status
 
+## Concurrency corrections during final acceptance
+
+Final CI exposed a real PostgreSQL telemetry/access deadlock; independent review reproduced a second reauthentication/session cycle. Both have deterministic native regressions and canonical account-first locking fixes, with authorization and freshness controls preserved. See [causes, corrections and evidence boundaries](platform/hosted/CONCURRENCY_REVIEW_2026-10-26.md). The native gate now requires89 cases. Final clean-source local/CI acceptance and deployment-isolation checks remain mandatory before the authorized ordinary merge; no hosting or wallet action is implied.
+
+## Final engineering acceptance and conditional merge — 2026-10-26
+
+The owner now authorizes the ordinary pull-request/merge workflow after all required engineering gates pass. This supersedes earlier feature-push-only handoffs, without authorizing deployment, package publication, provider changes, wallet approval or transactions. The existing public deployment remains isolated.
+
+Final acceptance adds an independently packed consumer installed outside PACT and a reproducible native Caddy HTTPS → production Next → API → PostgreSQL18.6 TLS/recovery gate. See [developer demonstration](platform/hosted/DEVELOPER_DEMO.md), [QA review](platform/hosted/FINAL_QA_REVIEW_2026-10-26.md), [security review](platform/hosted/FINAL_SECURITY_REVIEW_2026-10-26.md) and [architecture review](platform/hosted/FINAL_ARCHITECTURE_REVIEW_2026-10-26.md). Preliminary checks passed17 consumer and14 topology groups; final receipts must bind the final source SHA and must not relabel predecessor runs. Human local Phantom steps are now explicit in [the acceptance procedure](platform/hosted/PHANTOM_ACCEPTANCE.md).
+
+Fresh dependency gates found newly reported fast-uri and body-parser advisories; compatible locked patches resolve them without extending exceptions. Validation also corrects Python setup ordering and explicitly declares generated Solana evidence line endings. Program/contract logic and SDK contracts remain preserved. All four exact GitHub checks and the complete applicable local matrix are still mandatory before merge. Node review remains due November5 UTC and dependency exceptions expire November15 UTC. Provider-hosted operation, current-binary Devnet deployment/custody and real-wallet/device acceptance remain separate gates.
+
+## Portable staging preparation — 2026-10-23
+
+Final database security review supersedes the inherited18.4 pin with PostgreSQL18.6 in CI and staging; [review and acceptance requirements](security/POSTGRES_REVIEW_2026-10-23.md). Existing clusters and application/protocol source remain untouched.
+
+The [staging kit](../deployment/staging/README.md) adds a clean commit-bound source artifact, offline materialization, strict web-context build/verification, manually controlled same-host Linux Compose and separate migrator credentials. Provider/domain remain unset. [Evidence and owner gates](platform/hosted/STAGING_PREPARATION_2026-10-23.md) include73 native checks, actual packaged portable backup/restore, TLS and least privilege, independent security review, all-four-check branch protection instructions and D/S/B Phantom workflow. Existing API/SDK/on-chain behavior is preserved; production and Saturday Lights are unchanged. Final origin/image/Linux-host/human acceptance remains separately authorized; a source kit is not hosted release approval. Node reviewNovember5 and exception expiryNovember15 remain unchanged.
+
+## Release validation preparation — 2026-10-22
+
+Current work is validation/security maintenance of completed `d3a350a`, not new product scope. Commits `1ee25fe`, `17099db` and `d616a5d` update reviewed Node 24.22.1/Docker pins, disable persisted checkout credentials, fix Windows native failure propagation and patch existing Next applications/fixture to 16.4.1. Independent security/backend reviews approve the bounded changes and unchanged exception scopes. Fresh hosted 20/20 acceptance and full original regression (721 Node, 438 active browsers, packed consumer 12, four app builds) pass at `d616a5d`; exact results are recorded in [release preparation](platform/hosted/RELEASE_PREPARATION_2026-10-22.md); the initial new-runtime audit failure is preserved. Prior entries below retain their historical versions/counts and do not validate this patch.
+
+Docker is unavailable locally; actual new remote CI/container, provider/time/storage/TLS and real-wallet/device acceptance remain unexecuted gates. Read-only GitHub/Vercel metadata and exact pre-push/staging owner steps are documented; no external setting, deployment, wallet or transaction action occurred. Next Node review: **2026-11-05**, earlier on an advisory/before hosting. Dependency exceptions remain **2026-11-15**. SDK contracts and Solana/Base logic are unchanged.
+
+## API-first integrations — 2026-10-19
+
+The [API-first platform](platform/hosted/MASTER_PLAN.md) is implemented on `codex/api-first-integrations` from verified foundation `57b425f`; checkpoint `9074ddd` preserves the pre-existing generated Next reference change. Phases0–8 engineering includes PostgreSQL API, signed developer console, scoped wallet grants, backend licensing enforcement, monitoring, OpenAPI, private client, enforcing Express/Next consumers, operational recovery and mandatory CI definitions. Clean hosted acceptance at `ead5ba0` passes20commands: service74/native85/console16/connect12, zero skips, plus clean production artifact restart/revoke smoke. Discovery-only follow-up `ac1949e` passes23policy tests. Compiled Solana43/Base23 and provenance pass; original coverage reconciles721Node cases,438active browser cases,12packed-consumer checks, dependency/artifact checks and expected mode/optional skips. Independent QA/security/architecture accept the local scope; exact per-revision evidence and preserved failed attempts are in the [implementation report](platform/hosted/IMPLEMENTATION_REPORT.md). The SDK, on-chain protocol and original examples are unchanged; marketplace, checkout and customer-hosted integration remain supported.
+
+The foundation's remote run `39017755163` passed both required jobs at `57b425f`; it does not validate unpublished feature commits. New remote Linux/Windows jobs, actual Docker execution, approved persistent hosting/storage/time behavior, legal/operating decisions and real-wallet/device acceptance remain open gates. Phases9–10 are [prepared only](platform/hosted/STAGING_AND_PILOT.md). No push, public deployment, infrastructure change, publication, wallet approval, transaction or Saturday Lights edit occurred. Track Node security review on **2026-10-21** and dependency exceptions on **2026-11-15**. The limited private-pilot wallet protocol is not public OAuth/OIDC/SIWS SSO; replicas/Mainnet/commercial guarantees are unsupported.
+
+## Full development foundation - 2026-10-17
+
+Phases 0-5 are implemented and independently reviewed. Phases 0-2 pass; Phases 3-5 pass with explicit human actions remaining. The immutable validated implementation/package/archive candidate is `defec7181cc5c8e14b43f4e81eb90783349b5a99`; the subsequent close commit updates documentation only. [Execution evidence](development/EXECUTION.md) records exact results, corrected failures and provenance. The full clean gate passed all 40 required commands; SDK 625/API 29/policy 67 and every applicable browser/build/consumer lane passed. Actual extracted archive installs, startup, page/live/Devnet-readiness and denied protected access passed six checks. Local compiled Solana43 and Base23 tests pass; current local SBF has not been deployed.
+
+Solana Devnet remains primary; Base Sepolia remains isolated. This is a locally verified product foundation, not a production hosting, npm, Mainnet or commercial release. Actual wallet/accessibility acceptance, hosted CI/configuration, assigned operating roles, distribution rights and authority custody remain external gates. Runtime review is due October21 and scoped dependency exceptions expire November15. See [remaining debt](TECHNICAL_DEBT.md), [rollout gates](operations/ROLLOUT.md) and the [wallet checklist](development/WALLET_ACCEPTANCE.md). No push, publication, public deployment, network signing/broadcast, wallet approval or authority change occurred. Historical entries below do not describe current process state.
+
+## Post-MVP cleanup — 2026-10-16
+
+Current repository map, baseline, preservation decisions and validation are in [POST_MVP_CLEANUP.md](POST_MVP_CLEANUP.md); follow-up work is in [TECHNICAL_DEBT.md](TECHNICAL_DEBT.md). Existing user work is preserved at `b05f89b`. Solana Devnet remains primary and Base Sepolia remains isolated. No deployment or push is part of this cleanup. Entries below are historical milestone records, not live preview/process state.
+
 ## Critical buyer offer flicker - local READY
 
 - Root cause reproduced before edits on One-Link production build 117b793: each successful poll publishes new data before effect-based progress/clock synchronization; the temporary absent snapshot removes the offer subtree. Three 60-second cases each recorded 15 removals/reinsertions, without recurring document navigation or page errors.
@@ -162,3 +202,13 @@ The sections below are historical phase records; their pending deployment/fundin
 - 2026-10-11: Saturday NFL Sites version 2 deployed successfully to https://saturday-lights-pact-demo.lehr-exe.chatgpt.site. TypeScript/build/34 Node/6 local browser/2 public browser tests pass; read-only expired/missing entitlements denied. Evidence: docs/SATURDAY_NFL_RELEASE.md.
 
 - 2026-10-11: Local repository renamed to PACT Hacklanta Project at C:\Hackathon\PACT Hacklanta Project; old checkout path retained as a compatibility view. Git has no configured remote, so no GitHub repository was renamed. PACT branding, SDK package identities, deployed URLs, Vercel project, environment and blockchain functionality are unchanged. See docs/REPOSITORY_RENAME.md.
+
+## Developer Platform v1 — local acceptance complete
+
+- Branch: codex/developer-platform-v1. Pre-product rollback checkpoint: 7f217d506245b02ae4818d3e0bf6d3ff9941edda.
+- Implemented additive REST API, SDK v1/server/React exports, signed-wallet authentication, fresh backend enforcement and independent Canvas Lab example. Docs: docs/platform/README.md and IMPLEMENTATION.md.
+- Independent QA: 536 passing checks (435 preserved acceptance, 46 local program, 41 new Node, 14 new browser). Backend additionally passed four focused auth tests. SDK/web/example builds and TypeScript, packed consumer boundaries and OpenAPI passed.
+- Frontend/Reviewer passed responsive visuals and 60.064-second actual read-only TEST checkout stability; no recurring offer disappearance/remount. Initial failures and fixes are retained in qa/platform-v1/REPORT.md.
+- Local previews: http://localhost:3007/ and http://localhost:3008/. Authentication requires the exact configured origin.
+- Production deployment dpl_AeyVsH68MJ784e5YePwziDGvbbr3, Solana/Base programs, original SDK workflows and Saturday Lights remain unchanged. No push/publish/deployment/real wallet or blockchain transaction occurred.
+- Release limit: process-local authentication requires one persistent Node process; distributed/serverless auth is blocked pending a shared atomic store and separate security review. Real Phantom proofs/purchases remain manual.

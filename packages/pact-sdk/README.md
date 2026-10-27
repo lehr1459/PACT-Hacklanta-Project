@@ -1,19 +1,20 @@
-# @pact/sdk 0.1.0
+# @pact/sdk 0.2.0
 
-The root entrypoint provides read-only digital-license verification for PACT on **Solana Devnet**. The program is fixed to `EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy`. The separate checkout entrypoint described below supports an explicit purchase; root verification does not sign or submit transactions. An entitlement does not establish copyright ownership. This demo SDK makes no production security claim.
+The root entrypoint provides read-only digital-license verification for PACT on **Solana Devnet**. The program is fixed to `EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy`. The separate checkout entrypoint described below supports an explicit purchase; root verification does not sign or submit transactions. An entitlement does not establish copyright ownership. This unpublished candidate needs the release checks and owner approvals described in [distribution policy](DISTRIBUTION.md).
 
 ## Install and package
 
-From the repository root, build the SDK before installing it into another project:
+Obtain the approved tarball and its SHA-256 manifest through an authorized channel, then install your copy in your own application:
 
 ```sh
-npm --prefix packages/pact-sdk ci
-npm --prefix packages/pact-sdk run build
-cd your-application
-npm install /absolute/path/to/PACT/packages/pact-sdk
+npm install /absolute/path/to/pact-sdk-0.2.0.tgz
 ```
 
-An application inside this repository may use `"@pact/sdk": "file:../packages/pact-sdk"` (adjust the path). For a portable tarball, run `npm pack` inside this package, then `npm install /path/to/pact-sdk-0.1.0.tgz`. Compiled JavaScript and declarations are included. Exports use ESM; Node CommonJS consumers can use `await import('@pact/sdk')`. Runtime dependencies are pinned `@solana/web3.js` 1.99.0, `buffer` 6.0.3 and `@noble/hashes` 1.8.0. Build dependencies are TypeScript 5.9.3 and esbuild 0.28.2. Node 20+ with fetch is recommended; tested with Node 24.
+Consumers need the tarball and a resulting lockfile, without a sibling PACT checkout or its node_modules. Use `npm ci` for subsequent installs. Repository contributors can run `node scripts/release/sdk.mjs` from a clean committed checkout with the pinned runtime to prepare two independent source builds and an exact matching tarball; no publication occurs. Internal examples may use file dependencies, with SDK build first.
+
+Compiled ESM, declarations and browser bundles are included. CommonJS can use `await import('@pact/sdk')`. Runtime dependencies are pinned `@solana/web3.js` 1.99.0, `buffer` 6.0.3 and `@noble/hashes` 1.8.0. React is optional (`>=18 <20`); server modules require Node 24.22.0 or a reviewed later Node24 patch. The validation pin is Node24.22.0/npm11.19.1, Next.js16.4 and locked Chromium. Other Node majors and native wallet environments are not validated targets. See the release's consumer evidence for exact combinations and the dated Node security review; a version pin is not a security clearance.
+
+The 0.2 HTTP client rejects incomplete or inconsistent successful responses, including older servers omitting nonce or preparation context. Upgrade the matching API and SDK together. Offer nonce enables PDA verification, prepared offers carry context/timing, and transaction status declarations include contextSlot. Prepared v0 transactions must be unsigned, use the expected payer/program/instructions and match exact metadata. The HTTP client does not grant authorization to the browser. See [changelog](CHANGELOG.md).
 
 ## API
 
@@ -115,3 +116,17 @@ Checkout preserves explicit compute budget (200,000 CU, zero priority price), re
 Recovery only reads an existing signature. It tolerates transient read failures and preserves observed confirmation. Expiry requires finalized height past validity, repeated history-null status, invalid blockhash and a fresh finalized entitlement matching the original baseline. Changed entitlement or unavailable evidence remains protected. Storage cleanup failures retain retry protection; a successful payment must not be described as unknown solely because local cleanup failed.
 
 For a framework-free UI, use `mountCheckout` from `@pact/sdk/widget`, or the self-contained browser files `dist/pact-checkout.mjs` and `dist/pact-checkout.js` (`PACT.mountCheckout`). The widget is inline Shadow DOM, with explicit terms approval and sequential verification polling. No React, Next, iframe or external runtime dependency is bundled. Runtime adds pinned `@noble/hashes` 1.8.0 for exact metadata hashing; browser bundling uses dev-only esbuild 0.28.2. Run `npm run build`, `npm run typecheck` and `npm test` locally; pack only after all owned widget sources are ready.
+
+Hosts that require wallet ownership authentication can pass `purchaseAccess: {allowed: false, reason: 'Authenticate Wallet before purchasing.'}` to `mountCheckout` or the React `PactCheckout` component. The disabled reason appears beside purchase; `WidgetState.purchase` exposes the same `{enabled, reason}` readiness used by the button and imperative `purchase()` call. After authenticating the connected wallet on the host server, use `controller.setPurchaseAccess({allowed: true})`, `controller.resetUnsubmittedAttempt()`, and `await controller.refresh()`. The React prop updates without remounting checkout or destroying its adapter. Omitting host access preserves normal SDK behavior; it never bypasses metadata, terms, freshness, wallet, journal, or entitlement checks. Server authorization remains mandatory for protected resources.
+
+`resetUnsubmittedAttempt(): boolean` clears unsigned progress/errors and returns `false` during an operation, with signed diagnostics, or when pending journals are protected/unavailable. It does not remove signed journals or release recovery protections. Adapter errors with explicit `AUTH_REQUIRED`, `AUTH_INVALID`, or `AUTH_UNAVAILABLE` codes return `failed` and retain their codes; the widget identifies authentication blocking with no transaction submitted. Actual user signature rejection (including wallet code `4001`) remains `rejected`. Preparation/simulation failures publish `failed` with an unsigned diagnostic; deterministic signed preflight rejection and unknown recovery retain their existing transaction outcomes.
+
+`resetResolvedFailure(): boolean` separately clears `rejected`, `failed`, or `expired` diagnostics, including a retained public signature, only when checkout is idle and a fresh pending-journal inspection confirms protection is released. It returns `false` during connection, purchase, or recovery, with unavailable/protected journals, or for finalized, unknown, or confirmed states. It never edits journals or consent. A valid new purchase invokes both safe diagnostic resets; hosts can also invoke this method after authentication succeeds.
+
+### Server concurrency and actual resources
+
+`createPlatformReader` supports eight concurrent operations and sixteen queued operations with a five-second deadline including queue time. Pass `{signal}` as the optional second method argument to cancel. Request state is isolated; endpoint slot/Clock progress history persists across requests. Cancelled work that ignores abort keeps its worker capacity until it settles. The original `createPactClient` retains its single-read contract.
+
+`createPactApiHandler` reserves public and protected read capacity separately and applies independent public/auth/protected request budgets. Configure server-owned `resources` policies to protect actual assets/actions; `/protected` is only a compatibility demonstration. Resource preparation is side-effect-free and bounded; the original authenticated session and current entitlement are rechecked before delivering copied bytes or a synchronous, nonthrowing host commit. See [the full authorization contract](../../docs/development/AUTHORIZATION.md) and the executable platform example. One persistent customer-hosted Node process is the supported auth topology; restarting closes all sessions. Detected serverless, cluster and worker-thread configurations cannot enable this mode.
+
+New marketplace purchases now write the SDK-compatible primary baseline journal and unchanged legacy mirror. Expired unsuccessful repurchases can be released only after finality/history/lifetime checks and an exact unchanged finalized entitlement baseline. Older baseline-less attempts retain conservative expiry protection. Finalized success/failure remains distinct from a failed account refresh or journal cleanup; no automatic resubmission is introduced.

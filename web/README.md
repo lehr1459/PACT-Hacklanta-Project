@@ -1,8 +1,14 @@
 # PACT web
 
+For current repository startup and validation order, see the [root README](../README.md) and [post-MVP audit](../docs/POST_MVP_CLEANUP.md). Run from your actual checkout; historical absolute Windows paths in older evidence are not prerequisites.
+
+Keep local startup configuration separate from fixture validation. Browser/test/CI profiles refuse active environment files by filename metadata, including `.env.local`; use a separate clean checkout for those commands and preserve your existing files. See [current validation](../docs/development/VALIDATION.md).
+
 ## Low-code developer integration
 
-Open `/integrate` from **Integrate your app** in the marketplace. Next.js App Router and React TSX developers can name their app, validate an existing Devnet offer, and copy a local SDK install command, configuration, wallet-connected gate and self-contained AI coding prompt. Creating an offer uses the existing Seller studio and requires separate operator transaction authorization.
+Open `/integrate` from **Integrate your app** in the marketplace. The API-first entry opens `/integrate/developer` for application registration, callback verification, seller-owned resource policies, credentials, integration commands, usage and audit. It requires the separately running local hosted service and fixed `/v1` gateway; follow [local setup](../docs/platform/hosted/LOCAL_TESTING.md) and the [integration guide](../docs/platform/hosted/INTEGRATION_GUIDE.md). The feature has not replaced the older public deployment; remote CI/container and owner staging/wallet acceptance remain open gates.
+
+The preserved customer-hosted option is at `/integrate#self-hosted`. Next.js App Router and React TSX developers can name their app, validate an existing Devnet offer, and copy a local SDK install command, configuration, wallet-connected gate and self-contained AI coding prompt. Creating an offer uses the existing Seller studio and requires separate operator transaction authorization.
 
 The SDK remains unpublished; build `packages/pact-sdk` before a clean web install/build. This web application now uses the local `@pact/sdk` package. The wizard performs public reads only and its preview states are explicitly synthetic. Generated client-side UI gating alone is not production-grade security; confidential backend resources need wallet authentication and fresh server authorization. No app registration, database or signing credentials are introduced.
 
@@ -14,7 +20,7 @@ The primary route `/` is **Solana Devnet**. The original Base Sepolia applicatio
 
 Set `NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID` to the operator-approved deployed program address and `NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com` in `.env.local`, then restart/rebuild. Leave the program ID empty until deployment; the app displays setup pending and never substitutes a fixture address. The native Rust manual wire specification is `../solana/wire-spec.json`, not an Anchor-generated IDL.
 
-The reviewed Devnet deployment is `EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy`. This workstation's ignored `.env.local` is configured with that public address and `https://api.devnet.solana.com`. `.env.example` deliberately keeps the address empty so new checkouts cannot silently substitute a deployment. Public configuration is embedded at build time; rebuild or restart after changes.
+The reviewed Devnet program address is `EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy`; [dated deployment evidence](../docs/development/SOLANA_RELEASE.md) distinguishes the historical deployed ELF from the current local artifact. `.env.example` deliberately keeps the address empty so new checkouts cannot silently substitute a deployment. Existing local environment contents were not inspected by this implementation. Public configuration is embedded at build time; rebuild or restart after changes.
 
 The client uses official Phantom and Solflare wallet adapters. Choose a wallet provider, connect, and disconnect through the header. Missing Phantom is displayed with a manual installation link; there is no automatic redirect or reconnection. Client providers build safely under SSR; no wallet access occurs during server rendering. Rejected connections and approvals show errors. Wallet changes require a new identity-bound license snapshot.
 
@@ -30,19 +36,15 @@ After finalized creation, the seller's offer address is displayed/selected and l
 
 The original blockhash and last valid block height are retained. Before sending, the app checks current block height and blockhash validity without requesting a replacement signature. Read-only signature polling tolerates temporary errors with bounded backoff for 120 seconds. A deadline alone means **confirmation unknown** or **confirmed; finalization pending**. Expiration requires finalized height beyond the validity window, another nonregressing history-status read with no confirmation, and an invalid finalized blockhash; observed confirmation is sticky and cannot become “expired.” There is no automatic signing or resubmission.
 
-Public-only recovery records persist per attempt under `pact.solana.pending.v1:<attempt-key>` in local storage; they contain public network/program/buyer/offer/signature/blockhash/height/state fields, never signed transaction bytes or credentials. Persistence failure stops sending. Synchronous handler locks prevent double clicks, and same-attempt Web Locks prevent concurrent tabs from signing or sending duplicates. A supported secure-context Chrome localhost session with Web Locks is required. An unresolved buyer/offer attempt survives wallet changes and reloads: another click checks its existing signature only. Safe expiration also requires a fresh canonical absent-entitlement snapshot before releasing that purchase guard. No reset/retry button bypasses protection. Known RPC acceptance or confirmation remains known even when storage updates fail; protection stays active.
+Public-only recovery records persist per attempt under `pact.solana.pending.v1:<attempt-key>` in local storage; they contain public network/program/buyer/offer/signature/blockhash/height/state fields, never signed transaction bytes or credentials. Persistence failure stops sending. Synchronous handler locks prevent double clicks, and same-attempt Web Locks prevent concurrent tabs from signing or sending duplicates. A supported secure-context Chrome localhost session with Web Locks is required. An unresolved buyer/offer attempt survives wallet changes and reloads: another click checks its existing signature only. Safe expiration also requires a fresh finalized canonical snapshot matching the exact recorded missing or initialized entitlement baseline before releasing that purchase guard; legacy records without that baseline remain protected. No reset/retry button bypasses protection. Known RPC acceptance or confirmation remains known even when storage updates fail; protection stays active.
 
 SDK RPC calls have a five-second HTTP timeout. Wallet/offer changes during approval prevent submission. An empty, system-owned canonical entitlement PDA is treated as uninitialized, matching the program's pre-funded-account initialization behavior; it never unlocks access.
 
 ### Manual Chrome wallet checks
 
-1. Without Phantom, confirm the missing-extension message and disabled connect control; install only through the explicit link.
-2. With Phantom installed, select Phantom, connect and reject once, then connect successfully. Confirm public key and disconnect behavior.
-3. Select Devnet in Phantom. With an approved program/RPC configuration, create and review metadata, buy from another wallet, and verify public access/expiry.
-4. Change accounts during reads and while a transaction is pending. Check attribution and that another account's entitlement never opens access.
-5. Reject signing; test wrong RPC genesis, RPC outage, hidden/offline resume, and stale access. These checks use only Devnet test SOL.
+Use the current [wallet and accessibility acceptance checklist](../docs/development/WALLET_ACCEPTANCE.md). It separates distinct seller/buyer flows, message proof, transaction review, settlement, expiry, recovery and actual mobile Phantom from synthetic fixtures. Wallet approvals, message/transaction signatures and broadcast remain **HUMAN ACTION REQUIRED**; the checklist records them as unexecuted until a human supplies observations. No seed or private key is required in source, logs or chat.
 
-Automated fixture evidence does not establish real-wallet signing or a deployed Devnet transaction. Those remain operator-controlled evidence steps.
+Automated fixture results do not establish actual wallet approval, native popup behavior, a screen-reader pass or a deployed transaction. Keep dated operator observations separate from fixture receipts.
 
 ### Dependency audit limitation
 
@@ -55,9 +57,11 @@ Base Sepolia only (chain ID 84532). This app uses injected browser wallets throu
 ## Run both routes locally
 
 ```powershell
-cd 'C:\Hackathon\PACT Hacklanta Project\web'
+cd web # from the repository root
 npm ci
 if (!(Test-Path .env.local)) { Copy-Item .env.example .env.local }
+$env:PACT_ENV_PROFILE='local'
+$env:PACT_APP_ORIGIN='http://localhost:3003'
 # Primary / route: set NEXT_PUBLIC_PACT_SOLANA_PROGRAM_ID after approved Devnet deployment.
 # Preserved /base route: set NEXT_PUBLIC_PACT_CONTRACT_ADDRESS after approved Base deployment.
 npm run dev -- --hostname 127.0.0.1 --port 3003
@@ -65,7 +69,7 @@ npm run dev -- --hostname 127.0.0.1 --port 3003
 
 Open http://localhost:3003 for the primary Solana Devnet interface, or http://localhost:3003/base for the preserved Base Sepolia interface. Without its respective program/contract address, each route renders a truthful setup state and disables on-chain actions. No program or contract is deployed by any web command. Restart after changing public configuration; production builds embed it.
 
-`npm run typecheck` checks TypeScript; `npm run build` creates the production app; `npm start` serves it. ABI is imported directly from `../contracts/abi/PactLicensing.json`, generated from the Foundry artifact. Run the Backend-owned `contracts/scripts/export-abi.ps1` after contract changes before building web.
+`npm run typecheck` checks TypeScript; with the same explicit local environment, `npm run build` creates the local production app and `npm start -- --port 3003` serves it. Build/start reject missing profiles and mismatched public/origin/policy settings. See [environment profiles](../docs/operations/ENVIRONMENTS.md) before preparing hosted configuration; a local build does not establish hosting approval. ABI is imported directly from `../contracts/abi/PactLicensing.json`, generated from the Foundry artifact. Run the Backend-owned `contracts/scripts/export-abi.ps1` after contract changes before building web.
 
 ## Operator-guided Solana Devnet demo
 

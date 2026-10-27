@@ -1,0 +1,9 @@
+.hosted-entry { max-width: 1280px; margin: 28px auto; padding: 0 48px; }
+.hosted-entry > div { padding: 26px; border: 1px solid #bdcfe8; border-radius: 12px; background: #edf4ff; }
+.hosted-entry h2 { margin-top: 12px; font-size: clamp(24px, 3vw, 32px); }
+.hosted-entry p { max-width: 860px; font-size: 13px; line-height: 1.9; }
+.hosted-entry .fine { font-size: 11px; margin-bottom: 0; }
+.hosted-entry-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0; }
+.hosted-entry-actions a { text-decoration: none; min-height: 44px; }
+@media (max-width: 720px) { .hosted-entry { padding: 0 24px; } }
+@media (max-width: 430px) { .hosted-entry { padding: 0 16px; } .hosted-entry > div { padding: 20px; } .hosted-entry-actions a { width: 100%; text-align: center; white-space: normal; } }

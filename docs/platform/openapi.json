@@ -1,0 +1,4216 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PACT Developer Platform v1",
+    "version": "1.0.0",
+    "description": "Solana Devnet only. Public lookup is not authentication. No server signing/broadcast or registry. Authentication supports an explicitly opted-in single persistent Node process; multi-instance/serverless auth is unsupported."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3007/api/v1",
+      "description": "PACT local API"
+    },
+    {
+      "url": "http://localhost:3008/api/pact",
+      "description": "Independent same-origin example API"
+    }
+  ],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "operationId": "getLiveness",
+        "description": "Cheap process/handler liveness; no RPC or authentication grant. Bypasses handler admission budgets so an overloaded public pool does not appear to be a dead process. Apply connection and URI limits at the hosting proxy.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Live"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "getReadiness",
+        "description": "Bounded public-pool read of genesis plus Clock/program in one context and configured authentication availability. Never an entitlement grant or verification of deployed ELF identity. Uncertain or unavailable dependencies fail closed.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ready"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/offers/{address}": {
+      "get": {
+        "operationId": "getOffer",
+        "description": "Read verified public offer parameters and commitment; no metadata preimage.",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "description": "Canonical public Solana address.",
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 44,
+              "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+              "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Offer"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/offers/prepare": {
+      "post": {
+        "operationId": "prepareOffer",
+        "description": "Prepare unsigned create-offer transaction. Seller authorization/signature happens separately in their wallet.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepareOffer"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreparedOffer"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/offers/{address}/metadata": {
+      "get": {
+        "operationId": "getMetadata",
+        "description": "Current handler has no registry and returns404 METADATA_UNAVAILABLE after verifying the offer. Compatible registry hosts may return200 available:true; SDK independently fetches a fresh offer and verifies exact metadata bytes/commitment, price/duration and title/terms before returning it. A200 unavailable/empty claim is invalid.",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "description": "Canonical public Solana address.",
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 44,
+              "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+              "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Optional registry host only; current handler never fabricates available metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifiedMetadata"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "METADATA_UNAVAILABLE. A commitment cannot reconstruct metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checkout/prepare": {
+      "post": {
+        "operationId": "prepareCheckout",
+        "description": "Validate fresh offer, buyer entitlement, exact public metadata/hash/price/duration and availability; return unsigned purchase transaction.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepareCheckout"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreparedCheckout"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/licenses/verify": {
+      "post": {
+        "operationId": "verifyLicense",
+        "description": "Public entitlement lookup only. Does not prove wallet control or authorize access.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LicenseInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicLicense"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/licenses/{offer}/{wallet}": {
+      "get": {
+        "operationId": "getLicense",
+        "description": "Read-only public entitlement status with freshness and explicit non-authentication claims.",
+        "parameters": [
+          {
+            "name": "offer",
+            "in": "path",
+            "required": true,
+            "description": "Canonical public Solana address.",
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 44,
+              "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+              "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+            }
+          },
+          {
+            "name": "wallet",
+            "in": "path",
+            "required": true,
+            "description": "Canonical public Solana address.",
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 44,
+              "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+              "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicLicense"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions/{signature}": {
+      "get": {
+        "operationId": "getTransactionStatus",
+        "description": "Read RPC signature status with searchTransactionHistory. not-found is uncertainty, not proof of non-submission or safe retry.",
+        "parameters": [
+          {
+            "name": "signature",
+            "in": "path",
+            "required": true,
+            "description": "Public transaction signature; no signed wire bytes.",
+            "schema": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 88,
+              "pattern": "^[1-9A-HJ-NP-Za-km-z]{64,88}$",
+              "description": "Canonical base58 encoding of exactly 64 bytes. Public lookup, including all-zero bytes, never proves authentication or safe retry."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transaction"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/challenge": {
+      "post": {
+        "operationId": "walletChallenge",
+        "description": "Same-origin POST. Sets pact_binding HttpOnly cookie; returns expiring domain/network/browser-bound message. Single-process authentication must be explicitly enabled.",
+        "parameters": [],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChallengeInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Challenge"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify": {
+      "post": {
+        "operationId": "verifyWalletProof",
+        "description": "Same-origin POST with pact_binding cookie. Atomically consumes challenge; verifies native Ed25519 signature; rotates opaque pact_session HttpOnly cookie.",
+        "parameters": [],
+        "security": [
+          {
+            "pactBinding": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Proof"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/session": {
+      "get": {
+        "operationId": "getWalletSession",
+        "description": "Read session identity only; no license/access grant.",
+        "parameters": [],
+        "security": [
+          {
+            "pactSession": []
+          },
+          {}
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logoutWallet",
+        "description": "Same-origin POST; invalidate session and clear binding/session cookies.",
+        "parameters": [],
+        "security": [
+          {
+            "pactSession": []
+          },
+          {}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/protected": {
+      "get": {
+        "operationId": "protectedOperation",
+        "description": "Derive wallet from opaque session; fresh authoritative entitlement for server-configured offer; recheck session after RPC before returning demo payload.",
+        "parameters": [],
+        "security": [
+          {
+            "pactSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. Cache-Control: no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Protected"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resources/{id}": {
+      "get": {
+        "operationId": "getResource",
+        "description": "Server-configured resource ID and method only; no body or query parameters. Requires original opaque session plus fresh entitlement before and after prepare. Synchronous commit immediately follows final checks. Entire operation has five-second deadline; public chain capacity cannot consume reserved protected workers.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "pactSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "At most1MiB copied private bytes; policy-owned content type; Cache-Control:no-store.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postResource",
+        "description": "Server-configured resource ID and method only; no body or query parameters. Requires original opaque session plus fresh entitlement before and after prepare. Synchronous commit immediately follows final checks. Entire operation has five-second deadline; public chain capacity cannot consume reserved protected workers.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "pactSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "At most1MiB copied private bytes; policy-owned content type; Cache-Control:no-store.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or wrong requested network/program.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wallet proof/session is absent, invalid, used or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin mismatch or no fresh active entitlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request exceeded the five-second deadline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Offer inactive or wallet already licensed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds its UTF8 byte limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Process-local rate/store capacity reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Prepared resource/callback contract failed; details redacted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC, freshness, configuration, busy reader or disabled authentication failure; fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "x-pact-request-id": {
+                "description": "Server-generated UUIDv4; incoming request IDs are ignored. No caller identity is encoded.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 1024,
+                "description": "Bounded public message; SDK error messages redact untrusted upstream text."
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "Offer": {
+        "type": "object",
+        "properties": {
+          "program": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "offer": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "seller": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "nonce": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-9][0-9]{7}|[1-9][0-9]{8}|[1-9][0-9]{9}|[1-9][0-9]{10}|[1-9][0-9]{11}|[1-9][0-9]{12}|[1-9][0-9]{13}|[1-9][0-9]{14}|[1-9][0-9]{15}|[1-9][0-9]{16}|[1-9][0-9]{17}|[1-9][0-9]{18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+            "description": "Canonical decimal integer 0..18446744073709551615."
+          },
+          "priceLamports": {
+            "type": "string",
+            "pattern": "^(?:[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-9][0-9]{7}|[1-9][0-9]{8}|[1-9][0-9]{9}|[1-9][0-9]{10}|[1-9][0-9]{11}|[1-9][0-9]{12}|[1-9][0-9]{13}|[1-9][0-9]{14}|[1-9][0-9]{15}|[1-9][0-9]{16}|[1-9][0-9]{17}|[1-9][0-9]{18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+            "description": "Canonical decimal integer 1..18446744073709551615."
+          },
+          "durationSeconds": {
+            "type": "string",
+            "pattern": "^(?:[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-2][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$",
+            "description": "Canonical decimal integer 1..31536000."
+          },
+          "termsHash": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "not": {
+              "const": "0x0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "contextSlot": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "chainTimestamp": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-9][0-9]{7}|[1-9][0-9]{8}|[1-9][0-9]{9}|[1-9][0-9]{10}|[1-9][0-9]{11}|[1-9][0-9]{12}|[1-9][0-9]{13}|[1-9][0-9]{14}|[1-9][0-9]{15}|[1-9][0-9]{16}|[1-9][0-9]{17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$",
+            "description": "Canonical decimal integer 0..9223372036854775807."
+          },
+          "startedAtMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "receivedAtMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "program",
+          "offer",
+          "seller",
+          "nonce",
+          "priceLamports",
+          "durationSeconds",
+          "termsHash",
+          "active",
+          "contextSlot",
+          "chainTimestamp",
+          "startedAtMs",
+          "receivedAtMs"
+        ]
+      },
+      "PrepareOffer": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          },
+          "programId": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "sellerWallet": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "nonce": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-9][0-9]{7}|[1-9][0-9]{8}|[1-9][0-9]{9}|[1-9][0-9]{10}|[1-9][0-9]{11}|[1-9][0-9]{12}|[1-9][0-9]{13}|[1-9][0-9]{14}|[1-9][0-9]{15}|[1-9][0-9]{16}|[1-9][0-9]{17}|[1-9][0-9]{18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+            "description": "Canonical decimal integer 0..18446744073709551615."
+          },
+          "metadataJson": {
+            "type": "string",
+            "maxLength": 65536,
+            "x-maxUtf8Bytes": 65536,
+            "description": "Exact valid UTF-8 public metadata, maximum 64 KiB bytes. Keccak-256 commits the original bytes; formatting matters. Canonical positive u64 price and duration 1..31536000 required."
+          }
+        },
+        "required": [
+          "network",
+          "sellerWallet",
+          "nonce",
+          "metadataJson"
+        ],
+        "additionalProperties": false
+      },
+      "PrepareCheckout": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          },
+          "programId": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "offerAddress": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "walletAddress": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "metadataJson": {
+            "type": "string",
+            "maxLength": 65536,
+            "x-maxUtf8Bytes": 65536,
+            "description": "Exact valid UTF-8 public metadata, maximum 64 KiB bytes. Keccak-256 commits the original bytes; formatting matters. Canonical positive u64 price and duration 1..31536000 required."
+          }
+        },
+        "required": [
+          "network",
+          "offerAddress",
+          "walletAddress",
+          "metadataJson"
+        ],
+        "additionalProperties": false
+      },
+      "PreparedOffer": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          },
+          "programId": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "offer": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "seller": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "nonce": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-9][0-9]{7}|[1-9][0-9]{8}|[1-9][0-9]{9}|[1-9][0-9]{10}|[1-9][0-9]{11}|[1-9][0-9]{12}|[1-9][0-9]{13}|[1-9][0-9]{14}|[1-9][0-9]{15}|[1-9][0-9]{16}|[1-9][0-9]{17}|[1-9][0-9]{18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+            "description": "Canonical decimal integer 0..18446744073709551615."
+          },
+          "priceLamports": {
+            "type": "string",
+            "pattern": "^(?:[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-9][0-9]{7}|[1-9][0-9]{8}|[1-9][0-9]{9}|[1-9][0-9]{10}|[1-9][0-9]{11}|[1-9][0-9]{12}|[1-9][0-9]{13}|[1-9][0-9]{14}|[1-9][0-9]{15}|[1-9][0-9]{16}|[1-9][0-9]{17}|[1-9][0-9]{18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+            "description": "Canonical decimal integer 1..18446744073709551615."
+          },
+          "durationSeconds": {
+            "type": "string",
+            "pattern": "^(?:[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-2][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$",
+            "description": "Canonical decimal integer 1..31536000."
+          },
+          "termsHash": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]{64}$",
+            "not": {
+              "const": "0x0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          },
+          "transactionBase64": {
+            "type": "string",
+            "maxLength": 1644,
+            "contentEncoding": "base64",
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+            "description": "Canonical unsigned v0 transaction, at most 1232 bytes, one zero signature, no lookup tables or extra static accounts/instructions. Runtime semantic validation binds payer, metadata and exact three compute-limit200000/price0/PACT instructions, ordered accounts and deduplicated global privileges."
+          },
+          "blockhash": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "lastValidBlockHeight": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "contextSlot": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "chainTimestamp": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-9][0-9]{7}|[1-9][0-9]{8}|[1-9][0-9]{9}|[1-9][0-9]{10}|[1-9][0-9]{11}|[1-9][0-9]{12}|[1-9][0-9]{13}|[1-9][0-9]{14}|[1-9][0-9]{15}|[1-9][0-9]{16}|[1-9][0-9]{17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$",
+            "description": "Canonical decimal integer 0..9223372036854775807."
+          },
+          "startedAtMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "receivedAtMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "network",
+          "programId",
+          "offer",
+          "seller",
+          "nonce",
+          "priceLamports",
+          "durationSeconds",
+          "termsHash",
+          "transactionBase64",
+          "blockhash",
+          "lastValidBlockHeight",
+          "contextSlot",
+          "chainTimestamp",
+          "startedAtMs",
+          "receivedAtMs"
+        ]
+      },
+      "PreparedCheckout": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          },
+          "programId": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "quote": {
+            "$ref": "#/components/schemas/Offer"
+          },
+          "buyer": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "licensePda": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "transactionBase64": {
+            "type": "string",
+            "maxLength": 1644,
+            "contentEncoding": "base64",
+            "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+            "description": "Canonical unsigned v0 transaction, at most 1232 bytes, one zero signature, no lookup tables or extra static accounts/instructions. Runtime semantic validation binds payer, metadata and exact three compute-limit200000/price0/PACT instructions, ordered accounts and deduplicated global privileges."
+          },
+          "blockhash": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "lastValidBlockHeight": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "network",
+          "programId",
+          "quote",
+          "buyer",
+          "licensePda",
+          "transactionBase64",
+          "blockhash",
+          "lastValidBlockHeight"
+        ]
+      },
+      "LicenseInput": {
+        "type": "object",
+        "properties": {
+          "offerAddress": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "walletAddress": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          }
+        },
+        "required": [
+          "offerAddress",
+          "walletAddress"
+        ],
+        "additionalProperties": false
+      },
+      "LicenseStatus": {
+        "type": "object",
+        "properties": {
+          "program": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "offer": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "wallet": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "licensePda": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "contextSlot": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "chainTimestamp": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-9][0-9]{7}|[1-9][0-9]{8}|[1-9][0-9]{9}|[1-9][0-9]{10}|[1-9][0-9]{11}|[1-9][0-9]{12}|[1-9][0-9]{13}|[1-9][0-9]{14}|[1-9][0-9]{15}|[1-9][0-9]{16}|[1-9][0-9]{17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$",
+            "description": "Canonical decimal integer 0..9223372036854775807."
+          },
+          "startedAtMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "receivedAtMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "expiry": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-9][0-9]{7}|[1-9][0-9]{8}|[1-9][0-9]{9}|[1-9][0-9]{10}|[1-9][0-9]{11}|[1-9][0-9]{12}|[1-9][0-9]{13}|[1-9][0-9]{14}|[1-9][0-9]{15}|[1-9][0-9]{16}|[1-9][0-9]{17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$",
+            "description": "Canonical decimal integer 0..9223372036854775807."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "active",
+              "expired",
+              "missing"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "lastProgressAtMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "program",
+          "offer",
+          "wallet",
+          "licensePda",
+          "contextSlot",
+          "chainTimestamp",
+          "startedAtMs",
+          "receivedAtMs",
+          "expiry",
+          "state",
+          "active",
+          "lastProgressAtMs"
+        ]
+      },
+      "PublicLicense": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          },
+          "program": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "offerAddress": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "walletAddress": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "valid": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "active",
+              "expired",
+              "missing"
+            ]
+          },
+          "expiration": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^(?:0|[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-9][0-9]{7}|[1-9][0-9]{8}|[1-9][0-9]{9}|[1-9][0-9]{10}|[1-9][0-9]{11}|[1-9][0-9]{12}|[1-9][0-9]{13}|[1-9][0-9]{14}|[1-9][0-9]{15}|[1-9][0-9]{16}|[1-9][0-9]{17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$",
+                "description": "Canonical decimal integer 0..9223372036854775807."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "VALID",
+              "EXPIRED",
+              "MISSING"
+            ]
+          },
+          "walletControlProven": {
+            "const": false
+          },
+          "authorized": {
+            "const": false
+          },
+          "freshness": {
+            "type": "object",
+            "properties": {
+              "verifiedAtMs": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "maxAgeMs": {
+                "const": 8000
+              },
+              "contextSlot": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "chainTimestamp": {
+                "type": "string",
+                "pattern": "^(?:0|[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-9][0-9]{7}|[1-9][0-9]{8}|[1-9][0-9]{9}|[1-9][0-9]{10}|[1-9][0-9]{11}|[1-9][0-9]{12}|[1-9][0-9]{13}|[1-9][0-9]{14}|[1-9][0-9]{15}|[1-9][0-9]{16}|[1-9][0-9]{17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$",
+                "description": "Canonical decimal integer 0..9223372036854775807."
+              }
+            },
+            "required": [
+              "verifiedAtMs",
+              "maxAgeMs",
+              "contextSlot",
+              "chainTimestamp"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/LicenseStatus"
+          }
+        },
+        "required": [
+          "network",
+          "program",
+          "offerAddress",
+          "walletAddress",
+          "valid",
+          "state",
+          "expiration",
+          "verifiedAt",
+          "reason",
+          "walletControlProven",
+          "authorized",
+          "freshness",
+          "status"
+        ],
+        "description": "Runtime checks bind both identities, derived license PDA, all nested fields, reason/expiration/state/valid flags, ISO verifiedAt and timestamp ordering. All states require snapshot age <8000ms and progress age <12000ms; positive expiry must exceed projected chain and current wall time. Clock must be within inclusive60s of current time."
+      },
+      "VerifiedMetadata": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "const": true
+          },
+          "offerAddress": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "metadataJson": {
+            "type": "string",
+            "maxLength": 65536,
+            "x-maxUtf8Bytes": 65536,
+            "description": "Exact valid UTF-8 public metadata, maximum 64 KiB bytes. Keccak-256 commits the original bytes; formatting matters. Canonical positive u64 price and duration 1..31536000 required."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "terms": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "available",
+          "offerAddress",
+          "metadataJson",
+          "title",
+          "terms",
+          "verifiedAt"
+        ]
+      },
+      "MetadataUnavailable": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "const": false
+          },
+          "offerAddress": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "reason": {
+            "const": "METADATA_UNAVAILABLE"
+          }
+        },
+        "required": [
+          "available",
+          "offerAddress",
+          "reason"
+        ]
+      },
+      "ChallengeInput": {
+        "type": "object",
+        "properties": {
+          "walletAddress": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          }
+        },
+        "required": [
+          "walletAddress"
+        ],
+        "additionalProperties": false
+      },
+      "Challenge": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "Exact eleven-line origin/network/program/wallet/browser-bound authentication message; expiry at most300000ms from issuance. Never a transaction."
+          },
+          "expiresAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "challengeId",
+          "message",
+          "expiresAt"
+        ]
+      },
+      "Proof": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "signatureBase64": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9+/]{86}==$"
+          }
+        },
+        "required": [
+          "challengeId",
+          "signatureBase64"
+        ],
+        "additionalProperties": false
+      },
+      "Session": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "authenticated": {
+                "const": false
+              }
+            },
+            "required": [
+              "authenticated"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "authenticated": {
+                "const": true
+              },
+              "walletAddress": {
+                "type": "string",
+                "minLength": 32,
+                "maxLength": 44,
+                "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+                "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+              },
+              "expiresAt": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Strictly future safe epoch milliseconds, at most one hour from current time."
+              }
+            },
+            "required": [
+              "authenticated",
+              "walletAddress",
+              "expiresAt"
+            ]
+          }
+        ]
+      },
+      "Protected": {
+        "type": "object",
+        "properties": {
+          "authorized": {
+            "const": true
+          },
+          "walletAddress": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "offerAddress": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 44,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$",
+            "description": "Canonical base58 encoding of exactly 32 bytes; runtime validation also derives required PDAs."
+          },
+          "expiresAt": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-9][0-9]{7}|[1-9][0-9]{8}|[1-9][0-9]{9}|[1-9][0-9]{10}|[1-9][0-9]{11}|[1-9][0-9]{12}|[1-9][0-9]{13}|[1-9][0-9]{14}|[1-9][0-9]{15}|[1-9][0-9]{16}|[1-9][0-9]{17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$",
+            "description": "Canonical decimal integer 0..9223372036854775807."
+          },
+          "payload": {
+            "type": "string"
+          },
+          "verification": {
+            "$ref": "#/components/schemas/PublicLicense"
+          }
+        },
+        "required": [
+          "authorized",
+          "walletAddress",
+          "offerAddress",
+          "expiresAt",
+          "payload",
+          "verification"
+        ]
+      },
+      "Transaction": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          },
+          "signature": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 88,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{64,88}$",
+            "description": "Canonical base58 encoding of exactly 64 bytes. Public lookup, including all-zero bytes, never proves authentication or safe retry."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "not-found",
+              "processed",
+              "confirmed",
+              "finalized",
+              "failed"
+            ]
+          },
+          "slot": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "pattern": "^[A-Z][A-Za-z0-9]{0,95}$"
+              },
+              {
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 1
+              }
+            ],
+            "description": "Bounded non-exhaustive serde TransactionError string/object, not a complete version-specific enum list. Max4096UTF8 bytes, depth6, identifier keys; prototype keys refused."
+          },
+          "contextSlot": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "network",
+          "signature",
+          "state",
+          "slot",
+          "error",
+          "contextSlot"
+        ],
+        "description": "Runtime binds requested signature/network and slot<=contextSlot. not-found requires null slot/error; successful states require null error; failed requires non-null bounded TransactionError."
+      },
+      "Empty": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "Live": {
+        "type": "object",
+        "properties": {
+          "live": {
+            "const": true
+          }
+        },
+        "required": [
+          "live"
+        ],
+        "additionalProperties": false
+      },
+      "Ready": {
+        "type": "object",
+        "properties": {
+          "ready": {
+            "const": true
+          },
+          "network": {
+            "type": "string",
+            "const": "devnet"
+          },
+          "programId": {
+            "type": "string",
+            "const": "EiiiWWsW2kkqP6nugHz6iBADvhnW5xnibAtZ82ZExVqy"
+          },
+          "contextSlot": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "chainTimestamp": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9]|[1-9][0-9]{1}|[1-9][0-9]{2}|[1-9][0-9]{3}|[1-9][0-9]{4}|[1-9][0-9]{5}|[1-9][0-9]{6}|[1-9][0-9]{7}|[1-9][0-9]{8}|[1-9][0-9]{9}|[1-9][0-9]{10}|[1-9][0-9]{11}|[1-9][0-9]{12}|[1-9][0-9]{13}|[1-9][0-9]{14}|[1-9][0-9]{15}|[1-9][0-9]{16}|[1-9][0-9]{17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$",
+            "description": "Canonical decimal integer 0..9223372036854775807."
+          },
+          "startedAtMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "receivedAtMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "authMode": {
+            "type": "string",
+            "enum": [
+              "disabled",
+              "single-process"
+            ]
+          }
+        },
+        "required": [
+          "ready",
+          "network",
+          "programId",
+          "contextSlot",
+          "chainTimestamp",
+          "startedAtMs",
+          "receivedAtMs",
+          "authMode"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "pactSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "pact_session",
+        "description": "Opaque HttpOnly SameSite=Strict session; Secure on HTTPS."
+      },
+      "pactBinding": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "pact_binding",
+        "description": "Browser binding set by challenge route. Same-origin POST and exact Origin required."
+      }
+    }
+  }
+}
