@@ -18,8 +18,8 @@ test('Phase1 independent native PostgreSQL control-plane acceptance',async t=>{
   service=await createService({database:db,origin,pepper,profile:'test',rateLimit:1000,resolveTxt:async()=>dnsRows,clockDirectory:directory});started=true;
   base=await service.server.listen({port:0,host:'127.0.0.1'});
  }
+ t.after(async()=>{try{await service?.close();}finally{if(db&&!db.diagnostics().closed)await db.close();}});
  await start();
- t.after(async()=>{await service.close();await db.close();});
  const a=new Browser(base),b=new Browser(base);let appA,appB,key,rotated;
  const suffix=nonce();
  await t.test('admin wallet proofs, CSRF and replay',async()=>{
