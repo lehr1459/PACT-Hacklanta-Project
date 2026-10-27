@@ -4,9 +4,11 @@ import {spawn,execFileSync} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import {mkdir,writeFile,open,access,readdir,readFile} from 'node:fs/promises';
 import path from 'node:path';
+import {pathToFileURL} from 'node:url';
 import {root,npmCli,validationEnv} from '../validation/common.mjs';
 import {loadRuntimePolicy} from '../validation/runtime.mjs';
 import {nodeReceipt,browserReceipt,browserFailureReceipt,developerDemoReceipt,matrixReceipt,generatedReferences} from './acceptance.mjs';
+import {nodeFailureReceipt} from './node-reporter.mjs';
 const mode=process.argv[2]??'all';
 if(!['install','all','portable'].includes(mode))throw Error('Use hosted run.mjs install|all|portable');
 const directory=path.join(root,'web/test-results/hosted-ci');await mkdir(directory,{recursive:true});
@@ -25,6 +27,15 @@ async function command(name,args,{cwd=root,env={},testReceipt=false,minimumTests
    child.once('error',reject);child.once('close',code=>resolve(code??1));
   });
   if(code!==0){
+   if(name==='native-postgres-http'){
+    try{
+     const bytes=await readFile(path.join(directory,name+'-summary.json'));
+     if(bytes.length>65536)throw Error();
+     const safe=nodeFailureReceipt(JSON.parse(bytes.toString('utf8')),{revision,runId});
+     await writeFile(path.join(directory,name+'-failure.json'),JSON.stringify(safe)+'\n');
+     process.stdout.write(JSON.stringify(safe)+'\n');
+    }catch{process.stdout.write('Bounded native failure summary unavailable; raw diagnostics remain private.\n');}
+   }
    if(['browser-console','browser-connect'].includes(name)){
     try{
      const lane=name.slice('browser-'.length),bytes=await readFile(path.join(root,'web/test-results/hosted-'+lane+'/results.json'));
@@ -46,7 +57,10 @@ async function command(name,args,{cwd=root,env={},testReceipt=false,minimumTests
  finally{item.durationMs=Math.round(performance.now()-started);await log.close();await record();process.stdout.write(name+': '+item.status+'\n');}
 }
 const npm=(name,project,args)=>command(name,[npmCli(),...args],{cwd:path.join(root,project),testReceipt:args[0]==='test'});
-const tests=(name,files,options={})=>command(name,['--test','--test-concurrency=1',...files],{...options,testReceipt:true});
+const tests=(name,files,options={})=>command(name,['--test','--test-concurrency=1',
+ ...(name==='native-postgres-http'?['--test-reporter=tap','--test-reporter-destination=stdout',
+ '--test-reporter='+pathToFileURL(path.join(root,'scripts/hosted-qa/node-reporter.mjs')).href,
+ '--test-reporter-destination='+path.join(directory,name+'-summary.json')]:[]),...files],{...options,testReceipt:true});
 const projects=['packages/pact-hosted-client','examples/pact-hosted-common','examples/pact-hosted-express','examples/pact-hosted-next','examples/pact-hosted-rest'];
 try{
  const runtime=await loadRuntimePolicy();if(process.version!=='v'+runtime.node||execFileSync(process.execPath,[npmCli(),'--version'],{encoding:'utf8'}).trim()!==runtime.npm)throw Error('Pinned runtime required');
@@ -62,7 +76,7 @@ try{
   for(const project of['services/pact-api','web',...projects])await npm(project.replaceAll('/','-')+'-install',project,['ci']);
  }else{
   await npm('contract-drift','services/pact-api',['run','openapi:check']);
-  await tests('reporting-policy',['scripts/hosted-qa/reporting.test.mjs','scripts/hosted-qa/acceptance.test.mjs','scripts/hosted-qa/export-receipts.test.mjs','scripts/hosted-qa/artifact-policy.test.mjs']);
+  await tests('reporting-policy',['scripts/hosted-qa/reporting.test.mjs','scripts/hosted-qa/node-reporter.test.mjs','scripts/hosted-qa/acceptance.test.mjs','scripts/hosted-qa/export-receipts.test.mjs','scripts/hosted-qa/artifact-policy.test.mjs']);
   for(const project of projects)await npm(project.replaceAll('/','-')+'-tests',project,['test']);
   if(mode==='all'){
    await npm('api-unit','services/pact-api',['test']);
