@@ -10,10 +10,12 @@ import {clockDirectory} from './phase7-clock-fixture.mjs';
 const random=()=>randomBytes(32).toString('base64url');
 export async function accessFixture({serviceOptions={},wrapDatabase}={}){
  const origin=serviceOptions.origin??ORIGIN;
- const native=await createDatabase({connectionString:await prepareDatabase(),profile:'test'});await migrate(native);
- const rpc=await rpcFixture(),clock={value:Date.now()},initialWall=clock.value;rpc.state.timestampSeconds=Math.floor(clock.value/1000);
+ let native,rpc,service;
+ try{
+ native=await createDatabase({connectionString:await prepareDatabase(),profile:'test'});await migrate(native);
+ rpc=await rpcFixture();const clock={value:Date.now()},initialWall=clock.value;rpc.state.timestampSeconds=Math.floor(clock.value/1000);
  const database=wrapDatabase?wrapDatabase(native,{rpc,clock}):native;
- const service=await createService({database,origin:ORIGIN,pepper:random(),profile:'test',clockDirectory:await clockDirectory(),now:()=>clock.value,monotonicNow:()=>clock.value-initialWall,
+ service=await createService({database,origin:ORIGIN,pepper:random(),profile:'test',clockDirectory:await clockDirectory(),now:()=>clock.value,monotonicNow:()=>clock.value-initialWall,
   rateLimit:1000,readerOptions:{rpcUrl:rpc.url},...serviceOptions});
  const base=await service.server.listen({port:0,host:'127.0.0.1'}),admin=new Browser(base,origin);await admin.login();
  async function app(owner=admin){
@@ -45,4 +47,8 @@ export async function accessFixture({serviceOptions={},wrapDatabase}={}){
  return{native,database,rpc,clock,service,base,admin,own,offer,buyer,app,grant,check,
   license:()=>rpc.addLicense({offer,buyer:buyer.identity,expirySeconds:BigInt(Math.floor(clock.value/1000)+60)}),
   async close(){await service.close();await native.close();await rpc.close();}};
+ }catch(error){
+  for(const resource of [service,native,rpc]){try{await resource?.close();}catch{}}
+  throw error;
+ }
 }

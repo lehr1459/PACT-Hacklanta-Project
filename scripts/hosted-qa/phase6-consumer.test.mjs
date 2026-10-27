@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createServer,request as httpRequest} from 'node:http';
 import {spawn} from 'node:child_process';
 import {access} from 'node:fs/promises';
+import {connect as connectSocket} from 'node:net';
 import path from 'node:path';
 import {accessFixture} from './access-fixture.mjs';
 import {Browser} from './browser.mjs';
@@ -16,6 +17,28 @@ function hostileHost(origin,cookie){return new Promise((resolve,reject)=>{
  const request=httpRequest(origin+'/api/session',{headers:{host:'evil.invalid',cookie}},response=>{response.resume();response.on('end',()=>resolve(response.statusCode));});
  request.on('error',()=>reject(Error('Host probe transport failure')));request.end();
 });}
+async function accepting(origin){
+ const url=new URL(origin);return new Promise(resolve=>{
+  const socket=connectSocket({host:url.hostname,port:Number(url.port)});
+  const finish=value=>{socket.destroy();resolve(value);};
+  socket.once('connect',()=>finish(true));socket.once('error',()=>finish(false));socket.setTimeout(1000,()=>finish(true));
+ });
+}
+test('Phase6 failed access fixture initialization closes owned database and listeners and preserves the error',async()=>{
+ for(const late of[false,true]){
+  const failure=Error('Intentional owned fixture initialization failure');let native,rpc,api;
+  const login=Browser.prototype.login;
+  if(late)Browser.prototype.login=async function(){api=this.base;throw failure;};
+  try{
+   await assert.rejects(accessFixture({wrapDatabase:(database,context)=>{
+    native=database;rpc=context.rpc;if(!late)throw failure;return database;
+   }}),error=>error===failure,'initialization must preserve the exact original error');
+  }finally{Browser.prototype.login=login;}
+  assert.equal(native.diagnostics().closed,true,'allocated database must close on setup failure');
+  assert.equal(await accepting(rpc.url),false,'allocated RPC listener must close on setup failure');
+  if(late){assert.ok(api,'late failure must occur after the API listener starts');assert.equal(await accepting(api),false,'allocated API listener must close on setup failure');}
+ }
+});
 async function fixture(t){
  let upstream;const proxy=createServer(async(req,res)=>{
   try{let body='';for await(const bytes of req){body+=bytes;if(body.length>16384)throw Error();}
@@ -24,8 +47,8 @@ async function fixture(t){
    res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));
   }catch{res.writeHead(503,{'content-type':'application/json','cache-control':'no-store'});res.end('{}');}
  });
- const pactOrigin=await listener(proxy),c=await accessFixture({serviceOptions:{origin:pactOrigin}});upstream=c.base;
- t.after(async()=>{await close(proxy);await c.close();});
+ const pactOrigin=await listener(proxy);t.after(()=>close(proxy));
+ const c=await accessFixture({serviceOptions:{origin:pactOrigin}});t.after(()=>c.close());upstream=c.base;
  return {...c,pactOrigin,client:createPactClient({origin:pactOrigin,apiKey:c.own.key,appId:c.own.id})};
 }
 function browser(origin){

@@ -1,6 +1,6 @@
 # Agent handoff
 
-Final acceptance found and reproduced two PostgreSQL lock-order defects. Read [the concurrency correction record](platform/hosted/CONCURRENCY_REVIEW_2026-10-26.md); preserve both new native regressions and the strengthened87-case minimum. Recheck final commit-bound CI rather than relying on a green predecessor or treating an intermittent failure as resolved by repetition. The earlier console-only failure is explicitly not attributed to these deadlocks without evidence.
+Final acceptance found and reproduced two PostgreSQL lock-order defects. Read [the concurrency correction record](platform/hosted/CONCURRENCY_REVIEW_2026-10-26.md); preserve both new native regressions and the strengthened89-case minimum. Recheck final commit-bound CI rather than relying on a green predecessor or treating an intermittent failure as resolved by repetition. The earlier console-only failure is explicitly not attributed to these deadlocks without evidence.
 
 ## Final engineering acceptance — 2026-10-26
 
