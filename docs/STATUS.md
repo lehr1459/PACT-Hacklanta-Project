@@ -1,5 +1,13 @@
 # Status
 
+## Final engineering acceptance and conditional merge — 2026-10-26
+
+The owner now authorizes the ordinary pull-request/merge workflow after all required engineering gates pass. This supersedes earlier feature-push-only handoffs, without authorizing deployment, package publication, provider changes, wallet approval or transactions. The existing public deployment remains isolated.
+
+Final acceptance adds an independently packed consumer installed outside PACT and a reproducible native Caddy HTTPS → production Next → API → PostgreSQL18.6 TLS/recovery gate. See [developer demonstration](platform/hosted/DEVELOPER_DEMO.md), [QA review](platform/hosted/FINAL_QA_REVIEW_2026-10-26.md), [security review](platform/hosted/FINAL_SECURITY_REVIEW_2026-10-26.md) and [architecture review](platform/hosted/FINAL_ARCHITECTURE_REVIEW_2026-10-26.md). Preliminary checks passed17 consumer and14 topology groups; final receipts must bind the final source SHA and must not relabel predecessor runs. Human local Phantom steps are now explicit in [the acceptance procedure](platform/hosted/PHANTOM_ACCEPTANCE.md).
+
+Fresh dependency gates found newly reported fast-uri and body-parser advisories; compatible locked patches resolve them without extending exceptions. Validation also corrects Python setup ordering and explicitly declares generated Solana evidence line endings. Program/contract logic and SDK contracts remain preserved. All four exact GitHub checks and the complete applicable local matrix are still mandatory before merge. Node review remains due November5 UTC and dependency exceptions expire November15 UTC. Provider-hosted operation, current-binary Devnet deployment/custody and real-wallet/device acceptance remain separate gates.
+
 ## Portable staging preparation — 2026-10-23
 
 Final database security review supersedes the inherited18.4 pin with PostgreSQL18.6 in CI and staging; [review and acceptance requirements](security/POSTGRES_REVIEW_2026-10-23.md). Existing clusters and application/protocol source remain untouched.

@@ -1,5 +1,13 @@
 # Agent handoff
 
+## Final engineering acceptance — 2026-10-26
+
+Current owner authorization permits a normal PR from `codex/api-first-integrations` to `main` and ordinary merge only after the final clean revision, complete local engineering validation, independent review, all four actual proposed-merge GitHub checks and immediate deployment-isolation verification pass. Do not bypass checks or rewrite history. Historical feature-only restrictions below are superseded for this specific code-merge workflow; deployment, publication, provider changes, wallet approval and blockchain broadcasts remain unauthorized.
+
+Use the current validation/hosted runners and new mandatory independently installed [developer demonstration](platform/hosted/DEVELOPER_DEMO.md). The native HTTPS/recovery harness and isolated migration/runtime role procedure are described in [final QA review](platform/hosted/FINAL_QA_REVIEW_2026-10-26.md). Review [security corrections](platform/hosted/FINAL_SECURITY_REVIEW_2026-10-26.md), including fresh audit failures rather than relying on historical green CI. Root acceptance evidence must record each actual source/merge SHA, failed attempts and corrections, test counts, final GitHub run/check identities, source archive digest and unchanged production deployment. Raw local logs, private fixture JSON, backups, TLS keys and clock files remain private/ignored.
+
+Real Phantom approval is a human gate; follow the new local variant in [PHANTOM_ACCEPTANCE](platform/hosted/PHANTOM_ACCEPTANCE.md) using separate D/S/B identities, an existing seller offer and exact localhost issuer. A missing existing qualifying buyer entitlement blocks real-chain allowance; synthetic allowance is separate evidence. The historical deployed ELF matches read-only Devnet inspection, while the current remapped local ELF is not deployed. Preserve that distinction and do not upgrade it merely for merge. Provider-hosted Linux acceptance and the proposed branch-protection settings remain owner actions. Node review November5 UTC and dependency exceptions November15 UTC remain unchanged.
+
 ## Portable staging preparation — 2026-10-23
 
 Use patched PostgreSQL18.6, not the inherited18.4 test target; require the separate18.6 native/portable-recovery/TLS and exact-commit CI evidence. See [database security review](security/POSTGRES_REVIEW_2026-10-23.md). Restore under the fixed `pact_hosted`/loopback55432 endpoint requires an isolated new cluster and owner-controlled promotion, never overwriting a running cluster.
