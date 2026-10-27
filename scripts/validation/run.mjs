@@ -90,7 +90,6 @@ async function lane(name) {
   else if(name==='dependencies')await command('dependency-policy',['scripts/validation/dependencies.mjs']);
   else if(name==='windows-setup') {
     if(process.platform!=='win32')throw Error('Pinned chain toolchain requires Windows; use the Windows CI job.');
-    await command('powershell-integrity-tests',['--test','scripts/validation/powershell-integrity.test.mjs']);
     const virtualPython=path.join(root,'solana/.tools/venv/Scripts/python.exe');
     let hasVirtualPython=true;try{await access(virtualPython);}catch{hasVirtualPython=false;}
     let python=virtualPython;
@@ -105,6 +104,9 @@ async function lane(name) {
     }
     await command('pinned-python',['-c',probe],{binary:python});
     if(!hasVirtualPython)await command('solana-python-venv',['-m','venv',path.join(root,'solana/.tools/venv')],{binary:python});
+    // The archive-extraction integrity test uses this verified interpreter.
+    // Establish it first when Windows exposes Python only through py -3.13.
+    await command('powershell-integrity-tests',['--test','scripts/validation/powershell-integrity.test.mjs']);
     await command('solana-setup',['-NoProfile','-ExecutionPolicy','Bypass','-File','solana/scripts/setup.ps1'],{binary:'powershell.exe'});
     // Nested dependency repositories have no Solidity EOL attributes. Reproduce
     // the reviewed CRLF dependency sources without changing global Git config.
